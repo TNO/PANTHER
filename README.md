@@ -11,3 +11,12 @@ Model framework for stress changes and fault reactivation due to reservoir press
 - fault reactivation and aseismic slip
 - stochastic analysis
 - parallel computing
+
+How to run?
+- clone the repo git@github.com:TNO/PANTHER.git
+- open the Panther.prj file in Matlab
+- run panther.m or check out the various example files
+
+Requires:
+- Matlab
+- Parallel Processing Toolbox (optional)
