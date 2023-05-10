@@ -1,2 +1,2 @@
 # PANTHER
-Model framework for reservoir stress changes and fault reactivation due to pressure and temperature changes
+Model framework for stress changes and fault reactivation due to reservoir pressure and temperature changes
