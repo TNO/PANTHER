@@ -39,4 +39,8 @@ if ~isnan(nucleation)
     end
 end
 
+% get initial stress and stress changes with respect to initial time step
+[sne0, tau0] = analysis_result.get_initial_stress();
+[dsne, dtau] = analysis_result.get_stress_changes();
+
 

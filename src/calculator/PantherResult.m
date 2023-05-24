@@ -37,6 +37,9 @@ classdef PantherResult
         end
 
         function [max_cff, mid_cff] = get_cff_rates(self, analysis, i)
+            % Get the maximum Coulomb Stress Change CFF rate along the
+            % fault as well as the CFF at mid reservoir depth (y=0), 
+            % averaged over the timesteps 
                 max_cff = 0;        % maximum stress rate
                 mid_cff = 0;        % stress rate at mid reservoir depth
                 % TODO find better metric for mean stress
@@ -46,11 +49,6 @@ classdef PantherResult
                     if self.summary.reactivation_index(i) > 1
                         cff = cff(:, 1:self.summary.reactivation_index(i));
                         time = time(1:self.summary.reactivation_index(i));
-                        %                         tops = [analysis.ensemble{i}.top_FW_i(self.y), analysis.ensemble{i}.top_HW_i(self.y)];
-%                         top = max(tops);
-%                         bases = [analysis.ensemble{i}.base_FW_i(self.y), analysis.ensemble{i}.base_HW_i(self.y)];
-%                         base = max(bases);
-%                         mid_cff = mean(mean(cff_rate(top:base,:), 2));
                     end
                 end
                 cff_rate = diff(cff, [], 2) ./ diff(time)';
@@ -59,6 +57,27 @@ classdef PantherResult
                 mid_cff = mean(cff_rate(i_mid,:));
            
         end
+
+        function [sne0, tau0] = get_initial_stress(self)
+            % Returns shear and normal stress at first timestep
+            sne0 = cell(length(self.stress), 1);
+            tau0 = cell(length(self.stress), 1);
+            for i = 1 : length(self.stress)
+                sne0{i} = self.stress{i}.sne(:,1);
+                tau0{i} = self.stress{i}.tau(:,1);
+            end
+        end
+
+        function [dsne, dtau] = get_stress_changes(self)
+            % Returns shear and normal stress change w.r.t. first time step
+            dsne = cell(length(self.stress), 1);
+            dtau = cell(length(self.stress), 1);
+            for i = 1 : length(self.stress)
+                dsne{i} = self.stress{i}.sne - self.stress{i}.sne(:,1);
+                dtau{i} = self.stress{i}.tau - self.stress{i}.tau(:,1);
+            end
+        end
+
 
     end
 
