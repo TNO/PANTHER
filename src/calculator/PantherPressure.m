@@ -1,12 +1,12 @@
-classdef PantherPressure 
-    % PantherPressure Computes pressure profiles along fault
+classdef PantherPressure
+    
     % Loes Buijze 13 - 04 - 2023
     
     properties
         p0
-        dp_FW
-        dp_HW
         dp_fault
+        dp_HW
+        dp_FW
     end
 
     properties (Dependent)
@@ -26,7 +26,6 @@ classdef PantherPressure
             self.dp_HW = dp_unit_HW * p_steps' .* loads.P_factor_HW';    % (dp, time) array of pressures in the hanging wall
             
             % compute pressure diffusion to the seal and base
-            % TODO enable different diffusivity in the fault zone
             if diffusion
                 y_top = member.top_FW_y;
                 y_base = member.base_FW_y;
@@ -48,12 +47,6 @@ classdef PantherPressure
             elseif strcmp(p_fault_mode, 'HW')
                 self.dp_fault = self.dp_HW;
             end
-
-            % plot pressures
-%             plot(self.dp_HW(:, end), y, self.dp_FW(:, end), y);
-%             hold on
-%             plot(self.dp_fault(:, [1,5,10,25,50]), y, 'LineStyle','--','Color','k');
-%             plot(self.dp_fault(:, end)/50, y, 'LineStyle','--','Color','b');
             
             self.dp_fault = member.p_factor_fault * self.dp_fault;
         end

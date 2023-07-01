@@ -1,6 +1,6 @@
 % example function for 2.5D case
 % computes stresses and stress changes for each pillar of the Wirdum fault
-% assumes the 2D plane-strain approximation holds at each fault pillar
+% assumesgit p the 2D plane-strain approximation holds at each fault pillar
 % Wirdum fault file is found in panther-temp/examples/example_files
 
 % read Wirdum fault properties
@@ -19,7 +19,7 @@ analysis.diffusion_P = 0;
 % analysis.aseismic_slip = 0; 
 % load table values to generate ensemble
 analysis.generate_ensemble_from_table(wirdum);
-
+input_table = analysis.ensemble_to_table();
 % running analysis (starting up parallel can take a while if it is not yet
 % running)
 analysis_result = panther(analysis);

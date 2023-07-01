@@ -114,6 +114,14 @@ classdef PantherMember
             gamma_P = (1 - 2*self.poisson).*self.biot./(1 - self.poisson);
         end
 
+        function [gamma_T] = get_gamma_T(self)
+            % get_gamma_T returns the thermo-elastic stress path parameter
+            % OUTPUT
+            % gamma_T   [MPa/deg] thermo-elastic stress path parameter 
+            gamma_T = (self.young * self.therm_exp)./(1 - self.poisson);
+        end
+
+
         function [mu_II] = get_mu_II(self)
             % shear modulus mode II
             mu_II = self.young ./ (2 * (1 + self.poisson) .* (1 - self.poisson));

@@ -1,5 +1,5 @@
 classdef GreensFunctions
-    % GreensFunctions Returns Green's function for a single HW or FW
+    % GreensFunctions Returns Green's functions for a single HW or FW
     % compartment. (lenght(y), 1)
     properties
         Gxx_FW
@@ -17,18 +17,11 @@ classdef GreensFunctions
     methods
         function self = GreensFunctions(yeval)
             % GreensFunctions computes Green's functions xx, yy, xy for FW
-            % and HW compartments or depth slices
+            % or HW compartments
             props = properties(self);
             for i = 1 : length(props)
                 self.(props{i}) = zeros(length(yeval), 1);
             end
-%             self.Gxx_FW = zeros(length(yeval), 1);
-%             self.Gyy_FW = zeros(length(yeval), 1);
-%             self.Gxy_FW = zeros(length(yeval), 1);
-%             self.Gxx_HW = zeros(length(yeval), 1);
-%             self.Gyy_HW = zeros(length(yeval), 1);
-%             self.Gxy_HW = zeros(length(yeval), 1);
-%             self.Gnorm_FW = 
         end
 
         function self = green_FW(self, xeval, yeval, dip, h, t, w_FW, xcf, ycf)
