@@ -13,63 +13,104 @@ classdef FaultStressChange
     end
 
     methods
-        function self = FaultStressChange(pressure)
+        function self = FaultStressChange(size_y, size_t)
             % initialize StressChange class. Stress change contains changes
             % in shear and total normal stress
-            self.dsn = zeros(size(pressure.dp_fault));
-            self.dtau = zeros(size(pressure.dp_fault));
+            % INPUT
+            % size_y    length depth array
+            % size_t    number of time steps
+            self.dsn = zeros(size_y, size_t);
+            self.dtau = zeros(size_y, size_t);
         end
 
-        function self = calc_stress_changes(self, params, y, dx, pressure, load_case)
+        function self = calc_stress_changes(self, params, y, dx, pressure, temperature, load_case)
             % calculator for stress changes due to P and/or T.
             % controls the calculation for uniform and non-uniform pressure
             % and temperature profiles, non-uniform elastic parameters
-            [vary_P, ~] = self.variable_PT(pressure, zeros(size(pressure)));
-            if or(length(params.dip) > 1, iscell(params.dip))
-                vary_dip = 1;
+            [vary_P, vary_T] = self.variable_PT(pressure, temperature);
+            [vary_dip] = self.variable_dip(params);
+            if and(contains(load_case,'P'), vary_P) || and(contains(load_case,'T'), vary_T)
+                vary_PT = 1;
             else
-                vary_dip = 0;
+                vary_PT = 0;
             end
-            GF = self.initialize_greens_functions(params, y, dx, vary_P, vary_dip);
-            if and(~vary_dip, ~vary_P)
-                self = self.get_stress_change_uniform(params, GF{1}, y, pressure);
-            else
-                self = self.get_stress_change_nonuniform(params, GF, y, pressure);
-            end
-            self.dsn = -self.dsn;
+            GF = initialize_greens_functions(params, y, dx, vary_PT, vary_dip);
+            % stress changes due to pressure changes
+            if contains(load_case,'P')
+              dsigma_P = self.calc_stress_changes_dP(params, y, pressure, GF, vary_PT, vary_dip );
+            else 
+              dsigma_P.dsn = zeros(size(self.dsn)); 
+              dsigma_P.dtau = zeros(size(self.dtau)); 
+            end    
+            if contains(load_case,'T')
+                dsigma_T = self.calc_stress_changes_dT(params, y, temperature, GF, vary_PT, vary_dip);
+            else 
+                dsigma_T.dsn = zeros(size(self.dsn)); 
+                dsigma_T.dtau = zeros(size(self.dtau)); 
+            end    
+            % self.dsn = -self.dsn;
+            self.dsn = -(dsigma_P.dsn + dsigma_T.dsn);
+            self.dtau = dsigma_P.dtau + dsigma_T.dtau;
         end
 
-        function self = get_stress_change_uniform(self, params, GF, y, pressure)
+        function dsigma = calc_stress_changes_dP(self, params, y, pressure, GF, vary_PT, vary_dip )
+            % sets stress calculation for pressure changes
+            gamma_P = params.get_gamma_P; 
+            if and(~vary_dip, ~vary_PT)
+                dsigma = self.get_stress_change_uniform(params, GF{1}, y, pressure, gamma_P,'P');
+            else
+                dsigma = self.get_stress_change_nonuniform( GF, y, size(pressure.dp_fault, 2), pressure, gamma_P, 'P');
+            end
+        end
+
+        function dsigma = calc_stress_changes_dT(self, params, y, temperature, GF, vary_PT, vary_dip )
+            % sets stress calculation for temperature changes
+            gamma_T = params.get_gamma_T; 
+            if and(~vary_dip, ~vary_PT)
+                dsigma = self.get_stress_change_uniform(params, GF{1}, y, temperature, gamma_T, 'T');
+            else
+                dsigma = self.get_stress_change_nonuniform(GF, y, size(temperature.dT_fault, 2), temperature, gamma_T, 'T');
+            end
+        end
+
+        function self = get_stress_change_uniform(self, params, GF, y, PT_change, gamma, load)
             % calculate the stress change for each timestep, for uniform P or T change in the reservoir blocks
-            for i = 1 : size(pressure.dp_FW,2)
-                ip = find(pressure.dp_FW(:,i) ~= 0, 1);
-                if ~isempty(ip)
-                    dP_FW = pressure.dp_FW(ip, i);
-                else
-                    dP_FW = 0;
+            if strcmp(load, 'P') 
+                for i = 1 : size(PT_change.dp_FW,2)
+                    i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
+                    dP_FW = PT_change.dp_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
+                    dP_HW = PT_change.dp_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dP_FW, dP_HW, gamma);   
                 end
-                % i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
-                % dP_FW = pressure.dp_FW(i_mid, i);
-                i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
-                dP_HW = pressure.dp_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
-                gamma = params.get_gamma_P; 
-                [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dP_FW, dP_HW, gamma);   
+            else 
+                for i = 1 : size(PT_change.dT_FW,2)
+                    i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
+                    dT_FW = PT_change.dT_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
+                    dT_HW = PT_change.dT_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dT_FW, dT_HW, gamma);   
+                end
             end
         end
 
-        function self = get_stress_change_nonuniform(self, params, GF, y, pressure)
+        function self = get_stress_change_nonuniform(self, GF, y, n_times, PT_change, gamma_PT, load_case)
             % calculate shear and normal stress, by adding contributions
             % from all depth increments, which may have varyiable P, T, or
-            % gamma with depth
-            gamma_P = params.get_gamma_P;
-            for i = 1 : size(pressure.dp_fault, 2)
+            % gamma with depth 
+            for i = 1 : n_times
                 dsn_temp = zeros(length(y),1);      % array for adding contributions of gridded depth blocks withs varying P,T, or gamma
                 dtau_temp = zeros(length(y),1);
                 for j = 1 : length(y)
-                    dPT_FW = pressure.dp_FW(j,i);
-                    dPT_HW = pressure.dp_HW(j,i);
-                    if length(gamma_P) == 1
-                        gamma = gamma_P;
+                    if strcmp(load_case,'P')
+                        dPT_FW = PT_change.dp_FW(j,i);
+                        dPT_HW = PT_change.dp_HW(j,i);
+                    else 
+                        dPT_FW = PT_change.dT_FW(j,i);
+                        dPT_HW = PT_change.dT_HW(j,i);
+                    end
+                    if length(gamma_PT) == 1
+                        gamma = gamma_PT;
                     elseif length(gamma_P) == length(y)
                         gamma = gamma_P(j);
                     end
@@ -93,72 +134,6 @@ classdef FaultStressChange
             dtau = dtau_FW + dtau_HW;
         end
 
-        function GF = initialize_greens_functions(self, params, y, dx, varies_with_depth, variable_dip)
-            [dx, y] = self.numerical_correction(dx, y, params, 1e-9);              
-            xeval = y/(tan(params.dip*pi/180)) + dx;
-            if and(~varies_with_depth, ~variable_dip)
-                GF{1} = GreensFunctions(y);
-                 if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
-                GF{1} = GF{1}.green_FW(xeval, y, params.dip, params.thick, params.throw, params.width_FW, 0, 0 );
-            end
-            if params.width_HW > 0 % and add a criterium to check if the FW dP and dT are not 0
-                GF{1} = GF{1}.green_HW(xeval, y, params.dip, params.thick, params.throw, params.width_HW, 0, 0 );
-            end
-            elseif and(varies_with_depth, ~variable_dip)
-                % calculate the same GF once, but shift it along depth axis
-                slice_thick = (y(1) - y(2));                        % depth slice thickness
-                y2 = [y; y(1:end-1)+(y(end)-y(1))-slice_thick];     % pad with zeros
-                xeval2 = y2/(tan(params.dip*pi/180)) + dx;    
-                i_mid = ceil(length(y2)/2);
-                slice_y = y2(i_mid);                                % depth slice mid y on fault
-                slice_x = slice_y/(tan(params.dip*pi/180));         % depth slice mid x on fault
-                slice_throw = 0;                                    % depth slice throw, set to 0. 
-                greens_f = GreensFunctions(y2);                % initialize Green's functions
-                if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
-                    greens_f = greens_f.green_FW(xeval2, y2, params.dip, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
-                end
-                if params.width_HW > 0 % and add a criterium to check if the FW dP and dT are not 0
-                    greens_f = greens_f.green_HW(xeval2, y2, params.dip, slice_thick, slice_throw, params.width_HW, slice_x, slice_y);
-                end
-                GF = cell(length(y), 1);
-                for j = 1 : length(y)
-                    GF{j} = greens_f;
-                    GF{j}.Gnorm_FW = GF{j}.Gnorm_FW(i_mid-j+1:2*i_mid-j);
-                    GF{j}.Gnorm_HW = GF{j}.Gnorm_HW(i_mid-j+1:2*i_mid-j);
-                    GF{j}.Gshear_FW = GF{j}.Gshear_FW(i_mid-j+1:2*i_mid-j);
-                    GF{j}.Gshear_HW = GF{j}.Gshear_HW(i_mid-j+1:2*i_mid-j);
-                    % here, remove the xx components if needed
-                end
-            else
-                % calculate separate GF at each depth interval
-                slice_thick = y(1) - y(2);                      % depth slice thickness
-                slice_throw = 0; 
-                GF = cell(length(y), 1);
-                % depth slice throw, set to 0. 
-                for j = 1 : length(y)
-                    slice_y = y(j); % - 0.5*slice_thick;        % depth slice mid y on fault
-                    slice_x = slice_y/(tan(params.dip*pi/180)); % depth slice mid x on fault
-                    GF{j} = GreensFunctions(y);              % initialize Green's functions
-                    GF{j} = GF{j}.green_FW(xeval, y, params.dip, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
-                    GF{j} = GF{j}.green_HW(xeval, y, params.dip,  slice_thick, slice_throw, params.width_HW, slice_x, slice_y );
-                end
-            end
-
-        end
-
-        function [dx, y] = numerical_correction(~, dx, y, params, correction_value)
-            % numerical_correction Corrects x and y in case these coincide
-            % with any of the boundaries of the reservoir shapes. this
-            % results in singularities and division by 0
-            if dx == 0 || dx == params.width_FW || dx == -params.width_HW
-                dx = dx + correction_value;
-            end
-            reservoir_boundaries = [params.top_FW_y, params.top_HW_y, params.base_HW_y, params.base_FW_y];
-            if any(ismember(y, reservoir_boundaries))
-                i_boundary = find(ismember(y, reservoir_boundaries));
-                y(i_boundary) = y(i_boundary) + correction_value;
-            end
-        end
 
         function plot_greens_f(~, greens_f, y)
             h1 = figure(1); clf(h1); hold on 
@@ -183,6 +158,8 @@ classdef FaultStressChange
         end
 
         function [vary_P, vary_T] = variable_PT(~, pressure, temperature)
+            % check if pressure or temperature are non uniform with y
+            % return true if they vary 
             vary_P = 0;
             vary_T = 0;
             if length(unique(pressure.dp_FW)) > size(pressure.dp_FW,2) + 1
@@ -190,9 +167,20 @@ classdef FaultStressChange
             elseif length(unique(pressure.dp_HW)) > size(pressure.dp_FW,2) + 1
                 vary_P = 1;
             end
+            if length(unique(temperature.dT_FW)) > size(temperature.dT_FW,2) + 1
+                vary_T = 1;
+            elseif length(unique(temperature.dT_HW)) > size(temperature.dT_FW,2) + 1
+                vary_T = 1;
+            end
         end
-        % TODO: functionality to return stress in xx, yy, xy
-        % TODO: temperature
+
+        function [vary_dip] = variable_dip(~, params)
+            if or(length(params.dip) > 1, iscell(params.dip))
+                vary_dip = 1;
+            else
+                vary_dip = 0;
+            end
+        end
 
         function [dscu] = get_scu_change(self, mu, cohesion)
             % return Shear Capacity Utilization 

@@ -59,7 +59,7 @@ function [run_results] = panther(analysis)
         % pressure
         pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault);
         % stress changes
-        stress_change{i} = FaultStressChange(pressure{i});        % initialize fault stresses for P
+        stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dp_fault,2));        % initialize fault stresses for P
         stress_change{i} = stress_change{i}.calc_stress_changes(ensemble{i}, y, analysis.dx, pressure{i}, load_case);
         % stress (initial + change)
         stress{i} = FaultStress(length(y), size(pressure{i}.dp_fault,2));
