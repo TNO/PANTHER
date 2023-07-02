@@ -30,6 +30,7 @@ classdef PantherParameterList
         T_offset = PantherParam(10, 'Temperature gradient offset',[char(176),'C'], 1, 0, 'uniform', 10, 10); % [k] offset temperature gradient at y=0
         T_factor_HW =  PantherParam(1, 'Cooling factor hanging wall','-', 1, 0, 'uniform', 1, 1);    % [-] cooling factor hanging wall
         T_factor_FW =  PantherParam(1, 'Cooling factor footwall','-', 1, 0, 'uniform', 1, 1);        % [-] cooling factor footwall
+        dT_dy_multiplier =  PantherParam(0, 'Depth dependent dT multiplier','-', 1, 0, 'uniform', 1, 1);        % [-] multiply dT as function of y - y_mid. -ve is increasing dT with depth
         therm_diffusivity = PantherParam(1e-6, 'Thermal diffusivity','m2/s', 1, 0, 'uniform', 1e-6, 5e-6);   % [m2/s] thermal diffusivity
         f_s =  PantherParam(0.6, 'Static friction coefficient','-', 1, 0, 'uniform', 0.5, 0.6);      % [-] static friction coefficient
         f_d =  PantherParam(0.45, 'Dynamic friction coefficient','-', 1, 0, 'uniform',0.35,0.49);    % [-] dynamic friction coefficient
