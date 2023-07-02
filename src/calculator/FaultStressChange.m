@@ -112,7 +112,7 @@ classdef FaultStressChange
                     if length(gamma_PT) == 1
                         gamma = gamma_PT;
                     elseif length(gamma_P) == length(y)
-                        gamma = gamma_P(j);
+                        gamma = gamma_PT(j);
                     end
                     [dsn_j, dtau_j] = self.get_stress_change_component(GF{j}, dPT_FW, dPT_HW, gamma);
                     dsn_temp = dsn_temp + dsn_j;

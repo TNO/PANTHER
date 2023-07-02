@@ -53,7 +53,7 @@ classdef Temperature
             elseif strcmp(T_fault_mode, 'HW')
                 self.dT_fault = self.dT_HW;
             end
-            
+
         end
 
        function T = get.T(self)
