@@ -24,6 +24,7 @@ function [run_results] = panther(analysis)
     load_case = analysis.load_case;
     p_fault = analysis.p_fault;
     diffusion_P = analysis.diffusion_P;
+    diffusion_T = analysis.diffusion_T;
     ensemble = analysis.ensemble;
     dy = y(1) - y(2);
  
@@ -38,6 +39,7 @@ function [run_results] = panther(analysis)
     
     % initialize output arrays
     pressure = cell(n_members,1);
+    temperature = cell(n_members,1);
     stress = cell(n_members,1);
     slip = cell(n_members,1);
 
@@ -54,16 +56,22 @@ function [run_results] = panther(analysis)
     parfor (i = 1 : n_members, matlab_workers)
         disp([num2str(i),'/', num2str(n_members)]);
         cell_length{i} = dy/sin(ensemble{i}.dip*pi/180);
+
         % initial stress
         initial_stress{i} = InitialStress(y, ensemble{i});
-        % pressure
+        
+        % pressure and temperature changes
         pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault);
+        temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
+        
         % stress changes
         stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dp_fault,2));        % initialize fault stresses for P
-        stress_change{i} = stress_change{i}.calc_stress_changes(ensemble{i}, y, analysis.dx, pressure{i}, load_case);
+        stress_change{i} = stress_change{i}.calc_stress_changes(ensemble{i}, y, analysis.dx, pressure{i}, temperature{i}, load_case);
+        
         % stress (initial + change)
         stress{i} = FaultStress(length(y), size(pressure{i}.dp_fault,2));
         stress{i} = stress{i}.compute_fault_stress(initial_stress{i}, stress_change{i}, pressure{i}.p);
+        
         % fault slip, reactivation, nucleation
         slip{i} = FaultSlip(size(stress{i}.sne, 1), size(stress{i}.sne, 2));
         if analysis.aseismic_slip
@@ -75,18 +83,16 @@ function [run_results] = panther(analysis)
         slip{i} = slip{i}.detect_nucleation(cell_length{i}, stress{i}.sne, stress{i}.tau, ensemble{i}.f_s, ...
                                                     ensemble{i}.f_d, ensemble{i}.d_c, ensemble{i}.cohesion, ...
                                                     ensemble{i}.get_mu_II);
-        % clear 
+        % clear to save memory
         stress_change{i} = [];
         initial_stress{i}= [];
     end
 
     for i = 1 : n_members
-        warning('off')
-      
-        warning('on');
-        % save stresses, pressure, slip (TODO: step selection for save)
+        % save stresses, pressure, slip
         if analysis.save_stress
             run_results.pressure{i} = pressure{i};
+            run_results.temperature{i} = temperature{i};
             run_results.stress{i} = stress{i};
             run_results.slip{i} = slip{i};
         end

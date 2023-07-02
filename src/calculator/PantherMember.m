@@ -1,6 +1,5 @@
-% what do you want it to do? 
-% generate the model ensemble for stochastic run. 
 classdef PantherMember 
+    % intializes an ensemble member - i.e. a single model realization
     
     properties
         depth_mid       % [m], negative is down
