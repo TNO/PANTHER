@@ -29,7 +29,14 @@ classdef Temperature
             dT_unit_HW = double(next_to_HW);       % unit dT in HW compartment
             self.dT_FW = dT_unit_FW * T_steps' .* loads.T_factor_FW';    % (dp, time) array of pressures in the footwall
             self.dT_HW = dT_unit_HW * T_steps' .* loads.T_factor_HW';    % (dp, time) array of pressures in the hanging wall
-            
+
+            % add a depth-dependent temperature increase within reservoir
+            addition_dT = member.dT_dy_multiplier * y;      % additional depth-dependent dT
+            i_res_FW = find(and(y <= member.top_FW_y,y >= member.base_FW_y ));
+            i_res_HW = find(and(y <= member.top_HW_y,y >= member.base_HW_y ));
+            self.dT_FW(i_res_FW,:) = self.dT_FW(i_res_FW,:) + addition_dT(i_res_FW);
+            self.dT_HW(i_res_HW,:) = self.dT_HW(i_res_HW,:) + addition_dT(i_res_HW);
+
             % compute temperature diffusion
             if diffusion
                 y_top = member.top_FW_y;
@@ -40,6 +47,8 @@ classdef Temperature
                 self.dT_HW = calc_dT_diffusion(y, y_top, y_base, time_steps, self.dT_HW, member.therm_diffusivity);
             end
             
+
+
             % set the fault temperature w.r.t. HW and FW temperature
             % irrelevant for stress changes. for plotting purposes. 
             if strcmp(T_fault_mode, 'max')

@@ -1,6 +1,6 @@
 classdef PantherMember 
     % intializes an ensemble member - i.e. a single model realization
-    
+
     properties
         depth_mid       % [m], negative is down
         dip  % [deg] degrees from horizontal
@@ -30,6 +30,7 @@ classdef PantherMember
         T_offset % [k] offset temperature gradient at y=0
         T_factor_HW         % [-] cooling factor hanging wall
         T_factor_FW              % [-] cooling factor footwall
+        dT_dy_multiplier        % [deg/m] multiplier dT in reservoir wr.t. reservoir mid. -ve is increasing with depth
         therm_diffusivity 
         f_s
         f_d
