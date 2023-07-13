@@ -20,8 +20,8 @@ classdef PantherParameterList
         sv_offset = PantherParam(0, 'Vertical stress offset','MPa', 1, 0, 'uniform', 0, 1);         % [MPa] Offset vertical stress gradient at y=0
         p_grad = PantherParam(10.5, 'Pressure gradient','MPa/km', 1, 0, 'uniform', 10, 11);         % [MPa/km] pressure gradient
         p_offset = PantherParam(0, 'Pressure gradient offset','MPa', 1, 0, 'uniform', 0, 0);        % [MPa] offset of pressure gradient at y=0    
-        p_over = PantherParam(3, 'Overpressure reservoir','MPa', 1, 0, 'uniform', 0, 2);            % [MPa] overpressure in the reservoir
-        p_grad_res = PantherParam(0.2, 'Pressure gradient reservoir','MPa/km', 1, 0, 'uniform',0.2, 0.2); % [MPa/km] pressure gradient in reservoir  
+        p_over = PantherParam(0, 'Overpressure reservoir','MPa', 1, 0, 'uniform', 0, 2);            % [MPa] overpressure in the reservoir
+        p_grad_res = PantherParam(10.5, 'Pressure gradient reservoir','MPa/km', 1, 0, 'uniform',0.2, 0.2); % [MPa/km] pressure gradient in reservoir  
         p_factor_HW = PantherParam(1, 'Depletion factor hanging wall','-', 1, 0, 'uniform',1 ,1);   % [-] depletion factor hanging wall w.r.t unit or P_step
         p_factor_FW = PantherParam(1, 'Depletion factor footwall','-', 1, 0, 'uniform',1, 1);       % [-] depletion factor footwall w.r.t. unit or P_step
         p_factor_fault = PantherParam(1, 'Depletion factor fault','-', 1, 0, 'uniform', 1, 1);      % [-] depletion factor footwall w.r.t. unit or P_step
@@ -30,6 +30,7 @@ classdef PantherParameterList
         T_offset = PantherParam(10, 'Temperature gradient offset',[char(176),'C'], 1, 0, 'uniform', 10, 10); % [k] offset temperature gradient at y=0
         T_factor_HW =  PantherParam(1, 'Cooling factor hanging wall','-', 1, 0, 'uniform', 1, 1);    % [-] cooling factor hanging wall
         T_factor_FW =  PantherParam(1, 'Cooling factor footwall','-', 1, 0, 'uniform', 1, 1);        % [-] cooling factor footwall
+        dT_dy_multiplier =  PantherParam(0, 'Depth dependent dT multiplier','-', 1, 0, 'uniform', 1, 1);        % [-] multiply dT as function of y - y_mid. -ve is increasing dT with depth
         therm_diffusivity = PantherParam(1e-6, 'Thermal diffusivity','m2/s', 1, 0, 'uniform', 1e-6, 5e-6);   % [m2/s] thermal diffusivity
         f_s =  PantherParam(0.6, 'Static friction coefficient','-', 1, 0, 'uniform', 0.5, 0.6);      % [-] static friction coefficient
         f_d =  PantherParam(0.45, 'Dynamic friction coefficient','-', 1, 0, 'uniform',0.35,0.49);    % [-] dynamic friction coefficient

@@ -1,7 +1,6 @@
-% what do you want it to do? 
-% generate the model ensemble for stochastic run. 
 classdef PantherMember 
-    
+    % intializes an ensemble member - i.e. a single model realization
+
     properties
         depth_mid       % [m], negative is down
         dip  % [deg] degrees from horizontal
@@ -31,6 +30,7 @@ classdef PantherMember
         T_offset % [k] offset temperature gradient at y=0
         T_factor_HW         % [-] cooling factor hanging wall
         T_factor_FW              % [-] cooling factor footwall
+        dT_dy_multiplier        % [deg/m] multiplier dT in reservoir wr.t. reservoir mid. -ve is increasing with depth
         therm_diffusivity 
         f_s
         f_d
@@ -113,6 +113,14 @@ classdef PantherMember
             % get_gamma_P returns the poro-elastic stress path parameter
             gamma_P = (1 - 2*self.poisson).*self.biot./(1 - self.poisson);
         end
+
+        function [gamma_T] = get_gamma_T(self)
+            % get_gamma_T returns the thermo-elastic stress path parameter
+            % OUTPUT
+            % gamma_T   [MPa/deg] thermo-elastic stress path parameter 
+            gamma_T = (self.young * self.therm_exp)./(1 - self.poisson);
+        end
+
 
         function [mu_II] = get_mu_II(self)
             % shear modulus mode II

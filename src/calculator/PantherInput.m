@@ -96,7 +96,7 @@ classdef PantherInput < handle
                     end
                 end
             else
-                disp('Ensmeble not yet generated, executes (your_instance_name).generate_ensemble');
+                disp('Ensemble not yet generated, execute (your_instance_name).generate_ensemble');
             end
         end
 
