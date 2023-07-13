@@ -5,9 +5,9 @@
 
 % read Wirdum fault properties
 filePath = matlab.desktop.editor.getActiveFilename;
-example_folder = [fileparts(filePath),'\'];
+example_folder = [fileparts(filePath),'/'];
 cd(example_folder);
-wirdum = readtable('example_files\Wirdum_fault_reservoir_geometry_RD.csv');
+wirdum = readtable('example_files/Wirdum_fault_reservoir_geometry_RD.csv');
 wirdum = renamevars(wirdum, ["dip_azimuth","dip_angle","cdepth"], ["dip_azi","dip","depth_mid"]);
 
 % initialize input instance
@@ -42,5 +42,30 @@ end
 % get initial stress and stress changes with respect to initial time step
 [sne0, tau0] = analysis_result.get_initial_stress();
 [dsne, dtau] = analysis_result.get_stress_changes();
+%%
+pillarnr=50;
+subplot(1,6,1);
+plot(sne0{pillarnr,1},analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+
+subplot(1,6,2);
+plot(tau0{pillarnr,1},analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+
+subplot(1,6,3);
+plot(dsne{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+
+subplot(1,6,4);
+plot(dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+
+subplot(1,6,5);
+plot(sne0{pillarnr,1}+dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+
+subplot(1,6,6);
+plot(tau0{pillarnr,1}+dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
 
 
+
+
+%%
+% results=[sne0, tau0, dsne, dtau];
+% write results to .csv file
+write_2Dstress_to_csv(wirdum,analysis_result,'./output/','_diff')
