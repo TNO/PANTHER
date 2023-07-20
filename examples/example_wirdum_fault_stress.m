@@ -7,16 +7,15 @@
 filePath = matlab.desktop.editor.getActiveFilename;
 example_folder = [fileparts(filePath),'/'];
 cd(example_folder);
-wirdum = readtable('example_files/Wirdum_fault_reservoir_geometry_RD.csv');
+wirdum = readtable('example_files/Wirdum_fault_reservoir_geometry_RD_new.csv');
 wirdum = renamevars(wirdum, ["dip_azimuth","dip_angle","cdepth"], ["dip_azi","dip","depth_mid"]);
-
 % initialize input instance
 analysis = PantherInput;
 % set some input parameters
 analysis.input_parameters.sH_dir.value = 140;
 analysis.input_parameters.shsv.value = 0.75;
-analysis.diffusion_P = 0;
-% analysis.aseismic_slip = 0; 
+analysis.diffusion_P = 1;
+analysis.aseismic_slip = 1; 
 % load table values to generate ensemble
 analysis.generate_ensemble_from_table(wirdum);
 input_table = analysis.ensemble_to_table();
@@ -38,34 +37,44 @@ if ~isnan(nucleation)
         % writetable(pillar_stress{i}, ['pillar', num2str(i)]);
     end
 end
-
+%%
 % get initial stress and stress changes with respect to initial time step
 [sne0, tau0] = analysis_result.get_initial_stress();
 [dsne, dtau] = analysis_result.get_stress_changes();
+
 %%
+depstep=10;
 pillarnr=50;
 subplot(1,6,1);
 plot(sne0{pillarnr,1},analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('sne0') 
 
 subplot(1,6,2);
 plot(tau0{pillarnr,1},analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('tau0') 
 
 subplot(1,6,3);
-plot(dsne{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+plot(dsne{pillarnr,1}(:,depstep),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('dsne') 
 
 subplot(1,6,4);
-plot(dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+plot(dtau{pillarnr,1}(:,depstep),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('dtau') 
 
 subplot(1,6,5);
-plot(sne0{pillarnr,1}+dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+plot(sne0{pillarnr,1}+dsne{pillarnr,1}(:,depstep),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('sne0+dsne') 
 
 subplot(1,6,6);
-plot(tau0{pillarnr,1}+dtau{pillarnr,1}(:,35),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
-
-
+plot(tau0{pillarnr,1}+dtau{pillarnr,1}(:,depstep),analysis_result.y+analysis_result.ensemble.depth_mid(pillarnr))
+xlabel('tau0+dtau') 
 
 
 %%
 % results=[sne0, tau0, dsne, dtau];
 % write results to .csv file
-write_2Dstress_to_csv(wirdum,analysis_result,'./output/','_diff')
+if analysis.diffusion_P == 0
+    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/','')
+elseif analysis.diffusion_P == 1
+    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/','_diff')
+end

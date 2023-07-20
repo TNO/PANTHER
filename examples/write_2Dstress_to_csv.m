@@ -1,4 +1,4 @@
-function convert_2Dstress_to_csv(faultprop,stresses,outdir,apx)
+function convert_2Dstress_to_csv(faultprop,stresses,depidx,outdir,apx)
     % get initial stress and stress changes with respect to initial time step
     [sne0, tau0] = stresses.get_initial_stress();
     [dsne, dtau] = stresses.get_stress_changes();
@@ -40,8 +40,8 @@ function convert_2Dstress_to_csv(faultprop,stresses,outdir,apx)
         data_ens_out(:,p)=sne0{p,1};
         data_tau_out(:,p)=tau0{p,1};
         
-        data_dtau_out(:,p)=dtau{p,1}(:,35);
-        data_dens_out(:,p)=dsne{p,1}(:,35);
+        data_dtau_out(:,p)=dtau{p,1}(:,depidx);
+        data_dens_out(:,p)=dsne{p,1}(:,depidx);
 
         data_depths_out(:,p)=stresses.y+stresses.ensemble{p,1};
         data_dists_out(:,p)=pillar_dists(p);
