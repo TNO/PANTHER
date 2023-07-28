@@ -23,6 +23,7 @@ function [run_results] = panther(analysis)
     load_table = analysis.load_table;
     load_case = analysis.load_case;
     p_fault = analysis.p_fault;
+    p_res_mode = analysis.p_res_mode;
     diffusion_P = analysis.diffusion_P;
     diffusion_T = analysis.diffusion_T;
     ensemble = analysis.ensemble;
@@ -61,7 +62,7 @@ function [run_results] = panther(analysis)
         initial_stress{i} = InitialStress(y, ensemble{i});
         
         % pressure and temperature changes
-        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault);
+        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, p_res_mode);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes

@@ -6,6 +6,7 @@ classdef PantherInput < handle
         dy {mustBePositive} = 2;                    % [m] y-spacing
         y_extent {mustBePositive} = 500;            % [m] extent up and down from depth over which stresses are calculated
         dx double = 0;     % [m] y-spacing
+        p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
         p_fault {mustBeMember(p_fault,{'max','min','mean','FW','HW'})} = 'min';     % [-] assumed pressure in fault. max=max(p_HW, p_FW), etc. 
         diffusion_P logical = 0;                    % activate pressure diffusion
         diffusion_T logical = 0;                    % activate pressure diffusion
