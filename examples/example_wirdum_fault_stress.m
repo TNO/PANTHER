@@ -7,7 +7,7 @@
 filePath = matlab.desktop.editor.getActiveFilename;
 example_folder = [fileparts(filePath),'/'];
 cd(example_folder);
-wirdum = readtable('example_files/Wirdum_fault_reservoir_geometry_RD_new.csv');
+wirdum = readtable('example_files/Wirdum_fault_reservoir_geometry_RD_along-strike.csv');
 wirdum = renamevars(wirdum, ["dip_azimuth","dip_angle","cdepth"], ["dip_azi","dip","depth_mid"]);
 % initialize input instance
 analysis = PantherInput;
@@ -16,6 +16,8 @@ analysis.input_parameters.sH_dir.value = 140;
 analysis.input_parameters.shsv.value = 0.75;
 analysis.diffusion_P = 1;
 analysis.aseismic_slip = 1; 
+analysis.input_parameters.p_grad_res.value = 0.2;         % [MPa/km] pressure gradient in reservoir
+analysis.input_parameters.p_over.value = 3;         % [MPa] pressure gradient in reservoir
 % load table values to generate ensemble
 analysis.generate_ensemble_from_table(wirdum);
 input_table = analysis.ensemble_to_table();
@@ -74,7 +76,7 @@ xlabel('tau0+dtau')
 % results=[sne0, tau0, dsne, dtau];
 % write results to .csv file
 if analysis.diffusion_P == 0
-    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/','')
+    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/along-strike_','')
 elseif analysis.diffusion_P == 1
-    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/','_diff')
+    write_2Dstress_to_csv(wirdum,analysis_result,depstep,'./output/along-strike_','_diff')
 end
