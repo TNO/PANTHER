@@ -58,6 +58,14 @@ classdef PantherResult
            
         end
 
+        function [p_init] = get_initial_pressure(self)
+            % Returns presssure at first timestep
+            p_init = cell(length(self.pressure), 1);
+            for i = 1 : length(self.pressure)
+                p_init{i} = self.pressure{i}.p0(:,1);
+            end
+        end
+
         function [sne0, tau0] = get_initial_stress(self)
             % Returns shear and normal stress at first timestep
             sne0 = cell(length(self.stress), 1);
