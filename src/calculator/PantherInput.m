@@ -32,7 +32,8 @@ classdef PantherInput < handle
         function self = PantherInput()
             % PantherInput Load default input parameters
             self.input_parameters = PantherParameterList;
-            self.load_table = initialize_load_table();
+            % self.load_table = initialize_load_table();
+            self.load_table = initialize_constant_load_table();
             disp('Initialized run instance');
             % automatically initialize 1 ensemble member?
             % TODO add check on input parameters (e.g. PT, timesteps etc)
