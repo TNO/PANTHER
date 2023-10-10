@@ -27,6 +27,8 @@ function [run_results] = panther(analysis)
     diffusion_P = analysis.diffusion_P;
     diffusion_T = analysis.diffusion_T;
     ensemble = analysis.ensemble;
+    nucleation_criterion = analysis.nucleation_criterion;
+    nucleation_length = analysis.nucleation_length_fixed;
     dy = y(1) - y(2);
  
     % initialize output object
@@ -83,7 +85,7 @@ function [run_results] = panther(analysis)
         
         slip{i} = slip{i}.detect_nucleation(cell_length{i}, stress{i}.sne, stress{i}.tau, ensemble{i}.f_s, ...
                                                     ensemble{i}.f_d, ensemble{i}.d_c, ensemble{i}.cohesion, ...
-                                                    ensemble{i}.get_mu_II);
+                                                    ensemble{i}.get_mu_II, nucleation_criterion, nucleation_length);
         % clear to save memory
         stress_change{i} = [];
         initial_stress{i}= [];

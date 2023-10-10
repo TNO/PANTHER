@@ -20,7 +20,9 @@ classdef PantherInput < handle
         ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
         ensemble                                    % ensemble of n_stochastic members 
         parallel logical = 1                        % parallel computing for large number of simulations
-        aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase                                
+        aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
+        nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
+        nucleation_length_fixed double = 10;    
     end
 
     properties (Dependent)
