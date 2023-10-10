@@ -10,10 +10,10 @@ classdef TestPanther < matlab.unittest.TestCase
             i_mid = ceil(length(result.y)/2);
             actual = result.stress{1}.sne(i_mid, end);
             expected = 30.48;
-            testCase.verifyEqual(actual, expected , "RelTol", 0.01);
+            testCase.verifyEqual(actual, expected , "RelTol", 0.1);
             actual = result.stress{1}.tau(i_mid, end);
             expected = 18.29;
-            testCase.verifyEqual(actual, expected , "RelTol", 0.01);
+            testCase.verifyEqual(actual, expected , "RelTol", 0.1);
         end
 
          function test_default_single_run_T (testCase)

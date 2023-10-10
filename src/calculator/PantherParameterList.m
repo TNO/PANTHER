@@ -20,8 +20,8 @@ classdef PantherParameterList
         sv_offset = PantherParam(0, 'Vertical stress offset','MPa', 1, 0, 'uniform', 0, 1);         % [MPa] Offset vertical stress gradient at y=0
         p_grad = PantherParam(10.5, 'Pressure gradient','MPa/km', 1, 0, 'uniform', 10, 11);         % [MPa/km] pressure gradient
         p_offset = PantherParam(0, 'Pressure gradient offset','MPa', 1, 0, 'uniform', 0, 0);        % [MPa] offset of pressure gradient at y=0    
-        p_over = PantherParam(0, 'Overpressure reservoir','MPa', 1, 0, 'uniform', 0, 2);            % [MPa] overpressure in the reservoir
-        p_grad_res = PantherParam(10.5, 'Pressure gradient reservoir','MPa/km', 1, 0, 'uniform',0.2, 0.2); % [MPa/km] pressure gradient in reservoir  
+        p_over = PantherParam(0, 'Hydrostatic overpressure','MPa', 1, 0, 'uniform', 0, 2);            % [MPa] hydrostatic overpressure in/below reservoir 
+        p_grad_res = PantherParam(10.5, 'Pressure gradient reservoir fluid','MPa/km', 1, 0, 'uniform',10.5, 10.5); % [MPa/km] pressure gradient in reservoir  
         p_factor_HW = PantherParam(1, 'Depletion factor hanging wall','-', 1, 0, 'uniform',1 ,1);   % [-] depletion factor hanging wall w.r.t unit or P_step
         p_factor_FW = PantherParam(1, 'Depletion factor footwall','-', 1, 0, 'uniform',1, 1);       % [-] depletion factor footwall w.r.t. unit or P_step
         p_factor_fault = PantherParam(1, 'Depletion factor fault','-', 1, 0, 'uniform', 1, 1);      % [-] depletion factor footwall w.r.t. unit or P_step

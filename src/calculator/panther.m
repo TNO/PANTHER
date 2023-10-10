@@ -23,9 +23,12 @@ function [run_results] = panther(analysis)
     load_table = analysis.load_table;
     load_case = analysis.load_case;
     p_fault = analysis.p_fault;
+    p_res_mode = analysis.p_res_mode;
     diffusion_P = analysis.diffusion_P;
     diffusion_T = analysis.diffusion_T;
     ensemble = analysis.ensemble;
+    nucleation_criterion = analysis.nucleation_criterion;
+    nucleation_length = analysis.nucleation_length_fixed;
     dy = y(1) - y(2);
  
     % initialize output object
@@ -61,7 +64,7 @@ function [run_results] = panther(analysis)
         initial_stress{i} = InitialStress(y, ensemble{i});
         
         % pressure and temperature changes
-        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault);
+        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, p_res_mode);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes
@@ -82,7 +85,7 @@ function [run_results] = panther(analysis)
         
         slip{i} = slip{i}.detect_nucleation(cell_length{i}, stress{i}.sne, stress{i}.tau, ensemble{i}.f_s, ...
                                                     ensemble{i}.f_d, ensemble{i}.d_c, ensemble{i}.cohesion, ...
-                                                    ensemble{i}.get_mu_II);
+                                                    ensemble{i}.get_mu_II, nucleation_criterion, nucleation_length);
         % clear to save memory
         stress_change{i} = [];
         initial_stress{i}= [];

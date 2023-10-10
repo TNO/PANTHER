@@ -14,8 +14,8 @@ classdef PantherPressure
     end
 
     methods
-        function self = PantherPressure(member, y, loads, load_case, diffusion, p_fault_mode)
-            ini = InitialPressure(member, y, p_fault_mode);                    % instance containing initial pressure
+        function self = PantherPressure(member, y, loads, load_case, diffusion, p_fault_mode, p_res_mode)
+            ini = InitialPressure(member, y, p_fault_mode, p_res_mode);                    % instance containing initial pressure
             self.p0 = ini.p0;                           % initial fault pressure
             p_steps = loads.P_steps;
             time_steps = loads.time_steps;
@@ -41,7 +41,7 @@ classdef PantherPressure
                 self.dp_FW = zeros(length(y), length(time_steps));
             end
 
-            % set the fault pressure w.r.t. HW and FW pressure
+            % set the fault depletion pressure w.r.t. HW and FW pressure
             if strcmp(p_fault_mode, 'max')
                 self.dp_fault = max(self.dp_FW, self.dp_HW);
             elseif strcmp(p_fault_mode, 'min')

@@ -34,12 +34,21 @@ classdef FaultSlip
             end
         end
 
-        function [self] = detect_nucleation(self, cell_length, sne, tau, f_s, f_d, d_c, cohesion, mu_II )
+        function [self] = detect_nucleation(self, cell_length, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
             % identify whether nucleation occurs by comparing slip length
             % to theoretical nucleation length by Uenishi & Rice 2003
+            % INPUT
+            % sne   array size(y) x size(t). effective normal stress
+            % tau   array size(y) x size(t). shear stress
+            % f_s   static friction coefficient
+            % f_d   dynamic friction coefficient
+            % cohesion  cohesion
+            % mu_II shear modulus mode II
             tau_f = sne.* f_s + cohesion;
-            y2L = cell_length;% replace with dip
+            y2L = cell_length;                  % replace with dip
             slipping = (tau >= tau_f);
+            % slip_zone_indices and ..length will have size(# slip zone x
+            % length(time). 
             slip_zone_indices = self.get_slip_zone_indices(slipping);
             slip_zone_length = nan(size(slip_zone_indices));        % along-fault length of slip zones
             nucleation_length = nan(size(slip_zone_indices));       % nucleation length, per slip zone 
@@ -47,7 +56,10 @@ classdef FaultSlip
                 for j = 1 : size(slip_zone_indices, 1)
                     if ~isempty(slip_zone_indices{j, i})
                         slip_zone_length(j,i) = (length(slip_zone_indices{j,i}) + 1) * y2L;
-                        nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * mean(sne(slip_zone_indices{j,i}, i)));
+                        sne_mean = mean(sne(slip_zone_indices{j,i}, i));
+                        tau_mean = mean(tau(slip_zone_indices{j,i}, i));
+                        nucleation_length(j,i) = self.calculate_nucleation_length(sne_mean, tau_mean, f_s, f_d, d_c, mu_II, nuc_crit, nuc_len_fixed);
+                        %nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * average_sne_in_slip_zone);
                     end
                 end
             end
@@ -61,9 +73,18 @@ classdef FaultSlip
                     nucleation_length_j = nucleation_length(j, ~isnan(nucleation_length(j,:)));
                     slip_length_j = slip_zone_length(j, ~isnan(nucleation_length(j,:)));
                     l_difference = nucleation_length_j - slip_length_j;
-                    x = linspace(1, length(l_difference), length(l_difference)) + reactivation_slip_zone(j) -1;
-                    if length(x) > 1
-                        nucleation_slip_zone(j) = interp1(l_difference, x, 0);
+                    x = linspace(1, length(l_difference), length(l_difference)) + reactivation_slip_zone(j) - 1;
+                    if l_difference(1) < 0
+                        % if the first timestep of reactivation already
+                        % reaches nucleation, take that step
+                        nucleation_slip_zone(j) = x(1);
+                    else
+                        if length(x) > 1 && ~strcmp(nuc_crit, 'fixed')
+                            nucleation_slip_zone(j) = interp1(l_difference, x, 0);
+                        elseif length(x) > 1 && strcmp(nuc_crit, 'fixed')
+                            [~, unique_index] = unique(l_difference);
+                            nucleation_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
+                        end
                     end
                 end
             end
@@ -81,7 +102,7 @@ classdef FaultSlip
             for i = 1 : size(slipping, 2)
                 i_slip = find(slipping(:,i));
                 if ~isempty(i_slip)
-                    iz = find(diff(i_slip) > 1);            % discontinuity in indices of slipping cells
+                    iz = find(diff(i_slip) > 1);            % gap in indices of slipping cells
                     if size(iz,1) > 1
                         iz = iz';
                     end
@@ -114,6 +135,23 @@ classdef FaultSlip
             Ko = toeplitz(Kline);                   
             K = mu_II*Ko;
             K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
+        end
+% 
+function nuc_length = calculate_nucleation_length(~, sne, tau, f_s, f_d, d_c, mu_II, nucleation_criterion, nucleation_length)
+            tau_s = sne*f_s;
+            tau_d = sne*f_d;
+            if strcmp(nucleation_criterion, 'UR2D')
+                nuc_length = 1.158 * mu_II * d_c./((f_s - f_d) * sne);
+            elseif strcmp(nucleation_criterion, 'Day3D')
+                % Day 2005
+                 nuc_length = 2* ( mu_II * d_c * ( tau_s - tau_d ) ) / ( pi * ( tau - tau_d ) ^ 2 );
+            elseif strcmp(nucleation_criterion, 'Ruan3D')
+                % from script Vincent
+                 nuc_length =  ((3.82 * pi)/4)^0.5 * (mu_II / (sne*(f_s - f_d)))*d_c;
+            elseif strcmp(nucleation_criterion, 'fixed')
+                % from script Vincent
+                 nuc_length =  nucleation_length;
+            end
         end
 
 %         function [d_max] = get_max_slip(self)
