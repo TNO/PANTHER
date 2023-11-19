@@ -77,6 +77,8 @@ input_table = analysis.ensemble_to_table();
 % running analysis (starting up parpool can take 30s when not yet running)
 analysis_result = panther(analysis);
 
+% here add a routing to subtract stress
+
 % time/load index of nucleation
 nucleation = min(analysis_result.summary.nucleation_index);
 
