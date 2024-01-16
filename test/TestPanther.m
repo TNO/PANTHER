@@ -31,7 +31,28 @@ classdef TestPanther < matlab.unittest.TestCase
             actual = result.stress{1}.tau(i_mid, end);
             expected = 7.82;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
-        end
+         end
+
+         function test_single_with_depth_dependent_shsv(testCase)
+             % test depth-variable initial stress ratio shsv
+            run_instance = PantherInput;
+            % set shsv varying with depth
+            shsv_default = run_instance.input_parameters.shsv.value;
+            run_instance.input_parameters.shsv.value_with_depth = ones(size(run_instance.y))*shsv_default;
+            i_mid = ceil(length(run_instance.y)/2);
+            run_instance.input_parameters.shsv.value_with_depth(i_mid - 10:i_mid + 10) = 0.8; 
+            % ensure the property is set to depth-dependent (uniform = 0)
+            run_instance.input_parameters.shsv.uniform_with_depth = 0;
+            % run the model
+            result = panther(run_instance);         
+            actual = result.stress{1}.sne(i_mid, end);
+            expected = 33.32;
+            testCase.verifyEqual(actual, expected , "RelTol", 0.01);
+            actual = result.stress{1}.tau(i_mid, end);
+            expected = 18.62;
+            testCase.verifyEqual(actual, expected , "RelTol", 0.01);
+         end
+
     end
 end
 

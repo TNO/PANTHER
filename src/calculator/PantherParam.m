@@ -5,7 +5,8 @@ classdef PantherParam
         value double                % parameter default value
         name string {mustBeText}    % parameter name e.g. 'Young's modulus'
         unit string {mustBeText}    % parameter unit e.g. 'Pa'       
-        uniform logical = 1;        % uniform with depth (NB non-uniform not used yet)
+        uniform_with_depth logical = 1;   % uniform with depth (NB non-uniform not used yet)
+        value_with_depth double     % 
         stochastic logical = 0;     % stochastic analysis drawing from distribution
         distribution {mustBeMember(distribution,{'uniform','logunifom'})} = 'uniform'; % distribution from which to sample values for the stochastic analysis
         a double = 0;               % first parameter used to create distribution. e.g. for uniform, low
