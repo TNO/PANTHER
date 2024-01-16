@@ -1,5 +1,6 @@
 classdef PantherInput < handle
     % Initializes input, and sets run and save settings for Panther
+    % Consider renaming to ModelSettings or ModelInput for clarity
 
     properties
         input_parameters                            % object containing input parameter settings
@@ -37,7 +38,6 @@ classdef PantherInput < handle
             self.load_table = initialize_load_table();
             disp('Initialized run instance');
             % automatically initialize 1 ensemble member?
-            % TODO add check on input parameters (e.g. PT, timesteps etc)
         end
 
         function self = generate_ensemble(self)
@@ -64,7 +64,7 @@ classdef PantherInput < handle
 
         function self = generate_ensemble_from_table(self, input_table)
             % turn off stochastic (for now). Input values not in the input
-            % table will have a fixed value.
+            % table will have a fixed value. No-depth dependency. 
             self.stochastic = 0; 
             % check for matching table field names
             panther_input_names = properties(self.input_parameters);
@@ -89,13 +89,19 @@ classdef PantherInput < handle
         end
 
         function ensemble_table = ensemble_to_table(self)
+            % create table of input parameter values
             props = properties(self.input_parameters);
             ensemble_table = table;
             if self.ensemble_generated 
                 for i = 1 : length(props)
                     for j = 1 : length(self.ensemble)
-                            % TODO add check for non-uniform later
-                        ensemble_table.(props{i})(j) = self.ensemble{j,1}.(props{i});
+                        % if non-uniform with depth (length parameters > 1)
+                        % store as a NaN in the output table for now
+                        if length(self.ensemble{j,1}.(props{i})) > 1
+                            ensemble_table.(props{i})(j) = NaN;
+                        else
+                            ensemble_table.(props{i})(j) = self.ensemble{j,1}.(props{i});
+                        end
                     end
                 end
             else
