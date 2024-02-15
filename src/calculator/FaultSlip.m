@@ -56,9 +56,27 @@ classdef FaultSlip
                 for j = 1 : size(slip_zone_indices, 1)
                     if ~isempty(slip_zone_indices{j, i})
                         slip_zone_length(j,i) = (length(slip_zone_indices{j,i}) + 1) * y2L;
-                        sne_mean = mean(sne(slip_zone_indices{j,i}, i));
-                        tau_mean = mean(tau(slip_zone_indices{j,i}, i));
-                        nucleation_length(j,i) = self.calculate_nucleation_length(sne_mean, tau_mean, f_s, f_d, d_c, mu_II, nuc_crit, nuc_len_fixed);
+                        sne_slip = (sne(slip_zone_indices{j,i}, i));
+                        tau_slip = (tau(slip_zone_indices{j,i}, i));
+                        if length(f_s) == size(tau,1)
+                            % add ,i here if friction changes per timestep
+                            f_s_slip = f_s(slip_zone_indices{j,i}) ;
+                        else
+                            f_s_slip = f_s;
+                        end
+                        if length(f_d) == size(tau,1)
+                            f_d_slip = (f_d(slip_zone_indices{j,i}));
+                        else
+                            f_d_slip = f_d;
+                        end
+                        if length(d_c) == size(tau,1)
+                            d_c_slip = mean(d_c(slip_zone_indices{j,i}));
+                        else
+                            d_c_slip = d_c;
+                        end
+                        delta_tau = mean(sne_slip .* (f_s_slip - f_d_slip));
+                        tau_0_d = mean(tau_slip - sne_slip .* f_d_slip);
+                        nucleation_length(j,i) = self.calculate_nucleation_length( delta_tau, tau_0_d, d_c_slip, mu_II, nuc_crit, nuc_len_fixed);
                         %nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * average_sne_in_slip_zone);
                     end
                 end
@@ -137,19 +155,19 @@ classdef FaultSlip
             K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
         end
 % 
-function nuc_length = calculate_nucleation_length(~, sne, tau, f_s, f_d, d_c, mu_II, nucleation_criterion, nucleation_length)
-            tau_s = sne*f_s;
-            tau_d = sne*f_d;
+function nuc_length = calculate_nucleation_length(~, delta_tau, tau_0_d, d_c, mu_II, nucleation_criterion, nucleation_length)
+    % simplified comparison to theoretical nucleation lengths, based on
+    % average values of sn, delta_tau within the slip zone
             if strcmp(nucleation_criterion, 'UR2D')
-                nuc_length = 1.158 * mu_II * d_c./((f_s - f_d) * sne);
+                nuc_length = 1.158 * mu_II * d_c./(delta_tau);  % delta_tau
             elseif strcmp(nucleation_criterion, 'Day3D')
                 % Day 2005
-                 nuc_length = 2* ( mu_II * d_c * ( tau_s - tau_d ) ) / ( pi * ( tau - tau_d ) ^ 2 );
+                 nuc_length = 2* ( mu_II * d_c * ( delta_tau ) ) / ( pi * ( tau_0_d ) ^ 2 );
             elseif strcmp(nucleation_criterion, 'Ruan3D')
                 % from script Vincent
-                 nuc_length =  ((3.82 * pi)/4)^0.5 * (mu_II / (sne*(f_s - f_d)))*d_c;
+                 nuc_length =  ((3.82 * pi)/4)^0.5 * (mu_II / (delta_tau))*d_c;
             elseif strcmp(nucleation_criterion, 'fixed')
-                % from script Vincent
+                % fixed nucleation length
                  nuc_length =  nucleation_length;
             end
         end
