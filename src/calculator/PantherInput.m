@@ -74,8 +74,11 @@ classdef PantherInput < handle
             column_indices = [];
             if any(matching_columns)
                 column_indices = find(matching_columns);
+               % for k = 1 : 
+
                 self.ensemble_generated = 1;
                 for i = 1 : n_ensemble
+                    
                     self.ensemble{i,1} = PantherMember(self.input_parameters, 0);
                     for j = 1 : length(column_indices)
                         var = table_names{column_indices(j)};
