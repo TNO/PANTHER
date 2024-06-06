@@ -70,3 +70,10 @@ for j = 1 : n_faults
     fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
 
 end
+
+
+% @Huihui stresses for each fault pillar can be found in the pillar
+% results, stress object. E.g fault 2, 4th pillar, stress realization
+% fault{2}.pillar_results{4}.stress{1}
+% this contains the reduced sne and tau output (length(y), n_time_steps),
+% as well as the sne and tau at reactivation and nucleation
