@@ -36,7 +36,7 @@ classdef PantherInput < handle
             % PantherInput Load default input parameters
             self.input_parameters = PantherParameterList;
             self.load_table = initialize_load_table();
-            disp('Initialized run instance');
+            % disp('Initialized run instance');
             % automatically initialize 1 ensemble member?
         end
 
@@ -49,10 +49,10 @@ classdef PantherInput < handle
                 for i = 1 : self.n_stochastic
                     self.ensemble{i,1} = PantherMember(self.input_parameters, 1);
                 end
-                disp(['Ensemble of ', num2str(self.n_stochastic), ' members generated']);
+                % disp(['Ensemble of ', num2str(self.n_stochastic), ' members generated']);
             else
                 self.ensemble{1,1} = PantherMember(self.input_parameters, 0);
-                disp(['Ensemble of 1 member generated']);
+                % disp(['Ensemble of 1 member generated']);
             end
             self.ensemble_generated = 1;
         end
