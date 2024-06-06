@@ -140,7 +140,7 @@ elseif run_option == 2
 end
 
 % time/load index of nucleation
-nucleation = min(analysis_result.summary.nucleation_index);
+nucleation = min(analysis_result.summary.nucleation_load_step);
     
 % interpolate stresses at the nucleation time index, for each pillar
 pillar_stress = cell(height(analysis_result.summary), 1);
@@ -153,15 +153,6 @@ if ~isnan(nucleation)
         % writetable(pillar_stress{i}, ['pillar', num2str(i)]);
     end
 end
-
-% get initial stress and stress changes with respect to initial time step
-[sne0, tau0] = analysis_result.get_initial_stress();
-[dsne, dtau] = analysis_result.get_stress_changes();
-
-    %fig_path = '\\tsn.tno.nl\data\sv\sv-053185\Kluis\Research\DeepNL\PhysMax\Widrum_nucleation_modeling\';
-    %f_name = ['Wirdum_shsh',num2str(analysis.input_parameters.sHsh.value*10,'%.0f'),...
-    %    '_diff',num2str(analysis.diffusion_P)];
-    %save([fig_path, f_name],'wirdum','wirdum_eq','analysis','analysis_result','input_table');
 
 
 %% plot dip, strike, throw, reactivation and nucleation pressure along fault with events

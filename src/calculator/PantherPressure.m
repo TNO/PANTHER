@@ -57,6 +57,16 @@ classdef PantherPressure
             self.dp_fault = member.p_factor_fault * self.dp_fault;
         end
 
+        function self = reduce_steps(self, steps)
+            props = properties(self);
+            % iterate over non-dependent properties
+            for i = 1 : length(props) - 1
+                if ~strcmp(props{i},'p0')
+                    self.(props{i}) = self.(props{i})(:, steps);
+                end             
+            end
+        end
+
        function p = get.p(self)
             p = self.p0 + self.dp_fault;
         end
