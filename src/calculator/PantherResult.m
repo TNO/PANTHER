@@ -9,6 +9,7 @@ classdef PantherResult
         slip cell
         summary table
         ensemble table
+        load_table table
     end
 
     methods
@@ -35,28 +36,25 @@ classdef PantherResult
             end
             warning('on'); 
         end
-
-        function [max_cff, mid_cff] = get_cff_rates(self, analysis, i)
-            % Get the maximum Coulomb Stress Change CFF rate along the
-            % fault as well as the CFF at mid reservoir depth (y=0), 
-            % averaged over the timesteps 
-                max_cff = 0;        % maximum stress rate
-                mid_cff = 0;        % stress rate at mid reservoir depth
-                % TODO find better metric for mean stress
-                cff = self.stress{i}.get_cff(self.ensemble.f_s(i), self.ensemble.cohesion(i));
-                time = analysis.load_table.time_steps;      % time in yrs
-                if self.summary.reactivation(i) && analysis.aseismic_slip
-                    if self.summary.reactivation_index(i) > 1
-                        cff = cff(:, 1:self.summary.reactivation_index(i));
-                        time = time(1:self.summary.reactivation_index(i));
-                    end
-                end
-                cff_rate = diff(cff, [], 2) ./ diff(time)';
-                max_cff = max(max(cff_rate));   % maximum Coulomb stress rate
-                i_mid = ceil(length(self.y)/2);
-                mid_cff = mean(cff_rate(i_mid,:));
-           
-        end
+% 
+%         % Get the maximum Coulomb Stress Change CFF rate along the
+%             % fault as well as the CFF at mid reservoir depth (y=0), 
+%             % averaged over the timesteps 
+%             max_cff = 0;        % maximum stress rate
+%             mid_cff = 0;        % stress rate at mid reservoir depth
+%             % TODO find better metric for mean stress
+%             cff = self.stress{i}.get_cff(self.ensemble.f_s(i), self.ensemble.cohesion(i));
+%             time = analysis.load_table.time_steps;      % time in yrs
+%             if self.summary.reactivation(i) && analysis.aseismic_slip
+%                 if self.summary.reactivation_index(i) > 1
+%                     cff = cff(:, 1:self.summary.reactivation_index(i));
+%                     time = time(1:self.summary.reactivation_index(i));
+%                 end
+%             end
+%             cff_rate = diff(cff, [], 2) ./ diff(time)';
+%             max_cff = max(max(cff_rate));   % maximum Coulomb stress rate
+%             i_mid = ceil(length(self.y)/2);
+%             mid_cff = mean(cff_rate(i_mid,:));
 
         function [p_init] = get_initial_pressure(self)
             % Returns presssure at first timestep

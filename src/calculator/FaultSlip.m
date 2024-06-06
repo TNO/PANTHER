@@ -6,9 +6,9 @@ classdef FaultSlip
         slip double                 % shear slip on the fault
         slip_length double          % length of fault that is slipping (num rows is number of slip patches)
         reactivation logical        % indicator whether fault has been reactivated
-        reactivation_index double   % load index at which fault has been reactivated
+        reactivation_load_step double   % load index at which fault has been reactivated
         nucleation logical          % indicator whether nucleation has occurred on the fault
-        nucleation_index double     % load index at which nucleation occurs
+        nucleation_load_step double     % load index at which nucleation occurs
     end
 
     properties (Dependent)
@@ -19,9 +19,9 @@ classdef FaultSlip
             % initialize FaultSlip class.  
             self.slip = zeros(n_rows, n_cols);
             self.reactivation = 0;
-            self.reactivation_index = nan(1,1);
+            self.reactivation_load_step = nan(1,1);
             self.nucleation = 0;
-            self.nucleation_index = nan(1,1);
+            self.nucleation_load_step = nan(1,1);
         end
 
         function [self, tau_slip] = calculate_fault_slip(self, y, sne, tau, tau_f, mu_II)
@@ -32,6 +32,14 @@ classdef FaultSlip
                 [tau_slip(:,i), islip{i}, slip_timestep] = calc_aseismic_slip(y, tau(:,i), tau_f(:,i), mu_II, K);
                 self.slip(:,i) = slip_timestep;
             end
+        end
+
+        function self = reduce_steps(self, steps)
+            props = properties(self);
+            % reduce slip matrix and slip patch array
+            for i = 1 : 2
+                self.(props{i}) = self.(props{i})(:, steps);
+            end             
         end
 
         function [self] = detect_nucleation(self, cell_length, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
@@ -82,33 +90,33 @@ classdef FaultSlip
                 end
             end
             % detect reactivation and nucleation, per slip zone
-            reactivation_slip_zone = repmat(size(slip_zone_indices,2), size(slip_zone_indices,1), 1);
-            nucleation_slip_zone = nan(size(reactivation_slip_zone));  
+            reactivation_per_slip_zone = repmat(size(slip_zone_indices,2), size(slip_zone_indices,1), 1);
+            nucleation_per_slip_zone = nan(size(reactivation_per_slip_zone));  
             for j = 1 : size(slip_zone_indices, 1)
                 if any(~isnan(nucleation_length(j,:))) && ~isempty(slip_zone_indices)
                     self.reactivation = 1;
-                    reactivation_slip_zone(j) = find(~isnan(nucleation_length(j,:)),1,'first');
+                    reactivation_per_slip_zone(j) = find(~isnan(nucleation_length(j,:)),1,'first');
                     nucleation_length_j = nucleation_length(j, ~isnan(nucleation_length(j,:)));
                     slip_length_j = slip_zone_length(j, ~isnan(nucleation_length(j,:)));
                     l_difference = nucleation_length_j - slip_length_j;
-                    x = linspace(1, length(l_difference), length(l_difference)) + reactivation_slip_zone(j) - 1;
+                    x = linspace(1, length(l_difference), length(l_difference)) + reactivation_per_slip_zone(j) - 1;
                     if l_difference(1) < 0
                         % if the first timestep of reactivation already
                         % reaches nucleation, take that step
-                        nucleation_slip_zone(j) = x(1);
+                        nucleation_per_slip_zone(j) = x(1);
                     else
                         if length(x) > 1 && ~strcmp(nuc_crit, 'fixed')
-                            nucleation_slip_zone(j) = interp1(l_difference, x, 0);
+                            nucleation_per_slip_zone(j) = interp1(l_difference, x, 0);
                         elseif length(x) > 1 && strcmp(nuc_crit, 'fixed')
                             [~, unique_index] = unique(l_difference);
-                            nucleation_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
+                            nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
                         end
                     end
                 end
             end
-            self.reactivation_index = min(reactivation_slip_zone);
-            self.nucleation_index = min(nucleation_slip_zone);
-            if ~isnan(self.nucleation_index)
+            self.reactivation_load_step = min(reactivation_per_slip_zone);
+            self.nucleation_load_step = min(nucleation_per_slip_zone);
+            if ~isnan(self.nucleation_load_step)
                 self.nucleation = 1;
             end
             self.slip_length = slip_zone_length;
@@ -120,7 +128,7 @@ classdef FaultSlip
             for i = 1 : size(slipping, 2)
                 i_slip = find(slipping(:,i));
                 if ~isempty(i_slip)
-                    iz = find(diff(i_slip) > 1);            % gap in indices of slipping cells
+                    iz = find(diff(i_slip) > 1);            % gap in indices of slipping cells (multiple slip patches)
                     if size(iz,1) > 1
                         iz = iz';
                     end
@@ -129,7 +137,7 @@ classdef FaultSlip
                         slip_zone_indices{1,i} = i_slip;
                     else
                         number_of_slip_zones(i) = length(iz)+1;                    % nuber of slip zones      
-                        iz = [1, iz, length(i_slip)];  % start and end indices of slipping zones
+                        iz = [1, iz, length(i_slip)];                               % start and end indices of slip zones
                         for j = 1 : number_of_slip_zones(i)
                             if j == 1 
                                 start_index = iz(1);
@@ -138,7 +146,6 @@ classdef FaultSlip
                             end
                             slip_zone_indices{j,i} = i_slip(start_index:iz(j+1)); 
                         end
-
                     end
                 else
                      slip_zone_indices{1,i} = [];
@@ -154,10 +161,11 @@ classdef FaultSlip
             K = mu_II*Ko;
             K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
         end
-% 
-function nuc_length = calculate_nucleation_length(~, delta_tau, tau_0_d, d_c, mu_II, nucleation_criterion, nucleation_length)
-    % simplified comparison to theoretical nucleation lengths, based on
-    % average values of sn, delta_tau within the slip zone
+
+
+        function nuc_length = calculate_nucleation_length(~, delta_tau, tau_0_d, d_c, mu_II, nucleation_criterion, nucleation_length)
+        % simplified comparison to theoretical nucleation lengths, based on
+        % average values of sn, delta_tau within the slip zone
             if strcmp(nucleation_criterion, 'UR2D')
                 nuc_length = 1.158 * mu_II * d_c./(delta_tau);  % delta_tau
             elseif strcmp(nucleation_criterion, 'Day3D')

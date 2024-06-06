@@ -31,6 +31,21 @@ function [run_results] = panther(analysis)
     nucleation_length = analysis.nucleation_length_fixed;
     dy = y(1) - y(2);
  
+    % define output steps
+    if ~ismember(analysis.save_stress,'none')
+           if ismember(analysis.save_stress,'all')
+               indices_for_saving = 1 : height(load_table);
+           elseif ismember(analysis.save_stress,'first')
+               indices_for_saving = 1;
+           elseif ismember(analysis.save_stress,'last')
+                indices_for_saving = size(height(load_table),2);
+           elseif ismember(analysis.save_stress,'first_last')
+               indices_for_saving = [1, size(height(load_table),2)];
+           end
+    else
+        indices_for_saving = [];
+    end
+
     % initialize output object
     run_results = PantherResult(y);
 
@@ -54,8 +69,8 @@ function [run_results] = panther(analysis)
     end
 
     % calculate pressure and stress changes (parallel)
-    % starting up the Matlab parallel pool (parpool) may take several 10s
-    % of seconds.If it is already running (type gcp to check), parfor will initiate much faster
+    % starting up the Matlab parallel pool (parpool) for the first time may take several 10s
+    % of seconds. If it is already running (type gcp to check), parfor will initiate much faster
     parfor (i = 1 : n_members, matlab_workers)
         disp([num2str(i),'/', num2str(n_members)]);
         cell_length{i} = dy/sin(ensemble{i}.dip*pi/180);
@@ -89,15 +104,27 @@ function [run_results] = panther(analysis)
         % clear to save memory
         stress_change{i} = [];
         initial_stress{i}= [];
+
+        stress{i} = stress{i}.get_reactivation_nucleation_stress(slip{i}.reactivation_load_step, slip{i}.nucleation_load_step);
+
+        % reduce output
+       pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
+       stress{i} = stress{i}.reduce_steps(indices_for_saving);
+       temperature{i} = temperature{i}.reduce_steps(indices_for_saving);
+       slip{i} = slip{i}.reduce_steps(indices_for_saving);
+
     end
+    
+    reduced_load_table = analysis.load_table(indices_for_saving,:);   
 
     for i = 1 : n_members
         % save stresses, pressure, slip
-        if analysis.save_stress
+        if ~ismember(analysis.save_stress,'none')
             run_results.pressure{i} = pressure{i};
             run_results.temperature{i} = temperature{i};
             run_results.stress{i} = stress{i};
             run_results.slip{i} = slip{i};
+            run_results.load_table = reduced_load_table;
         end
     end
 

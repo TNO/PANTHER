@@ -65,6 +65,16 @@ classdef Temperature
 
         end
 
+        function self = reduce_steps(self, steps)
+            props = properties(self);
+            % iterate over non-dependent properties
+            for i = 1 : length(props) - 1
+                if ~strcmp(props{i},'T0')
+                    self.(props{i}) = self.(props{i})(:, steps);
+                end             
+            end
+        end
+
        function T = get.T(self)
             T = self.T0 + self.dT_fault;
         end
