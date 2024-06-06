@@ -28,12 +28,12 @@ set(gca,'YDir','reverse','Box','on');
 ylabel('Nucleation depletion (MPa)');
 xlabel('\sigma_h / \sigma_v (-)');
 subplot(2,2,3)
-scatter(analysis_input.dip, analysis_result.summary.mid_cff_rate);
+scatter(analysis_input.dip, analysis_result.summary.cff_ymid);
 set(gca,'Box','on');
 ylabel('CFF rate mid (MPa/yr)');
 xlabel(['Dip (', char(176), ')'])
 subplot(2,2,4)
-scatter(analysis_input.shsv, analysis_result.summary.mid_cff_rate);
+scatter(analysis_input.shsv, analysis_result.summary.cff_ymid);
 set(gca,'Box','on');
 ylabel('CFF rate mid (MPa/yr)');
 xlabel('\sigma_h / \sigma_v (-)');

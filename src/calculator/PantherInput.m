@@ -13,9 +13,7 @@ classdef PantherInput < handle
         diffusion_T logical = 0;                    % activate pressure diffusion
         stochastic logical = 0;                     % activate stochastic analysis
         n_stochastic {mustBeInteger} = 1;           % number of stochastic runs
-        save_stress logical = 1;                    % save the stress output on the fault
-        % save_steps = % indicates which time steps should be saved TODO
-        % (firstlast, last, 1:5:50, etc)
+        save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         load_case = 'P';                            % load case 'P': pressure changes, 'T': temperature changes (TODO: combine)
         load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
         ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
