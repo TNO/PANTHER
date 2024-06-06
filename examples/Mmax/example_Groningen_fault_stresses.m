@@ -24,7 +24,7 @@ diffusion = 0;      % pore pressure diffusion
 n_faults = 1000;        % set to height of bourne_faults for all faults
 
 % initialize multi fault object
-groningen = GroningenFaultCalculator(n_faults);
+groningen = MultiFaultCalculator(n_faults);
 
 % populate with input from the fault and geological model
 groningen = groningen.add_pillar_info_as_table(bourne_faults(1:n_faults,["Fault","Easting","Northing"]));

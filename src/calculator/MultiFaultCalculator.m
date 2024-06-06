@@ -16,7 +16,7 @@ classdef MultiFaultCalculator
 
     methods
 
-        function self = GroningenFaultCalculator(n_pillars)
+        function self = MultiFaultCalculator(n_pillars)
             % construct the class with n_pillars, assign ID in the
             % information table
             self.pillars = cell(n_pillars, 1);
