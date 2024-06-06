@@ -15,38 +15,58 @@ poro = readtable(file_name.poro);
 poro = renamevars(poro, {'Var1','Var2','Var3'},{'X','Y','poro'});
 h_ROCLT = readtable(file_name.h_ROCLT);
 
+fault_names = unique(bourne_faults.Fault);
 
-%% prepare the simulation
+%% prepare the simulation. runs per Groningen fault (fault{j})
 % run settings
 diffusion = 0;      % pore pressure diffusion
 
-% number of fault pillars to be used in the calculation 
-n_faults = 1000;        % set to height of bourne_faults for all faults
+% number of faults to be used in the calculation 
+n_faults = 2;        % set to length(fault_names) for all faults
 
-% initialize multi fault object
-groningen = MultiFaultCalculator(n_faults);
 
-% populate with input from the fault and geological model
-groningen = groningen.add_pillar_info_as_table(bourne_faults(1:n_faults,["Fault","Easting","Northing"]));
-groningen = groningen.set_input_parameter('dip', bourne_faults.Dip);
-groningen = groningen.set_input_parameter('dip_azi', bourne_faults.DipAzimuth);
+for j = 1 : n_faults   
+    
+    i_fault = strcmp(bourne_faults.Fault, fault_names{j,1});
 
-% specify and add thickness Slochteren Formation (ROSL). Ten Boer not depleting
-thickness = (bourne_faults.ThicknessLeft2(1:n_faults) + bourne_faults.ThicknessRight2(1:n_faults))/2;   % thickness of entire RO Group (ROSL + ROCLT)
-groningen = groningen.add_info_from_closest_point(h_ROCLT.X, h_ROCLT.Y, h_ROCLT.Thickness, 'Easting','Northing','h_ROCLT');
-groningen = groningen.add_pillar_info_as_table(table(thickness - h_ROCLT.Thickness(1:n_faults),'VariableNames',{'h_ROSL'}));
-groningen = groningen.set_input_parameter('thick', groningen.pillar_info.h_ROSL);
+    % initialize multi fault object
+    fault{j,1} = MultiFaultCalculator(sum(i_fault));
+    
+    % populate with input from the fault and geological model
+    fault{j,1} = fault{j,1}.add_pillar_info_as_table(bourne_faults(i_fault,["Fault","Easting","Northing"]));
+    fault{j,1} = fault{j,1}.set_input_parameter('dip', bourne_faults.Dip(i_fault));
+    fault{j,1} = fault{j,1}.set_input_parameter('dip_azi', bourne_faults.DipAzimuth(i_fault));
+    
+    % specify and add thickness Slochteren Formation (ROSL). Ten Boer not depleting
+    thickness = (bourne_faults.ThicknessLeft2(i_fault) + bourne_faults.ThicknessRight2(i_fault))/2;   % thickness of entire RO Group (ROSL + ROCLT)
+    fault{j,1} = fault{j,1}.add_info_from_closest_point(h_ROCLT.X, h_ROCLT.Y, h_ROCLT.Thickness, 'Easting','Northing','h_ROCLT');
+    fault{j,1} = fault{j,1}.add_pillar_info_as_table(table(thickness - fault{j,1}.pillar_info.h_ROCLT,'VariableNames',{'h_ROSL'}));
+    fault{j,1} = fault{j,1}.set_input_parameter('thick', fault{j,1}.pillar_info.h_ROSL);
+    
+    % add porosity values
+    fault{j,1} = fault{j,1}.add_info_from_closest_point(poro.X, poro.Y, poro.poro, 'Easting','Northing','poro');
+    
+    % specify the run settings (can be same or different per pillar
+    fault{j,1} = fault{j,1}.set_run_setting('diffusion_P',0);
+    fault{j,1} = fault{j,1}.set_run_setting('load_case',repmat({'P'},1));
+    fault{j,1} = fault{j,1}.set_run_setting('aseismic_slip', 0);
+    fault{j,1} = fault{j,1}.set_run_setting('nucleation_criterion', {'UR2D'});
+    
+    % execute run
+    fault{j,1} = fault{j,1}.run();
+    
+    nucleation_load_step = fault{j,1}.get_minimum_nucleation_load_step();
+    % overwrite the pillar-specific nucleation stress with the stress at the 
+    % minimum nucleation load step over the whole fault
+    if ~isnan(nucleation_load_step) 
+        fault{j,1} = fault{j,1}.overwrite_nucleation_stress(nucleation_load_step);
+    end
 
-% add porosity values
-groningen = groningen.add_info_from_closest_point(poro.X, poro.Y, poro.poro, 'Easting','Northing','poro');
+    % reduce output of stress, slip, pressure, temperature arrays
+    % these were not reduced earlier, because we needed to determine the
+    % minimum nucleation pressure on the whole fault, and compute the
+    % stresses at that nucleation pressure. for that, we need all time
+    % steps. 
+    fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
 
-% specify the run settings (can be same or different per pillar
-groningen = groningen.set_run_setting('diffusion_P',0);
-groningen = groningen.set_run_setting('load_case',repmat({'P'},1));
-groningen = groningen.set_run_setting('aseismic_slip', 0);
-groningen = groningen.set_run_setting('nucleation_criterion', {'UR2D'});
-
-% execute run
-groningen = groningen.run();
-
-run_summary = groningen.get_results_summary();  % get summary of all run results
+end

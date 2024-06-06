@@ -7,6 +7,7 @@ classdef MultiFaultCalculator
         pillars cell        % cell array of PANTHER input objects (1 ensemble per entry, can be modified to multiple) 
         pillar_info table   % table with pillar custom meta_data (e.g. name, coordinates)
         pillar_results cell
+        result_summary table
         run_done logical
     end
 
@@ -33,14 +34,15 @@ classdef MultiFaultCalculator
             tic
             all_pillars = self.pillars;
             n = self.n_pillars;
-            self.pillar_results = cell(size(self.pillars));
+            self.pillar_results = cell(n, 1);
             parfor i = 1 : n
-                results{i} = panther(all_pillars{i});
+                results{i,1} = panther(all_pillars{i});
                 disp([num2str(i),'/', num2str(n)]);
             end
             self.pillar_results = results;
             toc
             self.run_done = true;
+            self.result_summary = self.get_results_summary();
         end
         
 
@@ -120,6 +122,34 @@ classdef MultiFaultCalculator
 
         end
 
+
+        function [nuc_load_step] = get_minimum_nucleation_load_step(self)
+            if self.run_done
+                nuc_load_step = min(self.result_summary.nucleation_load_step);
+            else
+                nuc_load_step = nan;
+            end
+        end
+
+
+        function self = overwrite_nucleation_stress(self, new_nucleation_load_step)
+            for i = 1 : length(self.pillar_result)
+                reac = self.result_summary.reactivation_load_step;
+                nuc = new_nucleation_load_step;
+                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}. self.pillar_results{i}.stress{1}.get_reactivation_nucleation_stress(reac, nuc);
+            end
+        end
+
+        function self = reduce_output(self, indices)
+            for i = 1 : length(self.pillar_results)
+                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(indices);
+                self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(indices);
+                self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(indices);
+                self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(indices);
+                self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(indices,:);
+            end
+        end
+
         function self = add_info_from_closest_point(self, X, Y, Z_value, X_column, Y_column, new_column)
             % add meta data info based on nearest point 
             % INPUT
@@ -154,6 +184,7 @@ classdef MultiFaultCalculator
         function [summary] = get_results_summary(self)
             if self.run_done
                 summary = self.pillar_results{1}.summary;
+                % concatenate summary tables of individual fault pillars
                 for i = 1 : self.n_pillars - 1
                     summary = [summary; self.pillar_results{i}.summary];
                 end
@@ -161,7 +192,6 @@ classdef MultiFaultCalculator
                 disp('Run not yet exectued, empty summary');
                 summary = [];
             end
-
         end
       
         function [i_min] = nearest_rectangular_grid_coordinate(~, X_grid, Y_grid, X_query, Y_query)
