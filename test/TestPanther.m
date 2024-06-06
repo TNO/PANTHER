@@ -114,6 +114,7 @@ classdef TestPanther < matlab.unittest.TestCase
             stochastic_run.input_parameters.shsv.b = 0.76;        % upper value of uniform distribution
             stochastic_run.stochastic = 1;                        % set the analysis to stochastic    
             stochastic_run.n_stochastic = 9;                     % number of stochastic runs
+            stochastic_run.save_stress = {'first_last'};
             stochastic_run.generate_ensemble();                   % generate the ensemble (run_instance.ensemble)
             stochastic_results = panther(stochastic_run);
 

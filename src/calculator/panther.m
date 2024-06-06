@@ -106,16 +106,22 @@ function [run_results] = panther(analysis)
         initial_stress{i}= [];
 
         stress{i} = stress{i}.get_reactivation_nucleation_stress(slip{i}.reactivation_load_step, slip{i}.nucleation_load_step);
+        
+        % store some derivative data
+        [cff_max{i,1}, cff_ymid{i,1}] = stress{i}.get_cff_rates(ensemble{i}.f_s, ensemble{i}.cohesion, ...
+            load_table.time_steps, [1: length(load_table.time_steps)]);
 
         % reduce output
-       pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
-       stress{i} = stress{i}.reduce_steps(indices_for_saving);
-       temperature{i} = temperature{i}.reduce_steps(indices_for_saving);
-       slip{i} = slip{i}.reduce_steps(indices_for_saving);
+        pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
+        stress{i} = stress{i}.reduce_steps(indices_for_saving);
+        temperature{i} = temperature{i}.reduce_steps(indices_for_saving);
+        slip{i} = slip{i}.reduce_steps(indices_for_saving);
 
     end
     
     reduced_load_table = analysis.load_table(indices_for_saving,:);   
+
+    
 
     for i = 1 : n_members
         % save stresses, pressure, slip
@@ -130,6 +136,7 @@ function [run_results] = panther(analysis)
 
     % obtain summary report
     run_results = run_results.make_result_summary(analysis);
-
+    run_results.summary.cff_max = cell2mat(cff_max);
+    run_results.summary.cff_ymid = cell2mat(cff_ymid);
 
 end

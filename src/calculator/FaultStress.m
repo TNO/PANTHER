@@ -63,18 +63,16 @@ classdef FaultStress
             end
         end
 
-        function [cff_max, cff_ymid] = get_cff_rates(self, f_s, cohesion, time_yrs, time_range, depth_range)
+        function [cff_max, cff_ymid] = get_cff_rates(self, f_s, cohesion, time_yrs, time_range)
             % Get the maximum Coulomb Stress Change CFF rate along the
             % fault as well as the CFF
             % INPUT
             % time      % time in yrs. should be equal to size(self.sne, 2)
-            if nargin < 4
-                min_index  = time_range(1);
-                max_index = time_range(2);    % must be indices within
-            end
+            min_index  = time_range(1);
+            max_index = time_range(2);    % must be indices within
             cff_max = 0;        % maximum stress rate
             cff_ymid = 0;        % stress rate at mid reservoir depth
-            if size(time_yrs, 2) ~= size(self.sne,2)
+            if length(time_yrs) ~= size(self.sne,2)
                 error('Time steps do not match number of stress output times');
             end
             cff = self.get_cff(f_s, cohesion);
@@ -82,9 +80,15 @@ classdef FaultStress
             time_yrs = time_yrs(min_index:max_index);
             cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
             cff_max = max(max(cff_rate));   % maximum Coulomb stress rate
-            average_cff_over_depth_range = mean(cff_rate(depth_range,:));
-            i_ymid = ceil(length(self.y)/2);
+            % average_cff_over_depth_range = mean(cff_rate(depth_range,:));
+            i_ymid = ceil(size(self.sne,1)/2);
             cff_ymid = mean(cff_rate(i_ymid,:));
+        end
+
+        function [dsne, dtau] = get_stress_changes(self)
+            % Returns shear and normal stress change w.r.t. first time step
+            dsne = self.sne - self.sne(:,1);
+            dtau = self.tau - self.tau(:,1);
         end
 
         function self = reduce_steps(self, steps)
