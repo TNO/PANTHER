@@ -27,7 +27,15 @@ classdef FaultStressChange
             % calculator for stress changes due to P and/or T.
             % controls the calculation for uniform and non-uniform pressure
             % and temperature profiles, non-uniform elastic parameters
+            % INPUT
+            % pressure, temperature     pressure, temperature objects
+            % params                    input parameters for 1 ensemble member
+            % y                         depth array w.r.t. y_mid
+            % load_case                 P, T, or PT
+            % check if pressure or temperature change is more than a single
+            % value imposed in the reservoir. e.g. if there is diffusion
             [vary_P, vary_T] = self.variable_PT(pressure, temperature);
+            % check if the dip is variable with depth
             [vary_dip] = self.variable_dip(params);
             if and(contains(load_case,'P'), vary_P) || and(contains(load_case,'T'), vary_T)
                 vary_PT = 1;
