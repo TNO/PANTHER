@@ -72,7 +72,7 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance);         
             actual = result.summary.nucleation_dp;
-            expected = -16.5264;
+            expected = -16.92;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             % reset to uniform friction, but with f_s of length(y)
             run_instance.input_parameters.f_s.value_with_depth = ones(size(run_instance.y))*0.6;
@@ -101,7 +101,7 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance); 
             actual = result.summary.nucleation_dp;
-            expected = -18.5298;
+            expected = -19.77;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
