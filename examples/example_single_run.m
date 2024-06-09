@@ -3,7 +3,7 @@
 % initialize input 
 run_instance = PantherInput;
 % change some input properties
-run_instance.input_parameters.width_HW.value = 0;
+run_instance.input_parameters.width_HW.value = 500;
 run_instance.input_parameters.throw.value = 50;
 % turn off diffusion
 run_instance.diffusion_P = 0;

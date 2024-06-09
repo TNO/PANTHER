@@ -73,7 +73,7 @@ function [run_results] = panther(analysis)
     % of seconds. If it is already running (type gcp to check), parfor will initiate much faster
     parfor (i = 1 : n_members, matlab_workers)
         disp([num2str(i),'/', num2str(n_members)]);
-        cell_length{i} = dy/sin(ensemble{i}.dip*pi/180);
+        L{i} = y./sin(ensemble{i}.dip*pi/180);      
 
         % initial stress
         initial_stress{i} = InitialStress(y, ensemble{i});
@@ -94,11 +94,11 @@ function [run_results] = panther(analysis)
         slip{i} = FaultSlip(size(stress{i}.sne, 1), size(stress{i}.sne, 2));
         if analysis.aseismic_slip
             fault_strength{i} = stress{i}.sne.*ensemble{i}.f_s + ensemble{i}.cohesion;
-            [slip{i}, stress{i}.tau] = slip{i}.calculate_fault_slip(y, stress{i}.sne, stress{i}.tau, ...
+            [slip{i}, stress{i}.tau] = slip{i}.calculate_fault_slip(L{i}, stress{i}.sne, stress{i}.tau, ...
                                                          fault_strength{i}, ensemble{i}.get_mu_II);
         end
         
-        slip{i} = slip{i}.detect_nucleation(cell_length{i}, stress{i}.sne, stress{i}.tau, ensemble{i}.f_s, ...
+        slip{i} = slip{i}.detect_nucleation(L{i}, stress{i}.sne, stress{i}.tau, ensemble{i}.f_s, ...
                                                     ensemble{i}.f_d, ensemble{i}.d_c, ensemble{i}.cohesion, ...
                                                     ensemble{i}.get_mu_II, nucleation_criterion, nucleation_length);
         % clear to save memory

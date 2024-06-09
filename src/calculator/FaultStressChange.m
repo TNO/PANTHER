@@ -27,7 +27,15 @@ classdef FaultStressChange
             % calculator for stress changes due to P and/or T.
             % controls the calculation for uniform and non-uniform pressure
             % and temperature profiles, non-uniform elastic parameters
+            % INPUT
+            % pressure, temperature     pressure, temperature objects
+            % params                    input parameters for 1 ensemble member
+            % y                         depth array w.r.t. y_mid
+            % load_case                 P, T, or PT
+            % check if pressure or temperature change is more than a single
+            % value imposed in the reservoir. e.g. if there is diffusion
             [vary_P, vary_T] = self.variable_PT(pressure, temperature);
+            % check if the dip is variable with depth
             [vary_dip] = self.variable_dip(params);
             if and(contains(load_case,'P'), vary_P) || and(contains(load_case,'T'), vary_T)
                 vary_PT = 1;
@@ -75,6 +83,7 @@ classdef FaultStressChange
 
         function self = get_stress_change_uniform(self, params, GF, y, PT_change, gamma, load)
             % calculate the stress change for each timestep, for uniform P or T change in the reservoir blocks
+            % find the pressure in the HW or FW compartment
             if strcmp(load, 'P') 
                 for i = 1 : size(PT_change.dp_FW,2)
                     i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
@@ -101,6 +110,9 @@ classdef FaultStressChange
             for i = 1 : n_times
                 dsn_temp = zeros(length(y),1);      % array for adding contributions of gridded depth blocks withs varying P,T, or gamma
                 dtau_temp = zeros(length(y),1);
+
+                % refactor. element-wise multiplication in get stress
+                % change component
                 for j = 1 : length(y)
                     if strcmp(load_case,'P')
                         dPT_FW = PT_change.dp_FW(j,i);
@@ -121,6 +133,7 @@ classdef FaultStressChange
                 self.dsn(:,i) = dsn_temp;
                 self.dtau(:,i) = dtau_temp;
             end
+            % plot(y, PT_change.dp_HW(:,2), y, PT_change.dp_FW(:,2),y, dsn_temp)
         end
 
         function [dsn, dtau] = get_stress_change_component(~, GF, dPT_FW, dPT_HW, gamma)
@@ -159,7 +172,7 @@ classdef FaultStressChange
 
         function [vary_P, vary_T] = variable_PT(~, pressure, temperature)
             % check if pressure or temperature are non uniform with y
-            % return true if they vary 
+            % return true if they vary . move to pressure object
             vary_P = 0;
             vary_T = 0;
             if length(unique(pressure.dp_FW)) > size(pressure.dp_FW,2) + 1
@@ -182,10 +195,10 @@ classdef FaultStressChange
             end
         end
 
-        function [dscu] = get_scu_change(self, mu, cohesion)
+        function [dscu] = get_scu_change(self, f_s, cohesion)
             % return Shear Capacity Utilization 
-            % TODO: check if this works for depth-dependent mu
-            dscu = self.dtau ./ (self.dsn .* mu + cohesion); 
+            % TODO: check if this works for depth-dependent f_s
+            dscu = self.dtau ./ (self.dsn .* f_s + cohesion); 
         end
     end
 

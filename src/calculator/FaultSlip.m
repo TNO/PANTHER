@@ -24,15 +24,53 @@ classdef FaultSlip
             self.nucleation_load_step = nan(1,1);
         end
 
-        function [self, tau_slip] = calculate_fault_slip(self, y, sne, tau, tau_f, mu_II)
+        function [self, tau_slip] = calculate_fault_slip(self, L, sne, tau, tau_f, mu_II)
             % calculate shear slip on fault
+            % INPUT
+            % L         [m] along-fault length
+            % sne       [MPa] effective normal stress
+            % tau       [MPa] shear stress
+            % tauf_f    [MPa] fault shear strength (sne*f_s + c)    
+            % mu_II     [MPa] mode II shear modulus
+            % OUTPUT
+            % tau_slip  
             tau_slip = zeros(size(sne));        % shear stress including stress redistribution due to slip
-            K = self.stiffness_matrix(y, mu_II);
+            % detect non-uniformly spaced along-fault length (which happens with varying
+            % dip)
+            non_uniform_L = 0;
+            dL = diff(L);
+            dL = round(dL*1000)/1000;      % remove tiny differences in spacing
+            % for non-uniformly spaced L, set up new regularly spaced L
+            if length(unique(dL)) > 1
+                L_new = ones(size(L));
+                L_new = L_new.*linspace(L(1), L(end), length(L))';
+                non_uniform_L = 1;
+            else
+                L_new = L;
+            end
+            %L = self.
+            K = self.stiffness_matrix(L_new, mu_II);
             for i = 1 : size(tau, 2)
-                [tau_slip(:,i), islip{i}, slip_timestep] = calc_aseismic_slip(y, tau(:,i), tau_f(:,i), mu_II, K);
+                % interpolate shear stress and strength for new L
+                if non_uniform_L
+                   tau_new = interp1(L,  tau(:,i), L_new);
+                   tau_f_new = interp1(L, tau_f(:,i), L_new);
+                else
+                    tau_new = tau(:,i);
+                    tau_f_new = tau_f(:,i);
+                end
+                [tau_slip_new, islip{i}, slip_timestep_new] = calc_aseismic_slip(L_new, tau_new, tau_f_new, mu_II, K);
+                if non_uniform_L
+                   tau_slip(:,i) = interp1(L_new, tau_slip_new, L);
+                   slip_timestep = interp1(L_new, slip_timestep_new, L);
+                else
+                    slip_timestep = slip_timestep_new;
+                    tau_slip(:,i) = tau_slip_new;
+                end                
                 self.slip(:,i) = slip_timestep;
             end
         end
+
 
         function self = reduce_steps(self, steps)
             props = properties(self);
@@ -42,7 +80,7 @@ classdef FaultSlip
             end             
         end
 
-        function [self] = detect_nucleation(self, cell_length, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
+        function [self] = detect_nucleation(self, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
             % identify whether nucleation occurs by comparing slip length
             % to theoretical nucleation length by Uenishi & Rice 2003
             % INPUT
@@ -53,17 +91,28 @@ classdef FaultSlip
             % cohesion  cohesion
             % mu_II shear modulus mode II
             tau_f = sne.* f_s + cohesion;
-            y2L = cell_length;                  % replace with dip
+            %y2L = cell_length;                  % replace with dip
+            y2L = L;
             slipping = (tau >= tau_f);
-            % slip_zone_indices and ..length will have size(# slip zone x
+            % slip_zone_indices and ..length will have size(number of slip zone x
             % length(time). 
             slip_zone_indices = self.get_slip_zone_indices(slipping);
             slip_zone_length = nan(size(slip_zone_indices));        % along-fault length of slip zones
             nucleation_length = nan(size(slip_zone_indices));       % nucleation length, per slip zone 
+            % iterate over time steps
             for i = 1 : size(slip_zone_indices,2)
+                % iterate over number of slip zones
                 for j = 1 : size(slip_zone_indices, 1)
                     if ~isempty(slip_zone_indices{j, i})
-                        slip_zone_length(j,i) = (length(slip_zone_indices{j,i}) + 1) * y2L;
+                        L_start = L(slip_zone_indices{j,i}(1));
+                        L_end = L(slip_zone_indices{j,i}(end));
+                        if L_start ~= L(1)
+                            L_start = L_start - 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); % add half element 
+                        end
+                        if L_end ~= L(end)
+                            L_end = L_end + 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); % add half element 
+                        end
+                        slip_zone_length(j,i) = L_start - L_end;
                         sne_slip = (sne(slip_zone_indices{j,i}, i));
                         tau_slip = (tau(slip_zone_indices{j,i}, i));
                         if length(f_s) == size(tau,1)
@@ -153,10 +202,14 @@ classdef FaultSlip
             end
         end
 
-        function [K] = stiffness_matrix(~, y, mu_II)
-            % compute stiffness matrix for aseismic slip (td_solve)
-            nx = length(y);
-            Kline = -nx/(2*pi*(y(1)-y(end))) ./ ( [0:nx-1]'.^2-0.25 );
+        function [K] = stiffness_matrix(~, L, mu_II)
+            % set stiffness matrix for aseismic slip (td_solve)
+            % INPUT
+            % L         along fault length
+            % nx        number of fault elements
+            % mu_II     mode II shear stiffness
+            nx = length(L);
+            Kline = -nx/(2*pi*(L(1)-L(end))) ./ ( [0:nx-1]'.^2-0.25 );
             Ko = toeplitz(Kline);                   
             K = mu_II*Ko;
             K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
@@ -179,13 +232,6 @@ classdef FaultSlip
                  nuc_length =  nucleation_length;
             end
         end
-
-%         function [d_max] = get_max_slip(self)
-%         end
-% 
-%         function [d_nuc] = get_slip_at_nucleation(self)
-%         end
-
 
     end
 end
