@@ -31,9 +31,14 @@ classdef FaultStress
         end
 
 
-        function self = get_reactivation_nucleation_stress(self, reactivation_load_step, nucleation_load_step)
-            [self.sne_reac, self.tau_reac] = self.get_stress_at_load_step(reactivation_load_step);
+        function self = get_nucleation_stress(self, nucleation_load_step)
+            % INPUT
+            % nucleation_load_step double 
             [self.sne_nuc, self.tau_nuc] = self.get_stress_at_load_step(nucleation_load_step);
+        end
+
+        function self = get_reactivation_stress(self, reactivation_load_step)
+            [self.sne_reac, self.tau_reac] = self.get_stress_at_load_step(reactivation_load_step);
         end
 
 

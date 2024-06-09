@@ -58,6 +58,29 @@ classdef MultiFaultCalculator
         end
 
 
+        function self = set_depth_dependent_input_parameter(self, parameter_name, values)
+            % sets numeric input Panther input parameters
+            % INPUT
+            % values    cell array length(n_pillars), containing arrays of
+            % doubles of length(y)
+            if ~iscell(values)
+                error('Input depth dependent variable in a cell array of length n_pillars');
+            end
+            if self.is_valid_input_parameter_name(parameter_name) && (length(values) == length(self.pillars))
+                for i = 1 : length(self.pillars)
+                    if length(values{i}) == length(self.pillars{i}.y)
+                        self.pillars{i}.input_parameters.(parameter_name).uniform_with_depth = 0;
+                        self.pillars{i}.input_parameters.(parameter_name).value_with_depth = values{i};
+                    else
+                        disp(['depth dependent variable could not be set, size not equal to y, length is ', num2str(self.pillars{i}.y)]);
+                    end
+                end
+            else
+                disp(['variable ', parameter_name,' not assigned, check that length of input values equals number of pillars']);
+            end
+        end
+
+
         function self = set_input_parameter(self, parameter_name, values, property)
             % sets numeric input Panther input parameters
             % INPUT
@@ -70,7 +93,8 @@ classdef MultiFaultCalculator
                 for i = 1 : length(self.pillars)
                     self.pillars{i}.input_parameters.(parameter_name).(property) = values(i);
                 end
-               
+            else
+                disp(['variable ', parameter_name,' not assigned, check that length of input values equals number of pillars']);
             end
         end
 
@@ -133,21 +157,25 @@ classdef MultiFaultCalculator
 
 
         function self = overwrite_nucleation_stress(self, new_nucleation_load_step)
-            for i = 1 : length(self.pillar_result)
-                reac = self.result_summary.reactivation_load_step;
+            for i = 1 : length(self.pillar_results)
                 nuc = new_nucleation_load_step;
-                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}. self.pillar_results{i}.stress{1}.get_reactivation_nucleation_stress(reac, nuc);
+                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.get_nucleation_stress(nuc);
             end
         end
 
-        function self = reduce_output(self, indices)
+        function self = reduce_output(self, time_step_indices)
+            % return output only at give time step indices
+            
             for i = 1 : length(self.pillar_results)
-                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(indices);
-                self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(indices);
-                self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(indices);
-                self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(indices);
-                self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(indices,:);
-            end
+%                 if max(time_step_indices) < size(self.pillar_results{i}.stress{1}.sne, 2)  & ...
+%                 (min(time_step_indices) > 1)
+                    self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(time_step_indices);
+                    self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(time_step_indices);
+                    self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(time_step_indices);
+                    self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(time_step_indices);
+                    self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                end
+%             end
         end
 
         function self = add_info_from_closest_point(self, X, Y, Z_value, X_column, Y_column, new_column)
