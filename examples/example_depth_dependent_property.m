@@ -34,10 +34,12 @@ sc2_variable_dip = PantherInput;
 % set depth varying dip
 sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
 y = sc2_variable_dip.y;
-dip_gradient_per_m = 10/500;    % 10 degrees per 500 m
-sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
+sc2_variable_dip.input_parameters.dip.value_with_depth = 90*ones(size(y));
+i_mid = floor(length(y)/2);
+sc2_variable_dip.input_parameters.dip.value_with_depth(i_mid:end) = 60;
+% sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
 
-sc2_variable_dip.input_parameters.width_HW.value = 0;
+%sc2_variable_dip.input_parameters.width_HW.value = 0;
 
 % turn aseismic slip off
 sc2_variable_dip.aseismic_slip = 0;
@@ -123,7 +125,7 @@ ylabel('Depth (m)');
 ylim([sc2_result.ensemble.depth_mid - 300, sc2_result.ensemble.depth_mid + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
-title('Example: Dip linearly decreasing with depth');
+title('Example: Dip changes from 90 to 60 below mid reservoir');
 
 subplot(1,3,3); hold on;
 

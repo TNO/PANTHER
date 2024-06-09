@@ -23,6 +23,8 @@ classdef PantherPressure
                 [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(y, member.thick, member.throw);
                 dp_unit_FW = double(next_to_FW);       % unit dp in FW compartment 
                 dp_unit_HW = double(next_to_HW);       % unit dp in HW compartment
+                % if reservoir compartment on either side has 0 width, set
+                % pressures in that compartment to 0. 
                 if member.width_HW == 0
                     dp_unit_HW = zeros(size(dp_unit_HW));       % set dP in HW compartment to 0
                 end
