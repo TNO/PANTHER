@@ -26,31 +26,6 @@ sc1_variable_friction.generate_ensemble();
 % run panther with current input instance
 sc1_result = panther(sc1_variable_friction);
 
-%%
-
-% initialize input Scenario 2: variable dip
-sc2_variable_dip = PantherInput;
-
-% set depth varying dip
-sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
-y = sc2_variable_dip.y;
-sc2_variable_dip.input_parameters.dip.value_with_depth = 90*ones(size(y));
-i_mid = floor(length(y)/2);
-sc2_variable_dip.input_parameters.dip.value_with_depth(i_mid:end) = 60;
-% sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
-
-%sc2_variable_dip.input_parameters.width_HW.value = 0;
-
-% turn aseismic slip off
-sc2_variable_dip.aseismic_slip = 0;
-
-% generate model ensemble
-sc2_variable_dip.generate_ensemble();
-
-% run panther with current input instance
-sc2_result = panther(sc2_variable_dip);
-
-
 %% plot the results
 h1 = figure(1); clf(h1);
 
@@ -94,8 +69,32 @@ ylim([sc1_result.ensemble.depth_mid - 300, sc1_result.ensemble.depth_mid + 300])
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
 
+%%
 
-%% plot the results Scenario 2
+% initialize input Scenario 2: variable dip
+sc2_variable_dip = PantherInput;
+
+% set depth varying dip
+sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
+y = sc2_variable_dip.y;
+sc2_variable_dip.input_parameters.dip.value_with_depth = 90*ones(size(y));
+i_mid = floor(length(y)/2);
+sc2_variable_dip.input_parameters.dip.value_with_depth(i_mid:end) = 60;
+% sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
+
+%sc2_variable_dip.input_parameters.width_HW.value = 0;
+
+% turn aseismic slip off
+sc2_variable_dip.aseismic_slip = 0;
+
+% generate model ensemble
+sc2_variable_dip.generate_ensemble();
+
+% run panther with current input instance
+sc2_result = panther(sc2_variable_dip);
+
+
+% plot the results Scenario 2
 h2 = figure(2); clf(h2);
 
 subplot(1,3,1)
