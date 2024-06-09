@@ -83,6 +83,7 @@ classdef FaultStressChange
 
         function self = get_stress_change_uniform(self, params, GF, y, PT_change, gamma, load)
             % calculate the stress change for each timestep, for uniform P or T change in the reservoir blocks
+            % find the pressure in the HW or FW compartment
             if strcmp(load, 'P') 
                 for i = 1 : size(PT_change.dp_FW,2)
                     i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
@@ -109,6 +110,9 @@ classdef FaultStressChange
             for i = 1 : n_times
                 dsn_temp = zeros(length(y),1);      % array for adding contributions of gridded depth blocks withs varying P,T, or gamma
                 dtau_temp = zeros(length(y),1);
+
+                % refactor. element-wise multiplication in get stress
+                % change component
                 for j = 1 : length(y)
                     if strcmp(load_case,'P')
                         dPT_FW = PT_change.dp_FW(j,i);
@@ -168,7 +172,7 @@ classdef FaultStressChange
 
         function [vary_P, vary_T] = variable_PT(~, pressure, temperature)
             % check if pressure or temperature are non uniform with y
-            % return true if they vary 
+            % return true if they vary . move to pressure object
             vary_P = 0;
             vary_T = 0;
             if length(unique(pressure.dp_FW)) > size(pressure.dp_FW,2) + 1

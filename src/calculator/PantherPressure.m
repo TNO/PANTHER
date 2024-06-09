@@ -23,6 +23,12 @@ classdef PantherPressure
                 [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(y, member.thick, member.throw);
                 dp_unit_FW = double(next_to_FW);       % unit dp in FW compartment 
                 dp_unit_HW = double(next_to_HW);       % unit dp in HW compartment
+                if member.width_HW == 0
+                    dp_unit_HW = zeros(size(dp_unit_HW));       % set dP in HW compartment to 0
+                end
+                if member.width_FW == 0
+                    dp_unit_FW = zeros(size(dp_unit_FW));       % set dP in FW compartment to 0
+                end
                 self.dp_FW = dp_unit_FW * p_steps' .* loads.P_factor_FW';    % (dp, time) array of pressures in the footwall
                 self.dp_HW = dp_unit_HW * p_steps' .* loads.P_factor_HW';    % (dp, time) array of pressures in the hanging wall
                 

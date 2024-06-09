@@ -25,7 +25,7 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
         y(i_boundary) = y(i_boundary) + correction_value;
     end
     % xcoordinates
-    xeval = y/(tan(params.dip*pi/180)) + dx;
+    xeval = y./(tan(params.dip*pi/180)) + dx;
         if and(~variable_PT, ~variable_dip)
             GF{1} = GreensFunctions(y);
             if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
