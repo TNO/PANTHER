@@ -37,6 +37,8 @@ y = sc2_variable_dip.y;
 dip_gradient_per_m = 10/500;    % 10 degrees per 500 m
 sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
 
+sc2_variable_dip.input_parameters.width_HW.value = 0;
+
 % turn aseismic slip off
 sc2_variable_dip.aseismic_slip = 0;
 

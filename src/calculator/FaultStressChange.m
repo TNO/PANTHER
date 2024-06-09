@@ -129,6 +129,7 @@ classdef FaultStressChange
                 self.dsn(:,i) = dsn_temp;
                 self.dtau(:,i) = dtau_temp;
             end
+            % plot(y, PT_change.dp_HW(:,2), y, PT_change.dp_FW(:,2),y, dsn_temp)
         end
 
         function [dsn, dtau] = get_stress_change_component(~, GF, dPT_FW, dPT_HW, gamma)
@@ -190,10 +191,10 @@ classdef FaultStressChange
             end
         end
 
-        function [dscu] = get_scu_change(self, mu, cohesion)
+        function [dscu] = get_scu_change(self, f_s, cohesion)
             % return Shear Capacity Utilization 
-            % TODO: check if this works for depth-dependent mu
-            dscu = self.dtau ./ (self.dsn .* mu + cohesion); 
+            % TODO: check if this works for depth-dependent f_s
+            dscu = self.dtau ./ (self.dsn .* f_s + cohesion); 
         end
     end
 
