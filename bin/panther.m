@@ -110,7 +110,9 @@ function [run_results] = panther(analysis)
         stress_change{i} = [];
         initial_stress{i}= [];
 
-        stress{i} = stress{i}.get_reactivation_nucleation_stress(slip{i}.reactivation_load_step, slip{i}.nucleation_load_step);
+        % get the fault stressses at onset of reactivation and nucleation 
+        stress{i} = stress{i}.get_reactivation_stress(slip{i}.reactivation_load_step);
+        stress{i} = stress{i}.get_nucleation_stress(slip{i}.nucleation_load_step);
         
         % store some derivative data
         [cff_max{i,1}, cff_ymid{i,1}] = stress{i}.get_cff_rates(ensemble{i}.f_s, ensemble{i}.cohesion, ...
