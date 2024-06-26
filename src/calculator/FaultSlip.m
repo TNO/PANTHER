@@ -75,9 +75,15 @@ classdef FaultSlip
         function self = reduce_steps(self, steps)
             props = properties(self);
             % reduce slip matrix and slip patch array
-            for i = 1 : 2
-                self.(props{i}) = self.(props{i})(:, steps);
-            end             
+            if isnan(steps)
+                for i = 1 : 2
+                    self.(props{i}) = [];
+                end 
+            else
+                for i = 1 : 2
+                    self.(props{i}) = self.(props{i})(:, steps);
+                end 
+            end
         end
 
         function [self] = detect_nucleation(self, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)

@@ -99,9 +99,15 @@ classdef FaultStress
         function self = reduce_steps(self, steps)
             props = properties(self);
             % iterate over non-dependent properties
-            for i = 1 : 2
-                self.(props{i}) = self.(props{i})(:, steps);
-            end             
+            if isnan(steps)
+                for i = 1 : 2
+                    self.(props{i}) = [];
+                end
+            else
+                for i = 1 : 2
+                    self.(props{i}) = self.(props{i})(:, steps);
+                end    
+            end
         end
 
     end

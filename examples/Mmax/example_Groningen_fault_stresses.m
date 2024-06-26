@@ -4,6 +4,7 @@
 %% prepare input
 proj = matlab.project.rootProject;
 proj_folder = convertStringsToChars(proj.RootFolder);
+%proj_folder = '/home/weng/Works/Softwares/PANTHER/';
 % out_folder = [proj_folder,'/results/test_single_fault_segment/'];
 
 file_name.faults = [proj_folder,'/examples/Mmax/Mmax_files/Bourne_2017_FaultModel_Geometries_DuplicatesRemoved.xlsx'];
@@ -19,19 +20,21 @@ fault_names = unique(bourne_faults.Fault);
 
 %% prepare the simulation. runs per Groningen fault (fault{j})
 % run settings
-diffusion = 0;      % pore pressure diffusion
+diffusion = 1;      % pore pressure diffusion
 
 % number of faults to be used in the calculation 
-n_faults = 2;        % set to length(fault_names) for all faults
+n_faults = length(fault_names);        % set to length(fault_names) for all faults
 
 
-for j = 827 : length(fault_names) %n_faults   
-    
+%for j = 1 : n_faults
+for j = 1 : 10
+
     i_fault = strcmp(bourne_faults.Fault, fault_names{j,1});
 
     % initialize multi fault object
     fault{j,1} = MultiFaultCalculator(sum(i_fault));
-    
+    fault{j,1}.parallel = 1;
+
     % populate with input from the fault and geological model
     fault{j,1} = fault{j,1}.add_pillar_info_as_table(bourne_faults(i_fault,["Fault","Easting","Northing"]));
     fault{j,1} = fault{j,1}.set_input_parameter('dip', bourne_faults.Dip(i_fault));
@@ -47,14 +50,11 @@ for j = 827 : length(fault_names) %n_faults
     fault{j,1} = fault{j,1}.add_info_from_closest_point(poro.X, poro.Y, poro.poro, 'Easting','Northing','poro');
     
     % specify the run settings (can be same or different per pillar
-    fault{j,1} = fault{j,1}.set_run_setting('diffusion_P',0);
+    fault{j,1} = fault{j,1}.set_run_setting('diffusion_P',diffusion);
     fault{j,1} = fault{j,1}.set_run_setting('load_case',repmat({'P'},1));
     fault{j,1} = fault{j,1}.set_run_setting('aseismic_slip', 0);
     fault{j,1} = fault{j,1}.set_run_setting('nucleation_criterion', {'UR2D'});
     
-    
-    fault{j,1}.parallel = 1;
-
     % execute run
     fault{j,1} = fault{j,1}.run();
     
@@ -71,7 +71,14 @@ for j = 827 : length(fault_names) %n_faults
     % stresses at that nucleation pressure. for that, we need all time
     % steps. 
     fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
+    %fault{j,1} = fault{j,1}.reduce_output(nan);
 
+    % Save the structure by the fault name
+    single_fault = fault{j,1};
+    output_filename = sprintf('%s',[proj_folder,'/examples/Mmax/stress_data/',j,"_",fault_names{j,1},".mat"]);
+    % remove spaces in output_filename
+    output_filename = strrep(output_filename,' ','');
+    save(output_filename,'single_fault')
 end
 
 

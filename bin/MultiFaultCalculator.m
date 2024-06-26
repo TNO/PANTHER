@@ -174,17 +174,19 @@ classdef MultiFaultCalculator
 
         function self = reduce_output(self, time_step_indices)
             % return output only at give time step indices
-            
-            for i = 1 : length(self.pillar_results)
+            % provide nan if you don't want to store output (only reac and
+            % nuc stresses are stored)
+                for i = 1 : length(self.pillar_results)
 %                 if max(time_step_indices) < size(self.pillar_results{i}.stress{1}.sne, 2)  & ...
 %                 (min(time_step_indices) > 1)
                     self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(time_step_indices);
-                    self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                    if ~isnan(time_step_indices)
+                        self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                    end
                 end
-%             end
         end
 
         function self = add_info_from_closest_point(self, X, Y, Z_value, X_column, Y_column, new_column)

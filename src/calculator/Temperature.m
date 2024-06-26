@@ -68,10 +68,18 @@ classdef Temperature
         function self = reduce_steps(self, steps)
             props = properties(self);
             % iterate over non-dependent properties
-            for i = 1 : length(props) - 1
-                if ~strcmp(props{i},'T0')
-                    self.(props{i}) = self.(props{i})(:, steps);
-                end             
+            if isnan(steps)
+                for i = 1 : length(props) - 1
+                    if ~strcmp(props{i},'T0')
+                        self.(props{i}) = [];
+                    end             
+                end
+            else
+                for i = 1 : length(props) - 1
+                    if ~strcmp(props{i},'T0')
+                        self.(props{i}) = self.(props{i})(:, steps);
+                    end             
+                end
             end
         end
 
