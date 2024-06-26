@@ -74,11 +74,11 @@ for j = 1 : 10
     %fault{j,1} = fault{j,1}.reduce_output(nan);
 
     % Save the structure by the fault name
-    single_fault = fault{j,1};
-    output_filename = sprintf('%s',[proj_folder,'/examples/Mmax/stress_data/',j,"_",fault_names{j,1},".mat"]);
-    % remove spaces in output_filename
-    output_filename = strrep(output_filename,' ','');
-    save(output_filename,'single_fault')
+%     single_fault = fault{j,1};
+%     output_filename = sprintf('%s',[proj_folder,'/examples/Mmax/stress_data/',j,"_",fault_names{j,1},".mat"]);
+%     % remove spaces in output_filename
+%     output_filename = strrep(output_filename,' ','');
+%     save(output_filename,'single_fault')
 end
 
 
