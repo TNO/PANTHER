@@ -25,7 +25,7 @@ diffusion = 0;      % pore pressure diffusion
 n_faults = 2;        % set to length(fault_names) for all faults
 
 
-for j = 1 : n_faults   
+for j = 827 : length(fault_names) %n_faults   
     
     i_fault = strcmp(bourne_faults.Fault, fault_names{j,1});
 
@@ -52,6 +52,9 @@ for j = 1 : n_faults
     fault{j,1} = fault{j,1}.set_run_setting('aseismic_slip', 0);
     fault{j,1} = fault{j,1}.set_run_setting('nucleation_criterion', {'UR2D'});
     
+    
+    fault{j,1}.parallel = 1;
+
     % execute run
     fault{j,1} = fault{j,1}.run();
     

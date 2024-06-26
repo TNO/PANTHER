@@ -9,6 +9,7 @@ classdef MultiFaultCalculator
         pillar_results cell
         result_summary table
         run_done logical
+        parallel = 1
     end
 
     properties (Dependent)
@@ -35,10 +36,18 @@ classdef MultiFaultCalculator
             all_pillars = self.pillars;
             n = self.n_pillars;
             self.pillar_results = cell(n, 1);
-            parfor i = 1 : n
-                results{i,1} = panther(all_pillars{i});
-                disp([num2str(i),'/', num2str(n)]);
-            end
+            if self.parallel
+                parfor i = 1 : n
+                    results{i,1} = panther(all_pillars{i});
+                    disp([num2str(i),'/', num2str(n)]);
+                end
+            else
+                results = cell(n,1);
+                for i = 1 : n
+                    results{i,1} = panther(all_pillars{i});
+                    disp([num2str(i),'/', num2str(n)]);
+                end
+            end      
             self.pillar_results = results;
             toc
             self.run_done = true;
@@ -188,7 +197,7 @@ classdef MultiFaultCalculator
             % Y_column      string, column name of the X_coordinate in pillar_info
             % new_column    string, column name of Z_value
             % TODO add some checks
-            i5 = floor(self.n_pillars/20);
+            i5 = floor(self.n_pillars/10);
             reverseStr = '';
             for i = 1 : length(self.pillars)
                 xq = self.pillar_info.(X_column)(i);
@@ -204,6 +213,8 @@ classdef MultiFaultCalculator
                         fprintf([reverseStr, msg]);
                         reverseStr = repmat(sprintf('\b'), 1, length(msg));
                     end
+                else
+                    self.pillar_info.(new_column)(i) = Z_value(closest_index(1));
                 end
             end
             sprintf(newline);
@@ -227,6 +238,14 @@ classdef MultiFaultCalculator
             [~, i_min_x] = min(abs(X_query - X_grid));
             [~, i_min_y] = min(abs(Y_query - Y_grid));
             i_min = find((X_grid == X_grid(i_min_x)) & (Y_grid == Y_grid(i_min_y)));
+            if isempty(i_min)
+                distance = nan(size(X_grid));
+                for i = 1 : length(X_grid)
+                    distance(i) = pdist([X_query, Y_query; X_grid(i), Y_grid(i)]);
+                    [~, i_min] = min(distance);
+                end
+                disp('The query point seems to be outside the grid, closest value was assinged');
+            end
         end
 
         function [valid_name] = is_valid_input_parameter_name(self, submitted_name)
