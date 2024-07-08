@@ -11,7 +11,7 @@ Mud   = 0.1  ;
 Dc    = 0.01 ;
 pow_p = 0.15 ;
 
-for i = 1 : 20
+for i = 1 : n_faults
     filename = filenames(i).name;
     load(sprintf('%s',[folder,filename]));
     disp(filenames(i).name)
@@ -21,8 +21,8 @@ for i = 1 : 20
     dy    = single_fault.pillars{1}.dy  ; % Grid length
     num_y = length(y)                   ; % Grid number
     num_p = single_fault.n_pillars      ; % number of pillars
-    E     = single_fault.pillars{1}.ensemble{1}.young ;   % Young modulus; Assumed the same for all pillars
-    nu    = single_fault.pillars{1}.ensemble{1}.poisson ; % Poisson ratio; Assumed the same for all pillars
+    E     = single_fault.pillars{1}.input_parameters.young.value ;   % Young modulus; Assumed the same for all pillars
+    nu    = single_fault.pillars{1}.input_parameters.poisson.value ; % Poisson ratio; Assumed the same for all pillars
     mu    = E / 2.0 / (1+nu)                         ;  % Shear modulus in mode III, unit is Pa
     mu_p  = mu/(1 - nu)                              ;  % Shear modulus in mode II, unit is Pa
 
@@ -40,10 +40,10 @@ for i = 1 : 20
     h1 = figure(1); clf(h1);
 
     for j = 1 : num_p
-        thick = single_fault.pillars{j}.ensemble{1}.thick ;
-        throw = single_fault.pillars{j}.ensemble{1}.throw ;
-        sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,1) * 1e6 ;
-        tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,1) * 1e6 - sigma_long*Mud;  % Potential stress drop
+        thick = single_fault.pillars{j}.input_parameters.thick ;
+        throw = single_fault.pillars{j}.input_parameters.throw ;
+        sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,2) * 1e6 ;
+        tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,2) * 1e6 - sigma_long*Mud;  % Potential stress drop
 %        [top_ind,bot_ind,slip(j,:),Dtau(j,:),G25D(j),Gc(j)] = rupture_expend(tau_long,sigma_long,mu,dy);
     hold on
     plot(tau_long,'r-');
