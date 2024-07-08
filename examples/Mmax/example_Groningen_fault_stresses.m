@@ -2,9 +2,9 @@
 % TODO make into a function which uses a config file
 
 %% prepare input
-proj = matlab.project.rootProject;
-proj_folder = convertStringsToChars(proj.RootFolder);
-% out_folder = [proj_folder,'/results/test_single_fault_segment/'];
+%proj = matlab.project.rootProject;
+%proj_folder = convertStringsToChars(proj.RootFolder);
+proj_folder = '/home/weng/Works/Softwares/PANTHER/';
 
 file_name.faults = [proj_folder,'/examples/Mmax/Mmax_files/Bourne_2017_FaultModel_Geometries_DuplicatesRemoved.xlsx'];
 file_name.poro = [proj_folder,'/examples/Mmax/Mmax_files/Petrel_Slochteren_POR_mean_no_header.txt'];
@@ -22,10 +22,11 @@ fault_names = unique(bourne_faults.Fault);
 diffusion = 0;      % pore pressure diffusion
 
 % number of faults to be used in the calculation 
-n_faults = 2;        % set to length(fault_names) for all faults
+n_faults = length(fault_names);        % set to length(fault_names) for all faults
 
 
-for j = 827 : length(fault_names) %n_faults   
+for j = 1 : n_faults   
+
     
     i_fault = strcmp(bourne_faults.Fault, fault_names{j,1});
 
@@ -72,6 +73,13 @@ for j = 827 : length(fault_names) %n_faults
     % steps. 
     fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
 
+
+    % Save the structure by the fault name
+    single_fault = fault{j,1};
+    output_filename = sprintf('%s',[proj_folder,'/examples/Mmax/stress_data/',j,"_",fault_names{j,1},".mat"]);
+    % remove spaces in output_filename
+    output_filename = strrep(output_filename,' ','');
+    save(output_filename,'single_fault')
 end
 
 
