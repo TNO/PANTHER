@@ -68,7 +68,8 @@ for i = 1 : 40
 %     end
 % 
 %     %% Solve for the Mmax for all pillars in one fault
-%     MM0{i} = calc_Mmax(single_fault,slip,G25D,Gc);
+%     MM0{i}  = calc_Mmax(single_fault,slip,G25D,Gc);
+%     Mmax{i} = log10(MM0(:)*1e7)*2.0/3.0-10.7;
 end
 
 
