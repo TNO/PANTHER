@@ -34,10 +34,12 @@ classdef PantherParameterList
         T_factor_FW =  PantherParam(1, 'Cooling factor footwall','-', 1, nan, 0, 'uniform', 1, 1);        % [-] cooling factor footwall
         dT_dy_multiplier =  PantherParam(0, 'Depth dependent dT multiplier','-', 1, nan, 0, 'uniform', 1, 1);        % [-] multiply dT as function of y - y_mid. -ve is increasing dT with depth
         therm_diffusivity = PantherParam(1e-6, 'Thermal diffusivity','m2/s', 1, nan, 0, 'uniform', 1e-6, 5e-6);   % [m2/s] thermal diffusivity
-        f_s =  PantherParam(0.6, 'Static friction coefficient','-', 1, nan, 0, 'uniform', 0.5, 0.6);      % [-] static friction coefficient
-        f_d =  PantherParam(0.45, 'Dynamic friction coefficient','-', 1, nan, 0, 'uniform',0.35,0.49);    % [-] dynamic friction coefficient
-        d_c =  PantherParam(0.005, 'Critical slip distance','m', 1, nan, 0, 'uniform',  0.002, 0.01);     % [-] critical slip distance
+        f_s =  PantherParam(0.72, 'Static friction coefficient','-', 1, nan, 0, 'uniform', 0.72, 0.72);      % [-] static friction coefficient
+        f_d =  PantherParam(0.22, 'Dynamic friction coefficient','-', 1, nan, 0, 'uniform',0.22,0.22);    % [-] dynamic friction coefficient
+        d_c =  PantherParam(0.07, 'Critical slip distance','m', 1, nan, 0, 'uniform',  0.07, 0.07);     % [-] critical slip distance
         cohesion = PantherParam(0, 'Cohesion','MPa', 1, nan, 0, 'uniform', 0, 5);                         % [MPa] cohesion
     end     
 
 end
+
+%% @Loes, I have changed f_s, f_d, and d_c according to the fitting results based on Fig. 10 & 11 as explained in my email
