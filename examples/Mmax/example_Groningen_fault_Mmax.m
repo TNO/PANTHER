@@ -4,16 +4,19 @@ folder      = sprintf('%s',[proj_folder,'/examples/Mmax/stress_data/']);
 filenames   = dir(fullfile(folder,'*.mat'));
 n_faults    = length(filenames);
 
-global Mus Mud Dc pow_p;
+global Mus Mud Dc pow_p;    % These parameters can be accessed globally
 Mus   = 0.72  ;
 Mud   = 0.22  ;
 Dc    = 0.07 ;
 pow_p = 4.0 ;
 
-MM0  = cell(1,n_faults);
-Mmax = cell(1,n_faults);
+%%  As an example, the predicted Mmax is chosen as the final timestep (i.e., the largest Mw)
+M0nuc = cell(1,n_faults);   %  Predicted seismic moment assuming each pillar as a nucleation location
+Mwnuc = cell(1,n_faults);   %  Predicted magnitude assuming each pillar as a nucleation location
+Mmax  = NaN(n_faults,1);      %  Predicted max magnitude for each fault
+Mmax_loc = NaN(n_faults,2); %  Predicted the nucleation location for the MMax on each fault
 
-for i = 1 : 40
+for i = 1 : n_faults
     filename = filenames(i).name;
     load(sprintf('%s',[folder,filename]));
     disp(filenames(i).name)
@@ -23,7 +26,8 @@ for i = 1 : 40
     dy    = single_fault.pillars{1}.dy  ; % Grid length
     num_y = length(y)                   ; % Grid number
     num_p = single_fault.n_pillars      ; % number of pillars
-    E     = single_fault.pillars{1}.input_parameters.young.value*1e6 ;   % Young modulus; Assumed the same for all pillars
+    num_t = length(single_fault.pillar_results{1}.stress{1}.sne(1,:)) ; % number of timesteps
+    E     = single_fault.pillars{1}.input_parameters.young.value*1e6 ;  % Young modulus; Assumed the same for all pillars
     nu    = single_fault.pillars{1}.input_parameters.poisson.value ; % Poisson ratio; Assumed the same for all pillars
     mu    = E / 2.0 / (1+nu)                         ;  % Shear modulus in mode III, unit is Pa
     mu_p  = mu/(1 - nu)                              ;  % Shear modulus in mode II, unit is Pa
@@ -34,45 +38,59 @@ for i = 1 : 40
     W         = zeros(num_p,3);    % Estimated rupture width
     Dtau      = zeros(num_p,num_y);    % Potential stress drop
     slip      = zeros(num_p,num_y);
+    status    = NaN(num_p,1)  ;    % The status of the pillar
 
     %% Check the potential shear stresses by plotting figures
-    h1 = figure(1);
-    subplot(2,1,1)
-    for j = 1 : num_p
-        sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,2) * 1e6 ;
-        tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,2) * 1e6 - sigma_long*Mud;  % Potential stress drop
-        hold on
-        plot(tau_long,'r-');
-    end
-    subplot(2,1,2)
-    hold on;
-    plot(G25D,'k-');
-    plot(Gc,'b-');
-    fig_name = sprintf('%s',[proj_folder,'/examples/Mmax/figs/',filenames(i).name,".png"]);
-    saveas(h1,fig_name)
-    close(1)
-% 
-%     %% Solve for the rupture width for each pillar
+%     h1 = figure(1);
+%     subplot(2,1,1)
 %     for j = 1 : num_p
-%         thick  = single_fault.pillars{j}.input_parameters.thick.value ;
-%         throw  = single_fault.pillars{j}.input_parameters.throw.value ;
-%         init_W = max(thick-throw,throw-thick) ;   % Assuming a minmum rupture width
-%         sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,2) * 1e6 ;
-%         tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,2) * 1e6 - sigma_long*Mud;  % Potential stress drop
-%         if(max(tau_long)<0.0)  % Assumed as a strong barrier
-%             G25D(j) = 1e-9;
-%             Gc(j)   = 1 ;
-%             continue ;         % No need to call the following function
-%         end
-%         [top_ind,bot_ind,slip(j,:),Dtau(j,:),G25D(j),Gc(j)] = rupture_width(tau_long,sigma_long,mu_p,dy,init_W);
+%         sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,num_t) * 1e6 ;
+%         tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,num_t) * 1e6 - sigma_long*Mud;  % Potential stress drop
+%         hold on
+%         plot(tau_long,'r-');
 %     end
+%    subplot(2,1,2)
+%    hold on;
+%    plot(G25D,'k-');
+%    plot(Gc,'b-');
+%     fig_name = sprintf('%s',[proj_folder,'/examples/Mmax/figs/',filenames(i).name,".png"]);
+%     saveas(h1,fig_name)
+%     close(1)
 % 
-%     %% Solve for the Mmax for all pillars in one fault
-%     MM0{i}  = calc_Mmax(single_fault,slip,G25D,Gc);
-%     Mmax{i} = log10(MM0(:)*1e7)*2.0/3.0-10.7;
+    %% Solve for the rupture width for each pillar
+    for j = 1 : num_p
+        thick  = single_fault.pillars{j}.input_parameters.thick.value ;
+        throw  = single_fault.pillars{j}.input_parameters.throw.value ;
+        init_W = max(thick-throw,throw-thick) ;   % Assuming a minmum rupture width
+        sigma_long = single_fault.pillar_results{j}.stress{1}.sne(:,num_t) * 1e6 ;
+        tau_long   = single_fault.pillar_results{j}.stress{1}.tau(:,num_t) * 1e6 - sigma_long*Mud;  % Potential stress drop
+        if(max(tau_long)<0.0)  % Assumed as a strong barrier
+            G25D(j) = 1e-9;
+            Gc(j)   = 1 ;
+            continue ;         % No need to call the following function
+        end
+        [top_ind,bot_ind,slip(j,:),Dtau(j,:),G25D(j),Gc(j),status(j)] = rupture_width(tau_long,sigma_long,mu_p,dy,init_W);
+    end
+    fprintf('Total pillars: %d No solutionn: %d Strong barriers: %d Barriers: %d Asperities: %d \n', ...
+        num_p,sum(status==0),sum(status==1),sum(status==2),sum(status==3));
+    %% Solve for the Mmax for all pillars in one fault
+    m0_pred = calc_Mmax(single_fault,slip,G25D,Gc) * mu;
+    mw_pred = NaN(size(m0_pred));
+    for k=1:length(m0_pred)
+        if(m0_pred(k)>0)
+            mw_pred(k) = log10(m0_pred(k)*1e7)*2.0/3.0-10.7;
+        end
+    end
+
+    M0nuc{i}  = m0_pred;
+    Mwnuc{i}  = mw_pred;
+    [Mmax(i),Mmax_index]   = max(mw_pred);
+    if(~isnan(Mmax(i)))
+        Mmax_loc(i,:) = [single_fault.pillar_info.Easting(Mmax_index),single_fault.pillar_info.Northing(Mmax_index)];
+    end
 end
 
-
+fprintf('The maximum Mw at the end of the time steps is %f \n', nanmax(Mmax));
 
 
 
@@ -108,7 +126,6 @@ MM0         = nan(1,num_pillar);
 for j = 1:num_pillar
     x_pillar(j) = [single_fault.pillar_info.Easting(j)];
     y_pillar(j) = [single_fault.pillar_info.Northing(j)];
-    M0_pillar(j)  = sum(slip(j,:)*dy)*len_pillar(j);
     if(Gc(j)/G25D(j)>100.0 || Gc(j)/G25D(j)<0)
         Phi_pillar(j)  = NaN;
         W_pillar(j)    = NaN;
@@ -126,6 +143,10 @@ for j = 1:num_pillar-1
         +(y_pillar(j) - y_pillar(j+1))^2 )^0.5;
 end
 
+for j = 1:num_pillar
+    M0_pillar(j)  = sum(slip(j,:)*dy)*len_pillar(j);
+end
+
 for i=1:num_pillar
     if(isnan(GcG0_pillar(j)) || GcG0_pillar(j)>1)
         continue
@@ -140,6 +161,8 @@ function [Rup_left, Rup_right] = rupture_length(nuc_index,len,W,GcG0)
 % Preallocate arrays
 num   =  length(GcG0);
 dx_W  = zeros(num);
+Rup_left  = nuc_index;
+Rup_right = nuc_index;
 
 for i=1:num
     if(W(i)>0.0)
@@ -178,7 +201,7 @@ end
 
 
 %% Solve for rupture width in 2D vertical profile (each pillar)
-function [top_ind,bot_ind,slip_zeropad,Dtau_zeropad,G25D,Gc] = rupture_width(tau_long,sigma_long,mu,dy,init_W)
+function [top_ind,bot_ind,slip_zeropad,Dtau_zeropad,G25D,Gc,status] = rupture_width(tau_long,sigma_long,mu,dy,init_W)
 slip_zeropad = zeros(length(tau_long),1);
 Dtau_zeropad = zeros(length(tau_long),1);
 top_ind = int16(length(tau_long)/2)-int16(init_W/2);
@@ -189,6 +212,7 @@ for i=1:min(length(tau_long)-bot_ind-1,top_ind-1)
     sigma = sigma_long(top_ind:bot_ind);
     tau_f = tau2tauf(tau,sigma,mu,dy);     % Use Newton's method to solve the final friction strength
     if(max(tau_f)==0)
+        status = 0 ;  % There is no slip-stress solution
         G25D = 1e-9;  % Assumed as a strong barrier
         Gc   = 1 ;    % Assumed as a strong barrier
         return
@@ -200,18 +224,22 @@ for i=1:min(length(tau_long)-bot_ind-1,top_ind-1)
     G_left  = K_left^2/2/mu  ;
     G_right = K_right^2/2/mu ;
     if(G_left>Gamma && G_right>Gamma)
-        disp("Double expension.")
         top_ind = top_ind-1;
         bot_ind = bot_ind+1;
     elseif(G_left>Gamma && G_right<=Gamma)
-        disp("Left expension")
         top_ind = top_ind-1;
     elseif(G_left<=Gamma && G_right>Gamma)
-        disp("Right expension")
         bot_ind = bot_ind+1;
     else
-        Gc    = slip2Gc(slip, sigma)  ;
+        Gc    = slip2Gc(slip, sigma) ;
         G25D = mean(0.5*Dtau.*slip) ;
+        if(Gc/G25D>3)
+            status = 1 ;  % There is slip-stress solution but the pillar is a very strong barrier
+        elseif(Gc/G25D<=3 && Gc/G25D>1)
+            status = 2 ;  % There is slip-stress solution but the pillar is a barrier
+        else
+            status = 3 ;  % There is slip-stress solution and the pillar is an asperity
+        end
         break
     end
 end
@@ -267,11 +295,10 @@ num_guess = 10000;
 u = linspace(0,10,num_guess);
 Res = zeros(num_guess,1);
 for i=1:num_guess
-    Res(i) = mean(tau_0) - (2*pi/4*mu/(dy*length(tau_0)))*u(i) - f(u(i),sigma);  % find the zero
+    Res(i) = mean(tau_0) - (2*pi/4*mu/(dy*length(tau_0)))*u(i) - f(u(i),mean(sigma));  % find the zero
 end
 [maxvalue,maxindex] = max(Res);
 if(maxvalue<0)
-    fprintf('This pillar is a strong barrier!\n');
     tau_f = 0;   % There is no solution for tau_f!
     return
 else
@@ -307,12 +334,12 @@ for iter = 1:max_iterations
     % Check convergence
     if norm(delta_D) < tol
         tau_f = f(D,sigma) ;
-        fprintf('The final norm is %.8f\n',norm(delta_D));
+        %fprintf('The final norm is %.8f\n',norm(delta_D));
         return;
     end
 end
 tau_f = f(D,sigma) ;
-fprintf('The final norm of the last iteration is %.8f\n',norm(delta_D));
+%fprintf('The final norm of the last iteration is %.8f\n',norm(delta_D));
 end
 
 %% Power-law friction law and Fracture energy

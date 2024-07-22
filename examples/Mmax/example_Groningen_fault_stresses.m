@@ -71,7 +71,7 @@ for j = 1 : n_faults
     % minimum nucleation pressure on the whole fault, and compute the
     % stresses at that nucleation pressure. for that, we need all time
     % steps. 
-    fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
+%    fault{j,1} = fault{j,1}.reduce_output([1, length(fault{j,1}.pillars{1}.load_case)]);
 
 
     % Save the structure by the fault name
