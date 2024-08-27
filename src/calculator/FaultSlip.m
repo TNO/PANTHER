@@ -162,7 +162,8 @@ classdef FaultSlip
                         nucleation_per_slip_zone(j) = x(1);
                     else
                         if length(x) > 1 && ~strcmp(nuc_crit, 'fixed')
-                            nucleation_per_slip_zone(j) = interp1(l_difference, x, 0);
+                            [~, unique_index] = unique(l_difference);
+                            nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
                         elseif length(x) > 1 && strcmp(nuc_crit, 'fixed')
                             [~, unique_index] = unique(l_difference);
                             nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
