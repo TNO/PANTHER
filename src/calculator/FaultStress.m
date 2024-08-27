@@ -30,6 +30,9 @@ classdef FaultStress
             self.tau = initial.tau0 + change.dtau;
         end
 
+        function self = get_reactivation_nucleation_stress(self, reactivation_load_step, nucleation_load_step)
+            [self.sne_reac, self.tau_reac] = self.get_stress_at_load_step(reactivation_load_step);
+        end
 
         function self = get_nucleation_stress(self, nucleation_load_step)
             % INPUT
