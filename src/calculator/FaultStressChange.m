@@ -123,7 +123,7 @@ classdef FaultStressChange
                     end
                     if length(gamma_PT) == 1
                         gamma = gamma_PT;
-                    elseif length(gamma_P) == length(y)
+                    elseif length(gamma_PT) == length(y)
                         gamma = gamma_PT(j);
                     end
                     [dsn_j, dtau_j] = self.get_stress_change_component(GF{j}, dPT_FW, dPT_HW, gamma);

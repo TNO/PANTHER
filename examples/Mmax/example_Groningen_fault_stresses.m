@@ -2,8 +2,9 @@
 % TODO make into a function which uses a config file
 
 %% prepare input
-proj = matlab.project.rootProject;
-proj_folder = convertStringsToChars(proj.RootFolder);
+% proj = matlab.project.rootProject;
+% proj_folder = convertStringsToChars(proj.RootFolder);
+proj_folder = '/Users/4146751/surfdrive2/PhD/DeepNL_Phys_Mmax/WP1/Code/PhysMmax_new/PANTHER';
 % out_folder = [proj_folder,'/results/test_single_fault_segment/'];
 
 file_name.faults = [proj_folder,'/examples/Mmax/Mmax_files/Bourne_2017_FaultModel_Geometries_DuplicatesRemoved.xlsx'];

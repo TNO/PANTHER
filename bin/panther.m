@@ -78,7 +78,7 @@ function [run_results] = panther(analysis)
     % of seconds. If it is already running (type gcp to check), parfor will initiate much faster
     parfor (i = 1 : n_members, matlab_workers)
         % disp([num2str(i),'/', num2str(n_members)]);
-        L{i} = y./sin(ensemble{i}.dip*pi/180);      
+        L{i} = y./sin(ensemble{i}.dip*pi/180);
 
         % initial stress
         initial_stress{i} = InitialStress(y, ensemble{i});
@@ -128,7 +128,6 @@ function [run_results] = panther(analysis)
     
     reduced_load_table = analysis.load_table(indices_for_saving,:);   
 
-    
 
     for i = 1 : n_members
         % save stresses, pressure, slip
