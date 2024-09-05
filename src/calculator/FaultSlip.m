@@ -104,7 +104,7 @@ classdef FaultSlip
             % length(time). 
             slip_zone_indices = self.get_slip_zone_indices(slipping);
             slip_zone_length = nan(size(slip_zone_indices));        % along-fault length of slip zones
-            nucleation_length = nan(size(slip_zone_indices));       % nucleation length, per slip zone 
+            nucleation_length = nan(size(slip_zone_indices));       % nucleation length, per slip zone
             % iterate over time steps
             for i = 1 : size(slip_zone_indices,2)
                 % iterate over number of slip zones
@@ -121,6 +121,7 @@ classdef FaultSlip
                         slip_zone_length(j,i) = L_start - L_end;
                         sne_slip = (sne(slip_zone_indices{j,i}, i));
                         tau_slip = (tau(slip_zone_indices{j,i}, i));
+                        
                         if length(f_s) == size(tau,1)
                             % add ,i here if friction changes per timestep
                             f_s_slip = f_s(slip_zone_indices{j,i}) ;
@@ -137,9 +138,15 @@ classdef FaultSlip
                         else
                             d_c_slip = d_c;
                         end
+                        if length(mu_II) == size(tau,1)
+                            mu_II_slip = mean(mu_II(slip_zone_indices{j,i}));
+                        else
+                            mu_II_slip = mu_II;
+                        end
                         delta_tau = mean(sne_slip .* (f_s_slip - f_d_slip));
                         tau_0_d = mean(tau_slip - sne_slip .* f_d_slip);
-                        nucleation_length(j,i) = self.calculate_nucleation_length( delta_tau, tau_0_d, d_c_slip, mu_II, nuc_crit, nuc_len_fixed);
+
+                        nucleation_length(j,i) = self.calculate_nucleation_length(delta_tau, tau_0_d, d_c_slip, mu_II_slip, nuc_crit, nuc_len_fixed);
                         %nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * average_sne_in_slip_zone);
                     end
                 end
@@ -217,8 +224,9 @@ classdef FaultSlip
             % mu_II     mode II shear stiffness
             nx = length(L);
             Kline = -nx/(2*pi*(L(1)-L(end))) ./ ( [0:nx-1]'.^2-0.25 );
-            Ko = toeplitz(Kline);                   
-            K = mu_II*Ko;
+            Ko = toeplitz(Kline);
+            % K = mu_II.*Ko;
+            K = Ko*mu_II;
             K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
         end
 

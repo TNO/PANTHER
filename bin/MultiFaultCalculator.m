@@ -124,36 +124,60 @@ classdef MultiFaultCalculator
         end
         
         function self = set_run_setting(self, setting_name, setting_value)
-            % specify run settings per pillar. (exc load table, y, input)
+            % Specify run settings per pillar.
             % INPUT
-            % setting name
-            % setting value     cell array, or array of floats or single
-            % cell/single float
+            % setting_name   - Name of the setting to be applied
+            % setting_value  - Cell array, array of floats, single cell, single float, or string
+        
             [is_valid, value_type] = self.is_valid_setting_name(setting_name);
+            
             if is_valid
+                valid_value = 1; % Initialize as valid
+                
                 for i = 1 : length(self.pillars)
-                    valid_value = 1;
-                    if iscell(setting_value) && (length(setting_value) == length(self.pillars))
-                        assign_value = setting_value{i};
-                    elseif iscell(setting_value) && (length(setting_value) == 1)
-                        assign_value = setting_value{1};
-                    elseif isfloat(setting_value) && (length(setting_value) == 1)
-                        assign_value = setting_value(1);    
-                    elseif isfloat(setting_value) && (length(setting_value) == self.n_pillars)
-                        assign_value = setting_value(i);  
+                    if iscell(setting_value)
+                        % Case 1: Cell array with the same length as pillars
+                        if length(setting_value) == length(self.pillars)
+                            assign_value = setting_value{i};
+                        % Case 2: Single cell element (could be string, char array, or numeric)
+                        elseif length(setting_value) == 1
+                            assign_value = setting_value{1};
+                        else
+                            valid_value = 0; % Invalid case: cell array with incorrect length
+                        end
+                    
+                    elseif isnumeric(setting_value)
+                        % Case 3: Single numeric value
+                        if length(setting_value) == 1
+                            assign_value = setting_value(1);
+                        % Case 4: Numeric array with the same length as pillars
+                        elseif length(setting_value) == self.n_pillars
+                            assign_value = setting_value(i);
+                        else
+                            valid_value = 0; % Invalid case: numeric array with incorrect length
+                        end
+                    
+                    elseif ischar(setting_value) || isstring(setting_value)
+                        % Case 5: String or character array
+                        assign_value = setting_value;
+                        
                     else
-                        valid_value = 0;
+                        valid_value = 0; % Invalid case: unsupported type
                     end
-                    if valid_value & strcmp(value_type,class(assign_value))
+                    
+                    % Assign value if valid and type matches the expected type
+                    if valid_value && strcmp(value_type, class(assign_value))
                         self.pillars{i}.(setting_name) = assign_value;
                     end
                 end
-                if ~valid_value || ~strcmp(value_type,class(assign_value))
+                
+                % Display a message if the value was not valid or the type didn't match
+                if ~valid_value || ~strcmp(value_type, class(assign_value))
                     disp('Specified setting type does not seem the right type or dimension, check');
                 end
             end
-
         end
+
 
 
         function [nuc_load_step] = get_minimum_nucleation_load_step(self)
