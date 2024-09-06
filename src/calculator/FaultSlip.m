@@ -225,9 +225,9 @@ classdef FaultSlip
             nx = length(L);
             Kline = -nx/(2*pi*(L(1)-L(end))) ./ ( [0:nx-1]'.^2-0.25 );
             Ko = toeplitz(Kline);
-            % K = mu_II.*Ko;
-            K = Ko*mu_II;
-            K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to 
+            % K = Ko*mu_II;     % if stiffness not depth dependent
+            K = Ko .* mu_II';   % take depth dependent stiffness into account
+            K(and(K<0,K>(min(min(K)/10000)))) = 0;    % set very small changes to 0 to avoid continued interactions of the two peaks to
         end
 
 
