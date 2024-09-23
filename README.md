@@ -13,10 +13,12 @@ Model framework for stress changes and fault reactivation due to reservoir press
 - parallel computing
 
 How to run?
-- clone the repo git@github.com:TNO/PANTHER.git
+- with Git CMD, browse to the folder in which you want to place the repository
+- clone the rep: `git clone git@github.com:TNO/PANTHER.git`
 - open the Panther.prj file in Matlab
 - run panther.m or check out the various example files
 
 Requires:
 - Matlab
 - Parallel Processing Toolbox (optional)
+- Git
