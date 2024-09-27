@@ -14,7 +14,7 @@ Model framework for stress changes and fault reactivation due to reservoir press
 
 How to run?
 - with Git CMD, browse to the folder in which you want to place the repository
-- clone the rep: `git clone git@github.com:TNO/PANTHER.git`
+- clone the rep: `git clone https://github.com/TNO/PANTHER.git`
 - open the Panther.prj file in Matlab
 - run panther.m or check out the various example files
 
