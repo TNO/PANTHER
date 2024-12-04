@@ -118,6 +118,10 @@ function [run_results] = panther(analysis)
         [cff_max{i,1}, cff_ymid{i,1}] = stress{i}.get_cff_rates(ensemble{i}.f_s, ensemble{i}.cohesion, ...
             load_table.time_steps, [1: length(load_table.time_steps)]);
 
+        i_ymid = ceil(size(stress{i}.sne,1)/2);
+        ini_sne{i} = stress{i}.sne(i_ymid, 1);
+        ini_tau{i} = stress{i}.tau(i_ymid, 1);
+
         % reduce output
         pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
         stress{i} = stress{i}.reduce_steps(indices_for_saving);
@@ -144,5 +148,7 @@ function [run_results] = panther(analysis)
     run_results = run_results.make_result_summary(analysis);
     run_results.summary.cff_max = cell2mat(cff_max);
     run_results.summary.cff_ymid = cell2mat(cff_ymid);
+    run_results.summary.ini_sne = cell2mat(ini_sne);
+    run_results.summary.ini_tau = cell2mat(ini_tau);
 
 end
