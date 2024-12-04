@@ -28,6 +28,7 @@ function [run_results] = panther(analysis)
     load_table = analysis.load_table;
     load_case = analysis.load_case;
     p_fault = analysis.p_fault;
+    dp_fault = analysis.dp_fault;
     p_res_mode = analysis.p_res_mode;
     diffusion_P = analysis.diffusion_P;
     diffusion_T = analysis.diffusion_T;
@@ -84,7 +85,7 @@ function [run_results] = panther(analysis)
         initial_stress{i} = InitialStress(y, ensemble{i});
         
         % pressure and temperature changes
-        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, p_res_mode);
+        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, dp_fault, p_res_mode);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes
@@ -118,6 +119,10 @@ function [run_results] = panther(analysis)
         [cff_max{i,1}, cff_ymid{i,1}] = stress{i}.get_cff_rates(ensemble{i}.f_s, ensemble{i}.cohesion, ...
             load_table.time_steps, [1: length(load_table.time_steps)]);
 
+        i_ymid = ceil(size(stress{i}.sne,1)/2);
+        ini_sne{i, 1} = stress{i}.sne(i_ymid, 1);
+        ini_tau{i, 1} = stress{i}.tau(i_ymid, 1);
+
         % reduce output
         pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
         stress{i} = stress{i}.reduce_steps(indices_for_saving);
@@ -144,5 +149,7 @@ function [run_results] = panther(analysis)
     run_results = run_results.make_result_summary(analysis);
     run_results.summary.cff_max = cell2mat(cff_max);
     run_results.summary.cff_ymid = cell2mat(cff_ymid);
+    run_results.summary.ini_sne = cell2mat(ini_sne);
+    run_results.summary.ini_tau = cell2mat(ini_tau);
 
 end

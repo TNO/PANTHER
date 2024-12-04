@@ -24,7 +24,7 @@ classdef TestPressure < matlab.unittest.TestCase
             % case t < h, p_res_mode = 'same', p_fault = 'min', diffusion=0
             p = PantherPressure(tc.ensemble{1}, tc.y,...
                 tc.load_table, tc.load_case, tc.diffusion_P,...
-                tc.p_fault, tc.p_res_mode);
+                tc.p_fault, tc.dp_fault, tc.p_res_mode);
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), -1);
@@ -32,11 +32,11 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0);
             
             % set dp fault to max(dp_Hw, dp_FW)
-            tc.p_fault = 'max';
+            tc.dp_fault = 'max';
             tc.generate_ensemble;
             p = PantherPressure(tc.ensemble{1}, tc.y,...
                 tc.load_table, tc.load_case, tc.diffusion_P,...
-                tc.p_fault, tc.p_res_mode);
+                tc.p_fault, tc.dp_fault, tc.p_res_mode);
           
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0);
@@ -45,20 +45,19 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0);
             
             % single side scenario
-            tc.p_fault = 'min';
+            tc.dp_fault = 'min';
             tc.input_parameters.width_FW.value = 0;
             tc.input_parameters.width_HW.value = inf;
             tc.generate_ensemble;
             p = PantherPressure(tc.ensemble{1}, tc.y,...
                 tc.load_table, tc.load_case, tc.diffusion_P,...
-                tc.p_fault, tc.p_res_mode);
+                tc.p_fault, tc.dp_fault, tc.p_res_mode);
             
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), 0);
             testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0);
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0);
-            
 
             % single side scenario
             tc.p_fault = 'min';
@@ -67,7 +66,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.generate_ensemble;
             p = PantherPressure(tc.ensemble{1}, tc.y,...
                 tc.load_table, tc.load_case, tc.diffusion_P,...
-                tc.p_fault, tc.p_res_mode);
+                tc.p_fault, tc.dp_fault, tc.p_res_mode);
             
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0);
@@ -77,6 +76,29 @@ classdef TestPressure < matlab.unittest.TestCase
             
             plot(p.dp_HW,tc.y, p.dp_FW, tc.y)
 
+        end
+
+        function test_pressure_diffusion(testCase)
+            % default case
+            tc = PantherInput;
+            tc.load_table = tc.load_table(1:2,:);
+            tc.load_table.time_steps(2) = 10;
+            tc.load_table.P_steps(2) = -10;
+            tc.diffusion_P = 1;
+            tc.input_parameters.p_over.value = 2;
+            tc.dp_fault = 'max_abs';
+            tc.generate_ensemble();
+            
+            % case t < h, p_res_mode = 'same', p_fault = 'min', diffusion =
+            % 1, p_over = 2 MPa
+            p = PantherPressure(tc.ensemble{1}, tc.y,...
+                tc.load_table, tc.load_case, tc.diffusion_P,...
+                tc.p_fault, tc.dp_fault, tc.p_res_mode);
+
+            y_eval = -150;
+            p_at_eval = interp1(tc.y, p.p(:,end), y_eval);
+
+            testCase.verifyEqual(p_at_eval, 31.0805, "RelTol", 0.05);
         end
         
 

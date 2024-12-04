@@ -14,7 +14,7 @@ classdef PantherPressure
     end
 
     methods
-        function self = PantherPressure(member, y, loads, load_case, diffusion, p_fault_mode, p_res_mode)
+        function self = PantherPressure(member, y, loads, load_case, diffusion, p_fault_mode, dp_fault_mode, p_res_mode)
             ini = InitialPressure(member, y, p_fault_mode, p_res_mode);                    % instance containing initial pressure
             self.p0 = ini.p0;                           % initial fault pressure
             p_steps = loads.P_steps;
@@ -34,15 +34,28 @@ classdef PantherPressure
                 self.dp_FW = dp_unit_FW * p_steps' .* loads.P_factor_FW';    % (dp, time) array of pressures in the footwall
                 self.dp_HW = dp_unit_HW * p_steps' .* loads.P_factor_HW';    % (dp, time) array of pressures in the hanging wall
                 
+                p_FW_nodiffusion = self.dp_FW + ini.p0_FW;
+                p_HW_nodiffusion = self.dp_HW + ini.p0_HW;
+
                 % compute pressure diffusion to the seal and base
                 if diffusion
+                    % compute diffusion. employs difference in pressure
+                    % between top and base FW and seal and base
                     y_top = member.top_FW_y;
                     y_base = member.base_FW_y;
-                    self.dp_FW = calc_dp_diffusion(y, y_top, y_base, time_steps, self.dp_FW, member.hyd_diffusivity);
+                    p_FW_diffusion = calc_dp_diffusion(y, y_top, y_base, time_steps, p_FW_nodiffusion, member.hyd_diffusivity);
+                    self.dp_FW =  p_FW_diffusion - ini.p0;
+                    
+                    % compute diffusion. employs difference in pressure
+                    % between top and base HW and seal and base
                     y_top = member.top_HW_y;
                     y_base = member.base_HW_y;
-                    self.dp_HW = calc_dp_diffusion(y, y_top, y_base, time_steps, self.dp_HW, member.hyd_diffusivity);
+                    p_HW_diffusion = calc_dp_diffusion(y, y_top, y_base, time_steps, p_HW_nodiffusion, member.hyd_diffusivity);
+                    self.dp_HW =  p_HW_diffusion - ini.p0_HW;
                 end
+
+                self.dp_fault = zeros(size(self.dp_FW));
+
             else
                 self.dp_HW = zeros(length(y), length(time_steps));
                 self.dp_fault = zeros(length(y), length(time_steps));
@@ -50,19 +63,35 @@ classdef PantherPressure
             end
 
             % set the fault depletion pressure w.r.t. HW and FW pressure
-            if strcmp(p_fault_mode, 'max')
+            if strcmp(dp_fault_mode, 'max')
                 self.dp_fault = max(self.dp_FW, self.dp_HW);
-            elseif strcmp(p_fault_mode, 'min')
+            elseif strcmp(dp_fault_mode, 'max_abs')
+                for i = 1 : size(self.dp_FW,2)
+                    [~, ind] = max([abs(self.dp_FW(:,i)), abs(self.dp_HW(:,i))],[],2);
+                    self.dp_fault(ind == 1, i) = self.dp_FW(ind == 1, i);
+                    self.dp_fault(ind == 2, i) = self.dp_HW(ind == 2, i);
+                end
+            elseif strcmp(dp_fault_mode, 'min')
                 self.dp_fault = min(self.dp_FW, self.dp_HW);
-            elseif strcmp(p_fault_mode, 'mean')
+            elseif strcmp(dp_fault_mode, 'min_abs')
+                for i = 1 : size(self.dp_FW,2)
+                    [~, ind] = min([abs(self.dp_FW(:,i)), abs(self.dp_HW(:,i))],[],2);
+                    self.dp_fault(ind == 1, i) = self.dp_FW(ind == 1, i);
+                    self.dp_fault(ind == 2, i) = self.dp_HW(ind == 2, i);
+                end
+            elseif strcmp(dp_fault_mode, 'mean')
                 self.dp_fault = mean([self.dp_FW, self.dp_HW],2);
-            elseif strcmp(p_fault_mode, 'FW')
+            elseif strcmp(dp_fault_mode, 'FW')
                 self.dp_fault = self.dp_FW;
-            elseif strcmp(p_fault_mode, 'HW')
+            elseif strcmp(dp_fault_mode, 'HW')
                 self.dp_fault = self.dp_HW;
             end
             
             self.dp_fault = member.p_factor_fault * self.dp_fault;
+            
+            % h1 = figure(1); clf(h1);
+            % plot(self.dp_fault(:,:), y, self.p(:,:), y);
+
         end
 
         function self = reduce_steps(self, steps)
@@ -85,6 +114,19 @@ classdef PantherPressure
 
        function p = get.p(self)
             p = self.p0 + self.dp_fault;
+       end
+
+        function plot(self)
+            
+            subplot(1,2,1)
+            plot(self.p(:,1));
+            hold on
+            plot(self.p(:,end));
+            subplot(1,2,2)
+            plot(self.dp_fault(:,end));
+            hold on
+            plot(self.dp_HW(:,end));
+            plot(self.dp_FW(:,end));          
         end
 
 
