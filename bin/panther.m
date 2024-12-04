@@ -120,8 +120,8 @@ function [run_results] = panther(analysis)
             load_table.time_steps, [1: length(load_table.time_steps)]);
 
         i_ymid = ceil(size(stress{i}.sne,1)/2);
-        ini_sne{i} = stress{i}.sne(i_ymid, 1);
-        ini_tau{i} = stress{i}.tau(i_ymid, 1);
+        ini_sne{i, 1} = stress{i}.sne(i_ymid, 1);
+        ini_tau{i, 1} = stress{i}.tau(i_ymid, 1);
 
         % reduce output
         pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
