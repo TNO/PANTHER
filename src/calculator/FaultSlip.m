@@ -9,6 +9,7 @@ classdef FaultSlip
         reactivation_load_step double   % load index at which fault has been reactivated
         nucleation logical          % indicator whether nucleation has occurred on the fault
         nucleation_load_step double     % load index at which nucleation occurs
+        critical_nucleation_length double % min nucleation length accross slip pathes at nuc load step
     end
 
     properties (Dependent)
@@ -22,6 +23,7 @@ classdef FaultSlip
             self.reactivation_load_step = nan(1,1);
             self.nucleation = 0;
             self.nucleation_load_step = nan(1,1);
+            self.critical_nucleation_length = nan(1,1);
         end
 
         function [self, tau_slip] = calculate_fault_slip(self, L, sne, tau, tau_f, mu_II)
