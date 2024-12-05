@@ -9,6 +9,7 @@ classdef FaultSlip
         reactivation_load_step double   % load index at which fault has been reactivated
         nucleation logical          % indicator whether nucleation has occurred on the fault
         nucleation_load_step double     % load index at which nucleation occurs
+        critical_nucleation_length double % min nucleation length accross slip pathes at nuc load step
     end
 
     properties (Dependent)
@@ -22,6 +23,7 @@ classdef FaultSlip
             self.reactivation_load_step = nan(1,1);
             self.nucleation = 0;
             self.nucleation_load_step = nan(1,1);
+            self.critical_nucleation_length = nan(1,1);
         end
 
         function [self, tau_slip] = calculate_fault_slip(self, L, sne, tau, tau_f, mu_II)
@@ -140,7 +142,7 @@ classdef FaultSlip
                         delta_tau = mean(sne_slip .* (f_s_slip - f_d_slip));
                         tau_0_d = mean(tau_slip - sne_slip .* f_d_slip);
 
-                        nucleation_length(j,i) = self.calculate_nucleation_length(delta_tau, tau_0_d, d_c_slip, mu_II_slip, nuc_crit, nuc_len_fixed);
+                        nucleation_length(j,i) = (self.calculate_nucleation_length(delta_tau, tau_0_d, d_c_slip, mu_II_slip, nuc_crit, nuc_len_fixed));
                         %nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * average_sne_in_slip_zone);
                     end
                 end
@@ -175,6 +177,9 @@ classdef FaultSlip
             self.nucleation_load_step = min(nucleation_per_slip_zone);
             if ~isnan(self.nucleation_load_step)
                 self.nucleation = 1;
+                % store smallest critical nucleation length accross
+                % slipping pathes at nucleation load step
+                self.critical_nucleation_length = min(nucleation_length(:,floor(self.nucleation_load_step)));
             end
             self.slip_length = slip_zone_length;
         end

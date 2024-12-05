@@ -24,6 +24,7 @@ classdef PantherResult
                 self.summary.reactivation_load_step(i) = self.slip{i}.reactivation_load_step;
                 self.summary.nucleation(i) = self.slip{i}.nucleation;
                 self.summary.nucleation_load_step(i) = self.slip{i}.nucleation_load_step;
+                self.summary.nucleation_length(i) = self.slip{i}.critical_nucleation_length;
                 n_steps = linspace(1,length(analysis.load_table.time_steps),length(analysis.load_table.time_steps));
                 if ~isnan(self.slip{i}.reactivation_load_step)
                     if strcmp(analysis.load_case,'P')
