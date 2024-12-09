@@ -116,6 +116,21 @@ classdef PantherPressure
             p = self.p0 + self.dp_fault;
        end
 
+        function [p_at_load_step] = get_p_at_load_step(self, load_step)
+            % obtain the pressure at certain loadstep, where load_step is
+            % between 1 and height of loadtable
+            p_at_load_step = zeros(size(self.p, 1), 1);
+            if load_step < 1 || load_step > size(self.p, 2)
+                disp('Selected load step is outside calculation time range');
+            else
+                for i = 1 : size(self.p, 1)
+                    x_ind = linspace(1, size(self.p, 2), size(self.p, 2));% indices of time, P, or T steps
+                    p_at_load_step(i) = interp1(x_ind, self.p(i, :), load_step);
+                end     
+            end
+        end
+
+
         function plot(self)
             
             subplot(1,2,1)
