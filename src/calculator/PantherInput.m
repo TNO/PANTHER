@@ -1,4 +1,4 @@
-classdef PantherInput < handle
+classdef PantherInput < PantherPressure
     % Initializes input, and sets run and save settings for Panther
     % Consider renaming to ModelSettings or ModelInput for clarity
 
@@ -7,10 +7,10 @@ classdef PantherInput < handle
         dy {mustBePositive} = 2;                    % [m] y-spacing
         y_extent {mustBePositive} = 500;            % [m] extent up and down from depth over which stresses are calculated
         dx double = 0;     % [m] y-spacing
-        p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
-        p_fault {mustBeMember(p_fault,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
-        dp_fault {mustBeMember(dp_fault,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min';     % [-] assumed pressure in fault. max=max(dp_HW, dp_FW), etc. 
-        diffusion_P logical = 0;                    % activate pressure diffusion
+%        p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
+%        p_fault {mustBeMember(p_fault,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
+%        dp_fault {mustBeMember(dp_fault,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min';     % [-] assumed pressure in fault. max=max(dp_HW, dp_FW), etc. 
+%        diffusion_P logical = 0;                    % activate pressure diffusion
         diffusion_T logical = 0;                    % activate pressure diffusion
         stochastic logical = 0;                     % activate stochastic analysis
         n_stochastic {mustBeInteger} = 1;           % number of stochastic runs

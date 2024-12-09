@@ -6,7 +6,7 @@ classdef TestPressure < matlab.unittest.TestCase
     
     methods (Test)
 
-        function test_default_T (testCase)
+        function test_default_P (testCase)
             % default case
             tc = PantherInput;
             tc.load_table = tc.load_table(1:2,:);
@@ -74,7 +74,7 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0);
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0);
             
-            plot(p.dp_HW,tc.y, p.dp_FW, tc.y)
+            % plot(p.dp_HW,tc.y, p.dp_FW, tc.y)
 
         end
 
@@ -91,6 +91,7 @@ classdef TestPressure < matlab.unittest.TestCase
             
             % case t < h, p_res_mode = 'same', p_fault = 'min', diffusion =
             % 1, p_over = 2 MPa
+            p = PantherPressure()
             p = PantherPressure(tc.ensemble{1}, tc.y,...
                 tc.load_table, tc.load_case, tc.diffusion_P,...
                 tc.p_fault, tc.dp_fault, tc.p_res_mode);
