@@ -67,7 +67,6 @@ classdef InitialPressure < PantherPressure
             plot(self.p0_HW);
             hold on
             plot(self.p0_FW);
-            
 
         end
 

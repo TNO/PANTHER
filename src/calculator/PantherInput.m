@@ -1,11 +1,11 @@
-classdef PantherInput 
+classdef PantherInput < FaultMesh
     % Initializes input, and sets run and save settings for Panther
     % Consider renaming to ModelSettings or ModelInput for clarity
 
     properties
         input_parameters                            % object containing input parameter settings
-        dy {mustBePositive} = 2;                    % [m] y-spacing
-        y_extent {mustBePositive} = 500;            % [m] extent up and down from depth over which stresses are calculated
+        % dy {mustBePositive} = 2;                    % [m] y-spacing
+        % y_extent {mustBePositive} = 500;            % [m] extent up and down from depth over which stresses are calculated
         dx double = 0;     % [m] y-spacing
         p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
         p_fault {mustBeMember(p_fault,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
@@ -24,10 +24,10 @@ classdef PantherInput
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;    
     end
-
-    properties (Dependent)
-         y
-    end
+    % 
+    % properties (Dependent)
+    %      y
+    % end
 
     methods
         
@@ -111,10 +111,10 @@ classdef PantherInput
             end
         end
 
-        function a = get.y(self)
-            % y initializes depth y relative to depth_mid
-            a = get_fault_y(self.dy, self.y_extent);
-        end
+        % function a = get.y(self)
+        %     % y initializes depth y relative to depth_mid
+        %     a = get_fault_y(self.dy, self.y_extent);
+        % end
 
         % TODO: add csv writer and reader. include example csv
         % TODO: allow for different thickness HW and FW
