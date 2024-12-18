@@ -1,23 +1,23 @@
 classdef PantherPressure
     
-    % Loes Buijze 13 - 04 - 2023
     
     properties
-        p0
-        dp_fault
+        %dp_fault
         thick
-        throw
-        diffusivity
-        time_steps
+        throw 
+        diffusivity double = 1e-6
+        time_steps (:,1) double
         p_steps_reservoir
         p_fault_mode {mustBeMember(p_fault_mode,{'max','min','mean','FW','HW'})} = 'max';
         dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min'; 
         p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same'
-        diffusion_P logical = true 
+        diffusion_P logical = false 
     end
 
     properties (Dependent)
         p
+        p0
+        dp_fault
     end
 
     methods

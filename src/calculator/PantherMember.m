@@ -1,16 +1,16 @@
-classdef PantherMember 
+classdef PantherMember < ModelGeometry
     % intializes an ensemble member - i.e. a single model realization
     % for properties that can be depth-dependent, the data type can be a
     % singel number or an array of length(y)
 
     properties
-        depth_mid           % [m], negative is down
-        dip                 % [deg] degrees from horizontal
-        dip_azi             % [deg] degrees from north
-        thick               % [m] reservoir thickness
-        throw               % [m] vertical fault offset
-        width_FW            % [m] width footwall compartment
-        width_HW            % [m]width footwall compartment
+        % depth_mid           % [m], negative is down
+        % dip                 % [deg] degrees from horizontal
+        % dip_azi             % [deg] degrees from norththanks 
+        % thick               % [m] reservoir thickness
+        % throw               % [m] vertical fault offset
+        % width_FW            % [m] width footwall compartment
+        % width_HW            % [m]width footwall compartment
         young               % [Pa] Young's modulus
         poisson             % [-] Poisson's ratio    
         biot                % [-] Biot coefficient
@@ -81,49 +81,6 @@ classdef PantherMember
 
         end
 
-        function [top_HW_y] = top_HW_y(self)
-            % top_HW_y returns depth top hanging wall, relative to mid depth
-            % top_HW_y = (self.thick- self.throw)/2;
-            top_HW_y = get_top_y(self.thick, self.throw, 'HW');
-        end
-
-        function [top_FW_y] = top_FW_y(self)
-            % top_FW_y returns depth top footwall, relative to mid depth
-            % top_FW_y = (self.thick + self.throw)/2;
-            top_FW_y = get_top_y(self.thick, self.throw, 'FW');
-        end
-
-        function [base_FW_y] = base_FW_y(self)
-            % base_FW_y returns depth base footwall, relative to mid depth
-            % base_FW_y = -(self.thick - self.throw)/2;
-            base_FW_y = get_base_y(self.thick, self.throw, 'FW');
-        end
-
-        function [base_HW_y] = base_HW_y(self)
-            % base_HW_y returns depth base hangingwall, relative to mid depth
-             base_HW_y = get_base_y(self.thick, self.throw, 'HW');
-        end
-
-        function [top_HW_i] = top_HW_i(self, y)
-            % top_HW_y returns index of first element in top hanging wall 
-            top_HW_i = find(y <= self.top_HW_y, 1, 'first');
-        end
-
-        function [base_HW_i] = base_HW_i(self, y)
-            % top_FW_i index base footwall 
-            base_HW_i = find(y >= self.base_HW_y, 1, 'last');
-        end
-
-        function [top_FW_i] = top_FW_i(self, y)
-            % top_HW_y returns index of first element in top hanging wall 
-            top_FW_i = find(y <= self.top_FW_y, 1, 'first');
-        end
-
-        function [base_FW_i] = base_FW_i(self, y)
-            % top_FW_i index base footwall 
-            base_FW_i = find(y >= self.base_FW_y, 1, 'last');
-        end        
-       
         function [gamma_P] = get_gamma_P(self)
             % get_gamma_P returns the poro-elastic stress path parameter
             gamma_P = (1 - 2*self.poisson).*self.biot./(1 - self.poisson);
