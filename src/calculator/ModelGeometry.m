@@ -18,24 +18,24 @@ classdef ModelGeometry
         function [top_HW_y] = top_HW_y(self)
             % top_HW_y returns depth top hanging wall, relative to mid depth
             % top_HW_y = (self.thick- self.throw)/2;
-            top_HW_y = get_top_y(self.thick, self.throw, 'HW');
+            top_HW_y = self.get_top_y('HW');
         end
 
         function [top_FW_y] = top_FW_y(self)
             % top_FW_y returns depth top footwall, relative to mid depth
             % top_FW_y = (self.thick + self.throw)/2;
-            top_FW_y = get_top_y(self.thick, self.throw, 'FW');
+            top_FW_y = self.get_top_y('FW');
         end
  
         function [base_HW_y] = base_HW_y(self)
             % base_HW_y returns depth base hangingwall, relative to mid depth
-             base_HW_y = get_base_y(self.thick, self.throw, 'HW');
+             base_HW_y = self.get_base_y('HW');
         end
 
         function [base_FW_y] = base_FW_y(self)
             % base_FW_y returns depth base footwall, relative to mid depth
             % base_FW_y = -(self.thick - self.throw)/2;
-            base_FW_y = get_base_y(self.thick, self.throw, 'FW');
+            base_FW_y = self.get_base_y('FW');
         end
 
 
