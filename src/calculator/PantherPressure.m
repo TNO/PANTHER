@@ -1,108 +1,129 @@
-classdef PantherPressure < ModelGeometry
+classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
     
     
     properties
-        %dp_fault
         hyd_diffusivity double = 2e-6
-        time_steps (:,1) double
-        P_steps (:,1)
-        P_factor_HW (:,1) 
-        P_factor_FW (:,1) 
+        time_steps (:,1) double = [0,1]     % [year] time steps 
+        P_steps (:,1) = [0,-1]              % [MPa] pressure change
+        P_factor_HW (:,1) = [1,1]
+        P_factor_FW (:,1) = [1,1]
+        P_factor_fault (:,1) = [1,1]
         p_fault_mode {mustBeMember(p_fault_mode,{'max','min','mean','FW','HW'})} = 'max';
-        dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'mean'; 
+        dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min'; 
         p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same'
-        diffusion_P logical = false 
+        diffusion_P logical = false
+        p_grad (:,1) double {mustBePositive} = 10.2
+        p_grad_res (:,1) double {mustBePositive} = 10.2
+        p_offset (:,1) double  = 0
+        p_over (:,1) double  = 0
     end
 
     properties (Dependent)
-        p
         p0
+        p
         dp_fault
     end
 
     methods
-        function self = PantherPressure(y, input_params, load_table, pressure_settings)
-            if nargin == 0
-                error('etner depth array');
-            elseif nargin >= 2
+        function self = PantherPressure(input_params, load_table, pressure_settings)
+            if nargin >= 1
                 self = self.update_properties(input_params);
             end
-            if nargin >= 3
+            if nargin >= 2
                 self = self.update_properties(load_table);
             end
-            if nargin >= 4
-                self = self.update_properties(load_table);
+            if nargin >= 3
+                self = self.update_properties(pressure_settings);
+            end
+        end  
+
+       
+        function p0 = get_initial_pressure(self)
+            [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
+            yy = self.y + self.depth_mid;    
+            p0 = zeros(size(yy));                               % intialize fault pressure
+            p0 = -(yy/1000).*self.p_grad + self.p_offset;   % [MPa] hydrostatic pressure
+            p0_FW = p0; p0_HW = p0;                             % initialize FW and HW pressure with hydrostatic
+            top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
+            top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
+            top_res_i = min(top_HW_i, top_FW_i);                % top most depth of reservoir interval
+            base_FW_i = self.base_FW_i(self.y); 
+            base_HW_i = self.base_HW_i(self.y);
+            % set overpressure w.r.t. hydrostatic gradient, in reservoir
+            % and base
+            p0_HW(top_HW_i:end) = p0_HW(top_HW_i:end) + self.p_over;  
+            p0_FW(top_FW_i:end) = p0_FW(top_FW_i:end) + self.p_over;  
+            % set reservoir pressure gradient within the reservoir compartments
+            if strcmp(self.p_res_mode, 'same')
+                base_res_i = max(base_FW_i, base_HW_i );
+                p0_FW(top_FW_i:base_res_i) = p0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
+                p0_HW(top_HW_i:base_res_i) = p0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
+            else
+                p0_FW(next_to_FW) = p0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*self.p_grad_res/1000;
+                p0_HW(next_to_HW) = p0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*self.p_grad_res/1000; 
+            end
+            % set initial fault pressure
+            if strcmp(self.p_fault_mode, 'max')
+                p0 = max(p0_HW, p0_FW);
+            elseif strcmp(self.p_fault_mode, 'min')
+                p0 = min(p0_HW, p0_FW);
+            elseif strcmp(self.p_fault_mode, 'mean')
+                p0 = mean([p0_HW, p0_FW],2);
+            elseif strcmp(self.p_fault_mode, 'FW')
+                p0 = p0_FW;
+            elseif strcmp(self.p_fault_mode, 'HW')
+                p0 = p0_HW;
             end
         end
-                
-        % 
-        %     y = varargin{1};
-        %     input_params = varargin{2};
-        %         self = self.update_properties(pressure_settings);
-        % 
-        %     % function self = PantherPressure(y, member, loads, load_case, diffusion, p_fault_mode, dp_fault_mode, p_res_mode)
-        % % function self = PantherPressure(y, thick, throw, diffusivity, load_table, load_case, diffusion, p_fault_mode, dp_fault_mode, p_res_mode)
-        %     self = self.updatePropertiesFromClass(input_params)
-        %     input_params = struct();
-        %     input_params.thick = thick; 
-        %     input_params.throw = throw;
-        %     self.thick = thick;
-        %     self.throw = throw;
-        %     self.diffusivity = diffusivity;
-        %     self.time_steps = load_table.time_steps;
-        %     self.p_steps_reservoir = load_table.P_steps;
-        % 
-        %     ini = InitialPressure(input_params, y, p_fault_mode, p_res_mode);                    % instance containing initial pressure
-        %     self.p0 = ini.p0;                           % initial fault pressure
-        %     self.p_steps_reservoir = loads.P_steps;
-        %     time_steps = loads.time_steps;
-        %     if contains(load_case, 'P')
-        %         % if reservoir compartment on either side has 0 width, set
-        %         % pressures in that compartment to 0. 
-        %         if input_params.width_FW == 0
-        %             dp_FW = zeros(length(y), length(time_steps));       % set dP in FW compartment to 0
-        %         else
-        %             p_side = 'FW';
-        %             dp_FW = self.get_pressure_change_on_side(y, input_params, ini.p0_FW, p_steps', loads.P_factor_FW', time_steps, diffusion, p_side);
-        %         end
-        %         if input_params.width_HW == 0
-        %             dp_HW = zeros(length(y), length(time_steps));       % set dP in HW compartment to 0
-        %         else
-        %             p_side = 'HW';
-        %             dp_HW = self.get_pressure_change_on_side(y, input_params, ini.p0_HW, p_steps', loads.P_factor_HW', time_steps, diffusion, p_side);
-        %         end
-        %         self.dp_fault = zeros(size(dp_FW));
-        %     else
-        %         self.dp_fault = zeros(length(y), length(time_steps));
-        %     end
-        % 
-        %     % set the fault depletion pressure w.r.t. HW and FW pressure
-        %     if strcmp(dp_fault_mode, 'max')
-        %         self.dp_fault = max(dp_FW, dp_HW);
-        %     elseif strcmp(dp_fault_mode, 'max_abs')
-        %         for i = 1 : size(dp_FW,2)
-        %             [~, ind] = max([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
-        %             self.dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
-        %             self.dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
-        %         end
-        %     elseif strcmp(dp_fault_mode, 'min')
-        %         self.dp_fault = min(dp_FW, dp_HW);
-        %     elseif strcmp(dp_fault_mode, 'min_abs')
-        %         for i = 1 : size(dp_FW,2)
-        %             [~, ind] = min([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
-        %             self.dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
-        %             self.dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
-        %         end
-        %     elseif strcmp(dp_fault_mode, 'mean')
-        %         self.dp_fault = mean([dp_FW, dp_HW],2);
-        %     elseif strcmp(dp_fault_mode, 'FW')
-        %         self.dp_fault = dp_FW;
-        %     elseif strcmp(dp_fault_mode, 'HW')
-        %         self.dp_fault = dp_HW;
-        %     end
-        % 
-        %     self.dp_fault = input_params.p_factor_fault * self.dp_fault;
-        % end
+
+        function dp_fault = get_dp_fault(self) 
+
+            dp_fault = zeros(length(self.y), length(self.time_steps));
+            % if reservoir compartment on either side has 0 width, set
+            % pressures in that compartment to 0. 
+            if self.width_FW == 0
+                dp_FW = zeros(length(self.y), length(self.time_steps));       % set dP in FW compartment to 0
+            else
+                % dp_FW = self.get_pressure_change_on_side(self.y, input_params, ini.p0_FW, p_steps', loads.P_factor_FW', time_steps, diffusion, p_side);
+                dp_FW = self.get_pressure_change_on_side(self.P_factor_FW,'FW');
+            end
+            if self.width_HW == 0
+                dp_HW = zeros(length(self.y), length(self.time_steps));       % set dP in HW compartment to 0
+            else
+                dp_HW = self.get_pressure_change_on_side(self.P_factor_HW,'HW');
+            end
+        
+
+            % set the fault depletion pressure w.r.t. HW and FW pressure
+            if strcmp(self.dp_fault_mode, 'max')
+                dp_fault = max(dp_FW, dp_HW);
+            elseif strcmp(self.dp_fault_mode, 'max_abs')
+                for i = 1 : size(dp_FW,2)
+                    [~, ind] = max([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
+                    dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
+                    dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
+                end
+            elseif strcmp(self.dp_fault_mode, 'min')
+                dp_fault = min(dp_FW, dp_HW);
+            elseif strcmp(self.dp_fault_mode, 'min_abs')
+                for i = 1 : size(dp_FW,2)
+                    [~, ind] = min([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
+                    dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
+                    dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
+                end
+            elseif strcmp(self.dp_fault_mode, 'mean')
+                for i = 1 : length(self.time_steps)
+                    dp_fault(:,i) = mean([dp_FW(:,i), dp_HW(:,i)],2);
+                end
+            elseif strcmp(self.dp_fault_mode, 'FW')
+                dp_fault = dp_FW;
+            elseif strcmp(self.dp_fault_mode, 'HW')
+                dp_fault = dp_HW;
+            end
+            dp_fault = self.P_factor_fault' .* dp_fault;
+        end
+
+        
 
         function [self] = update_properties(self, input)
             if istable(input)
@@ -112,40 +133,66 @@ classdef PantherPressure < ModelGeometry
             end
         end
 
-        function [dp_on_side] = get_pressure_change_on_side(self, y, params, p0, p_steps, p_factor, time_steps, diffusion, p_side)
-            p_on_side = self.get_pressure_on_side(y, params, p0, p_steps, p_factor, time_steps, diffusion, p_side);
-            dp_on_side = p_on_side - p0;
+       
+        function  [dp_on_side] = get_pressure_change_on_side(self, p_factor, p_side)
+            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            p_on_side = self.get_pressure_on_side(p_factor, p_side);
+            dp_on_side = p_on_side - self.p0;
         end
 
-        function [p_on_side] = get_pressure_on_side(~, y, params, p0, p_steps, p_factor, time_steps, diffusion, p_side)
-            thick = params.thick;
-            throw = params.throw;
+        %function [p_on_side] = get_pressure_on_side(~, y, params, p0, p_steps, p_factor, time_steps, diffusion, p_side)
+        function [p_on_side] = get_pressure_on_side(self, p_factor, p_side)
+            % get_pressure_on_side Method to calculate pressure on a given side (FW or HW).
+            %
+            % This method calculates the pressure in a given reservoir compartment (FW or HW) based on
+            % the input pressure factor for that compartment and side indicator. It also accounts for diffusion
+            % if specified.
+            %
+            % Parameters:
+            %   p_factor - Pressure factor for the side.
+            %   p_side - Side indicator ('FW' or 'HW').
+            %
+            % Returns:
+            %   p_on_side - Calculated pressure on the specified side.
+
+            % Validate side indicator
             if strcmp(p_side, 'FW')
-                [next_to_p_side, ~, ~] = is_adjacent_to_reservoir(y, thick, throw);
-                % y_base = -(thick - throw)/2;
-                % y_top = (thick + throw)/2;
+                [next_to_p_side, ~, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
             elseif strcmp(p_side, 'HW')
-                [~, next_to_p_side, ~] = is_adjacent_to_reservoir(y, thick, throw);
-               %y_base = -(thick + throw)/2;
-               % y_top = (thick - throw)/2; 
+                [~, next_to_p_side, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
             else
                 error('Incorrect side indicator entered, should be FW or HW');
             end
-            dp_unit = double(next_to_p_side);       % unit dp in FW compartment 
+
+            % Get top and base y-coordinates for the reservoir compartment
+            y_top = self.get_top_y(p_side);
+            y_base = self.get_base_y(p_side);
+
+            % Ensure dp_unit is a column vector
+            dp_unit = double(next_to_p_side);       
              if ~iscolumn(dp_unit)
                  dp_unit = dp_unit';
              end
-             if ~isrow(p_steps)
-                 p_steps = p_steps';
-             end
-             if ~isrow(p_factor)
-                 p_factor = p_factor';
-             end
-             % dp_on_side = zeros(length(y), length(p_steps));
-             dp_on_side = dp_unit * p_steps .* p_factor;    % (dp, time) array of pressures in the footwall
-             p_on_side = dp_on_side + p0;
-             if diffusion
-                p_on_side = calc_dp_diffusion(y, y_top, y_base, time_steps, p_on_side, params.hyd_diffusivity);
+
+            % Ensure P_steps and p_factor are row vectors
+            self.P_steps = self.P_steps(:)';
+            p_factor = p_factor(:)';
+             %if ~isrow(self.P_steps)
+             %    self.P_steps = self.P_steps';
+             %end
+             %
+             %if ~isrow(p_factor)
+             %    p_factor = p_factor';
+             %end 
+             dp_unit = repmat(dp_unit, 1, length(self.time_steps));
+             dp_on_side = dp_unit * self.P_steps .* p_factor;
+             %dp_on_side = zeros(length(self.y), length(self.time_steps));
+             %for i = 1 : length(self.time_steps)
+             %   dp_on_side(:,i) = dp_unit * self.P_steps(i) .* p_factor(i);    % (dp, time) array of pressures in the footwall
+             %end
+             p_on_side = dp_on_side + self.p0;
+             if self.diffusion_P
+                p_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, p_on_side, self.hyd_diffusivity);
              end
         end
 
@@ -167,8 +214,12 @@ classdef PantherPressure < ModelGeometry
             end
         end
 
-       function p0 = get.p0(self)
-            p0 =  + self.dp_fault;
+       function a = get.p0(self)
+            a =  self.get_initial_pressure();
+       end
+       
+       function a = get.dp_fault(self)
+            a = self.get_dp_fault();
        end
 
        function p = get.p(self)

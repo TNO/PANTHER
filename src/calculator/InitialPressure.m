@@ -1,4 +1,4 @@
-classdef InitialPressure < PantherPressure
+classdef InitialPressure %< PantherPressure
     % InitialPressure sets the initial pore pressure in the reservoir
     % compartments, seal and base, and in the fault. Within the reservoir
     % the fluid can have a different density. 

@@ -1,4 +1,4 @@
-classdef ModelGeometry
+classdef (HandleCompatible) ModelGeometry
     % ModelGeometry Class to represent the geometry of a 2D geological 
     % model consisting of two reservoir compartments offset by a fault.
     % This class contains properties and methods to calculate various
