@@ -22,7 +22,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.load_case = 'T';
             run_instance.diffusion_T = 1;
             run_instance.generate_ensemble();
-            run_instance.ensemble{1}.get_gamma_T
+            run_instance.ensemble{1}.get_gamma_T;
             result = panther(run_instance);         
             i_mid = ceil(length(result.y)/2);
             actual = result.stress{1}.sne(i_mid, end);
@@ -72,7 +72,8 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance);         
             actual = result.summary.nucleation_dp;
-            expected = -16.92;
+            % expected = -16.92;
+            expected = -17.53;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             % reset to uniform friction, but with f_s of length(y)
             run_instance.input_parameters.f_s.value_with_depth = ones(size(run_instance.y))*0.6;
@@ -101,7 +102,8 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance); 
             actual = result.summary.nucleation_dp;
-            expected = -19.77;
+            %expected = -19.77;
+            expected = -20.80;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 

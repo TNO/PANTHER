@@ -65,7 +65,7 @@ classdef FaultStressChange
             % sets stress calculation for pressure changes
             gamma_P = params.get_gamma_P; 
             if and(~vary_dip, ~vary_PT)
-                dsigma = self.get_stress_change_uniform(params, GF{1}, y, pressure, gamma_P,'P');
+                dsigma = self.get_stress_change_uniform(params, GF{1}, y, pressure, gamma_P, 'P');
             else
                 dsigma = self.get_stress_change_nonuniform( GF, y, size(pressure.dp_fault, 2), pressure, gamma_P, 'P');
             end
@@ -85,12 +85,14 @@ classdef FaultStressChange
             % calculate the stress change for each timestep, for uniform P or T change in the reservoir blocks
             % find the pressure in the HW or FW compartment
             if strcmp(load, 'P') 
-                for i = 1 : size(PT_change.dp_FW,2)
+                dP_FW = PT_change.get_FW_pressure_change();
+                dP_HW = PT_change.get_HW_pressure_change();
+                for i = 1 : size(dP_FW,2)
                     i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
-                    dP_FW = PT_change.dp_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    dP_FW_mid = dP_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
                     i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
-                    dP_HW = PT_change.dp_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
-                    [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dP_FW, dP_HW, gamma);   
+                    dP_HW_mid = dP_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
+                    [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dP_FW_mid, dP_HW_mid, gamma);   
                 end
             else 
                 for i = 1 : size(PT_change.dT_FW,2)
@@ -110,18 +112,21 @@ classdef FaultStressChange
             for i = 1 : n_times
                 dsn_temp = zeros(length(y),1);      % array for adding contributions of gridded depth blocks withs varying P,T, or gamma
                 dtau_temp = zeros(length(y),1);
-
                 % refactor. element-wise multiplication in get stress
                 % change component
+                if contains(load_case,'P')
+                    dP_FW = PT_change.get_FW_pressure_change();
+                    dP_HW = PT_change.get_HW_pressure_change();
+                end
                 for j = 1 : length(y)
-                    if strcmp(load_case,'P')
-                        dPT_FW = PT_change.dp_FW(j,i);
-                        dPT_HW = PT_change.dp_HW(j,i);
+                    if contains(load_case,'P')
+                        dPT_FW = dP_FW(j,i);
+                        dPT_HW = dP_HW(j,i);
                     else 
                         dPT_FW = PT_change.dT_FW(j,i);
                         dPT_HW = PT_change.dT_HW(j,i);
                     end
-                    if length(gamma_PT) == 1
+                    if isscalar(gamma_PT)
                         gamma = gamma_PT;
                     elseif length(gamma_PT) == length(y)
                         gamma = gamma_PT(j);
@@ -175,9 +180,11 @@ classdef FaultStressChange
             % return true if they vary . move to pressure object
             vary_P = 0;
             vary_T = 0;
-            if length(unique(pressure.dp_FW)) > size(pressure.dp_FW,2) + 1
+            dp_FW = pressure.get_FW_pressure_change();
+            dp_HW = pressure.get_HW_pressure_change();
+            if length(unique(dp_FW)) > size(dp_FW,2) + 1
                 vary_P = 1;
-            elseif length(unique(pressure.dp_HW)) > size(pressure.dp_FW,2) + 1
+            elseif length(unique(dp_HW)) > size(dp_FW,2) + 1
                 vary_P = 1;
             end
             if length(unique(temperature.dT_FW)) > size(temperature.dT_FW,2) + 1
@@ -197,18 +204,8 @@ classdef FaultStressChange
 
         function [dscu] = get_scu_change(self, f_s, cohesion)
             % return Shear Capacity Utilization 
-            % TODO: check if this works for depth-dependent f_s
             dscu = self.dtau ./ (self.dsn .* f_s + cohesion); 
         end
     end
 
 end
-
-            
-%             greens_f_conv = GreensFunctions(y);              % initialize Green's functions
-%             mid_y = y(251);
-%             mid_x = mid_y/(tan(params.dip*pi/180));
-%             greens_f_conv = greens_f_conv.green_FW(xeval, y, params.dip, slice_thick, slice_throw, 1e9, mid_x, mid_y);
-%             for i = 1 : size(pressure.dp_FW,2)
-%                 dsn_FW_conv(:,i) = conv(greens_f_test.Gnorm_FW, (pressure.dp_FW(:,i) ),'same')* params.get_gamma_P / (2*pi);
-%             end
