@@ -35,7 +35,7 @@ classdef (HandleCompatible) FaultMesh < handle
 
         function a = get.y(self)
             % y initializes depth y relative to depth_mid
-            a = get_fault_y(self.dy, self.y_extent);
+            a = self.get_fault_y(self.dy, self.y_extent);
         end
 
         function y = get_fault_y(~, dy, y_extent)

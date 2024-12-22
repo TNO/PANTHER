@@ -374,7 +374,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
         function plot(self)
-            % plot Plots the pressure and pressure difference.
+            % plot Plots the pressure and pressure change in the fault.
             subplot(1,2,1)
             plot(self.p(:,1));
             hold on
