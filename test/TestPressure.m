@@ -66,7 +66,9 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0);
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0);
             
-            % plot(p.dp_HW,tc.y, p.dp_FW, tc.y)
+             % dp_HW = p.get_HW_pressure_change();
+             % dp_FW = p.get_FW_pressure_change();
+             % plot(dp_HW,tc.y, dp_FW, tc.y)
 
         end
 

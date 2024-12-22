@@ -16,6 +16,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         p_grad_res (:,1) double {mustBePositive} = 10.2
         p_offset (:,1) double  = 0
         p_over (:,1) double  = 0
+        load_case = 'P'
     end
 
     properties (Dependent)
@@ -46,7 +47,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             p0_FW = p0; p0_HW = p0;                             % initialize FW and HW pressure with hydrostatic
             top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
             top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
-            top_res_i = min(top_HW_i, top_FW_i);                % top most depth of reservoir interval
+            %top_res_i = min(top_HW_i, top_FW_i);                % top most depth of reservoir interval
             base_FW_i = self.base_FW_i(self.y); 
             base_HW_i = self.base_HW_i(self.y);
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
@@ -194,7 +195,11 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
        end
        
        function a = get.dp_fault(self)
-            a = self.get_dp_fault();
+            if contains(self.load_case,'P')
+                a = self.get_dp_fault();
+            else
+                a = zeros(length(self.y), length(self.time_steps));
+            end
        end
 
        function p = get.p(self)

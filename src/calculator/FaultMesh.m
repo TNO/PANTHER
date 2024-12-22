@@ -2,7 +2,7 @@ classdef (HandleCompatible) FaultMesh < handle
 
     properties
         dy (1,1) double {mustBePositive} = 2
-        y_extent (1,1) double {mustBePositive} = 500
+        y_extent (1,1) double {mustBeNonnegative} = 500
     end
 
     properties (Dependent, Hidden)

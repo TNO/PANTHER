@@ -19,10 +19,11 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
             run_instance.generate_ensemble();
-            y = 0;      % only evaluate at mid depth
+            run_instance.y_extent = 0;
+            y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, y, run_instance.load_table, 'P', 0, 'max', 'min','same');
+            pressure = PantherPressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'P');
@@ -41,11 +42,12 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.dip.value = 90;
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
+            run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.generate_ensemble();
-            y = 0;      % only evaluate at mid depth
+            y = run_instance.y;     
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, y, run_instance.load_table, 'P', 0, 'max', 'min', 'same');
+            pressure = PantherPressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
@@ -65,11 +67,12 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.dip.value = 90;
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
+            run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.generate_ensemble();
-            y = 0;      % only evaluate at mid depth
+            y = run_instance.y;      
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, y, run_instance.load_table, 'P', 0, 'max', 'min', 'same');
+            pressure = PantherPressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'PT');
@@ -91,7 +94,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, y, run_instance.load_table, 'P', 0, 'max', 'min', 'same');
+            pressure = PantherPressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 1, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
