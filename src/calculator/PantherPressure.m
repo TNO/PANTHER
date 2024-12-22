@@ -38,11 +38,11 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end  
 
        
-        function p0 = get_initial_pressure(self)
+        function [p0, p0_HW, p0_FW] = get_initial_pressure(self)
             [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
             yy = self.y + self.depth_mid;    
             p0 = zeros(size(yy));                               % intialize fault pressure
-            p0 = -(yy/1000).*self.p_grad + self.p_offset;   % [MPa] hydrostatic pressure
+            p0 = -(yy/1000).*self.p_grad + self.p_offset;       % [MPa] hydrostatic pressure
             p0_FW = p0; p0_HW = p0;                             % initialize FW and HW pressure with hydrostatic
             top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
             top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
@@ -62,18 +62,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
                 p0_FW(next_to_FW) = p0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*self.p_grad_res/1000;
                 p0_HW(next_to_HW) = p0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*self.p_grad_res/1000; 
             end
-            % set initial fault pressure
-            if strcmp(self.p_fault_mode, 'max')
-                p0 = max(p0_HW, p0_FW);
-            elseif strcmp(self.p_fault_mode, 'min')
-                p0 = min(p0_HW, p0_FW);
-            elseif strcmp(self.p_fault_mode, 'mean')
-                p0 = mean([p0_HW, p0_FW],2);
-            elseif strcmp(self.p_fault_mode, 'FW')
-                p0 = p0_FW;
-            elseif strcmp(self.p_fault_mode, 'HW')
-                p0 = p0_HW;
-            end
+            p0 = self.set_fault_pressure(p0_HW, p0_FW, self.p_fault_mode);
         end
 
         function dp_fault = get_dp_fault(self) 
@@ -92,44 +81,37 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             else
                 dp_HW = self.get_pressure_change_on_side(self.P_factor_HW,'HW');
             end
-        
-
-            % set the fault depletion pressure w.r.t. HW and FW pressure
-            if strcmp(self.dp_fault_mode, 'max')
-                dp_fault = max(dp_FW, dp_HW);
-            elseif strcmp(self.dp_fault_mode, 'max_abs')
-                for i = 1 : size(dp_FW,2)
-                    [~, ind] = max([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
-                    dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
-                    dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
-                end
-            elseif strcmp(self.dp_fault_mode, 'min')
-                dp_fault = min(dp_FW, dp_HW);
-            elseif strcmp(self.dp_fault_mode, 'min_abs')
-                for i = 1 : size(dp_FW,2)
-                    [~, ind] = min([abs(dp_FW(:,i)), abs(dp_HW(:,i))],[],2);
-                    dp_fault(ind == 1, i) = dp_FW(ind == 1, i);
-                    dp_fault(ind == 2, i) = dp_HW(ind == 2, i);
-                end
-            elseif strcmp(self.dp_fault_mode, 'mean')
-                for i = 1 : length(self.time_steps)
-                    dp_fault(:,i) = mean([dp_FW(:,i), dp_HW(:,i)],2);
-                end
-            elseif strcmp(self.dp_fault_mode, 'FW')
-                dp_fault = dp_FW;
-            elseif strcmp(self.dp_fault_mode, 'HW')
-                dp_fault = dp_HW;
-            end
+            dp_fault = self.set_fault_pressure(dp_HW, dp_FW, self.dp_fault_mode);
             dp_fault = self.P_factor_fault' .* dp_fault;
         end
 
-        
-
-        function [self] = update_properties(self, input)
-            if istable(input)
-                self = self.updatePropertiesFromTable(input);
-            elseif isobject(input)
-                self = self.updatePropertiesFromClass(input);
+        function [fault_pressure] = set_fault_pressure(self, p_HW, p_FW, side_mode)
+        %set the fault depletion pressure w.r.t. HW and FW pressure
+            fault_pressure = zeros(size(p_HW));
+            if strcmp(side_mode, 'max')
+                fault_pressure = max(p_FW, p_HW);
+            elseif strcmp(side_mode, 'max_abs')
+                for i = 1 : size(p_FW,2)
+                    [~, ind] = max([abs(p_FW(:,i)), abs(p_HW(:,i))],[],2);
+                    fault_pressure(ind == 1, i) = p_FW(ind == 1, i);
+                    fault_pressure(ind == 2, i) = p_HW(ind == 2, i);
+                end
+            elseif strcmp(side_mode, 'min')
+                fault_pressure = min(p_FW, p_HW);
+            elseif strcmp(self.side_mode, 'min_abs')
+                for i = 1 : size(p_FW,2)
+                    [~, ind] = min([abs(p_FW(:,i)), abs(p_HW(:,i))],[],2);
+                    fault_pressure(ind == 1, i) = p_FW(ind == 1, i);
+                    fault_pressure(ind == 2, i) = p_HW(ind == 2, i);
+                end
+            elseif strcmp(side_mode, 'mean')
+                for i = 1 : size(p_FW,2)
+                    fault_pressure(:,i) = mean([p_FW(:,i), p_HW(:,i)],2);
+                end
+            elseif strcmp(side_mode, 'FW')
+                fault_pressure = p_FW;
+            elseif strcmp(side_mode, 'HW')
+                fault_pressure = p_HW;
             end
         end
 
@@ -140,7 +122,30 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             dp_on_side = p_on_side - self.p0;
         end
 
-        %function [p_on_side] = get_pressure_on_side(~, y, params, p0, p_steps, p_factor, time_steps, diffusion, p_side)
+        function  [dp_HW] = get_HW_pressure_change(self)
+            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            p_HW = self.get_HW_pressure();
+            [~, p0_HW, ~] = self.get_initial_pressure();
+            dp_HW = p_HW - p0_HW;    
+        end
+
+
+        function  [dp_FW] = get_FW_pressure_change(self)
+            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            p_FW = self.get_FW_pressure();
+            [~, ~, p0_FW] = self.get_initial_pressure();
+            dp_FW = p_FW - p0_FW;    
+        end
+
+        function [p_HW] = get_HW_pressure(self)
+            p_HW = self.get_pressure_on_side(self.P_factor_HW, 'HW');
+        end
+
+        function [p_FW] = get_FW_pressure(self)
+            p_FW = self.get_pressure_on_side(self.P_factor_FW, 'FW');
+        end
+
+
         function [p_on_side] = get_pressure_on_side(self, p_factor, p_side)
             % get_pressure_on_side Method to calculate pressure on a given side (FW or HW).
             %
@@ -170,48 +175,18 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
             % Ensure dp_unit is a column vector
             dp_unit = double(next_to_p_side);       
-             if ~iscolumn(dp_unit)
+            if ~iscolumn(dp_unit)
                  dp_unit = dp_unit';
-             end
+            end
 
             % Ensure P_steps and p_factor are row vectors
-            self.P_steps = self.P_steps(:)';
             p_factor = p_factor(:)';
-             %if ~isrow(self.P_steps)
-             %    self.P_steps = self.P_steps';
-             %end
-             %
-             %if ~isrow(p_factor)
-             %    p_factor = p_factor';
-             %end 
-             dp_unit = repmat(dp_unit, 1, length(self.time_steps));
-             dp_on_side = dp_unit * self.P_steps .* p_factor;
-             %dp_on_side = zeros(length(self.y), length(self.time_steps));
-             %for i = 1 : length(self.time_steps)
-             %   dp_on_side(:,i) = dp_unit * self.P_steps(i) .* p_factor(i);    % (dp, time) array of pressures in the footwall
-             %end
+             
+             dp_on_side = dp_unit * self.P_steps' .* p_factor;
              p_on_side = dp_on_side + self.p0;
              if self.diffusion_P
                 p_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, p_on_side, self.hyd_diffusivity);
              end
-        end
-
-        function self = reduce_steps(self, steps)
-            props = properties(self);
-            % iterate over non-dependent properties
-            if isnan(steps)
-                for i = 1 : length(props) - 1
-                    if ~strcmp(props{i},'p0')
-                        self.(props{i}) = [];
-                    end             
-                end
-            else
-                for i = 1 : length(props) - 1
-                    if ~strcmp(props{i},'p0')
-                        self.(props{i}) = self.(props{i})(:, steps);
-                    end             
-                end
-            end
         end
 
        function a = get.p0(self)
@@ -225,6 +200,24 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
        function p = get.p(self)
             p = self.p0 + self.dp_fault;
        end
+
+        function self = reduce_steps(self, steps)
+            props = properties(self);
+            % iterate over non-dependent properties
+            if isnan(steps)     
+                for i = 1 : length(props)
+                    if ismember(props{i}, {'time_steps','P_steps','P_factor_HW', 'P_factor_FW','P_factor_fault'})
+                        self.(props{i}) = [];
+                    end             
+                end
+            else
+                for i = 1 : length(props)
+                    if ismember(props{i},{'time_steps','P_steps','P_factor_HW', 'P_factor_FW','P_factor_fault'})
+                        self.(props{i}) = self.(props{i})(steps, :);
+                    end             
+                end
+            end
+        end
 
         function [p_at_load_step] = get_p_at_load_step(self, load_step, p_type)
             % obtain the pressure at certain loadstep, where load_step is
@@ -246,12 +239,19 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
         function check_if_property_exists(self, queried_property_name)
             if ~ismember(queried_property_name, properties(self))
-                error(['Queried property name is not a property of Class PantherPressure. ',newline,...
+                error(['Queried property name is not a property of Class Pressure. ',newline,...
                     'Properties must be one of: ', strjoin(properties(self),', ')]);
             end
 
         end
 
+        function [self] = update_properties(self, input)
+            if istable(input)
+                self = self.updatePropertiesFromTable(input);
+            elseif isobject(input)
+                self = self.updatePropertiesFromClass(input);
+            end
+        end
 
         function plot(self)
             

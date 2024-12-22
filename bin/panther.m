@@ -77,8 +77,7 @@ function [run_results] = panther(analysis)
     % calculate pressure and stress changes (parallel)
     % starting up the Matlab parallel pool (parpool) for the first time may take several 10s
     % of seconds. If it is already running (type gcp to check), parfor will initiate much faster
-    %parfor (i = 1 : n_members, matlab_workers)
-    for i = 1 : n_members
+    parfor (i = 1 : n_members, matlab_workers)
         % disp([num2str(i),'/', num2str(n_members)]);
         L{i} = y./sin(ensemble{i}.dip*pi/180);
 
@@ -87,7 +86,8 @@ function [run_results] = panther(analysis)
         
         % pressure and temperature changes
 
-        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, dp_fault, p_res_mode);
+        %pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, dp_fault, p_res_mode);
+        pressure{i} = PantherPressure(ensemble{i}, load_table, analysis);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes
