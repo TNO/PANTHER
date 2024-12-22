@@ -252,7 +252,7 @@ set(ax,'Box','on');
 set([ax(4), ax(5)],'YLim',[-35,-22]);
 
 fig_path = '\\tsn.tno.nl\data\sv\sv-053185\Kluis\Research\DeepNL\PhysMax\Widrum_nucleation_modeling\';
-print(gcf,[fig_path, f_name, '_XRD_zoom.png'],'-dpng','-r300');
+% print(gcf,[fig_path, f_name, '_XRD_zoom.png'],'-dpng','-r300');
 
 
 %% 

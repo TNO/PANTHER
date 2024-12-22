@@ -1,6 +1,51 @@
 classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
-    
-    
+    % PantherPressure Class to represent the pressure calculations in a geological model.
+    % This class extends ModelGeometry and FaultMesh to include properties and methods
+    % for calculating pressure changes in the model, including initial pressure, pressure
+    % changes across faults, and pressure at specific load steps.
+    %
+    % Properties:
+    %   hyd_diffusivity - Hydraulic diffusivity
+    %   time_steps - Time steps for the simulation
+    %   P_steps - Pressure change steps
+    %   P_factor_HW - Pressure factor for the hanging wall
+    %   P_factor_FW - Pressure factor for the footwall
+    %   P_factor_fault - Pressure factor for the fault
+    %   p_fault_mode - Mode for fault pressure calculation
+    %   dp_fault_mode - Mode for fault pressure difference calculation
+    %   p_res_mode - Mode for reservoir pressure calculation
+    %   diffusion_P - Logical flag for diffusion
+    %   p_grad - Pressure gradient
+    %   p_grad_res - Reservoir pressure gradient
+    %   p_offset - Pressure offset
+    %   p_over - Overpressure
+    %   load_case - Load case identifier
+    %
+    % Dependent Properties:
+    %   p0 - Initial pressure
+    %   p - Current pressure
+    %   dp_fault - Pressure difference across the fault
+    %
+    % Methods:
+    %   PantherPressure - Constructor to initialize the pressure model
+    %   get_initial_pressure - Returns the initial pressure in the model
+    %   get_dp_fault - Returns the pressure difference across the fault
+    %   set_fault_pressure - Sets the fault pressure based on HW and FW pressures
+    %   get_pressure_change_on_side - Calculates pressure change on a given side
+    %   get_HW_pressure_change - Returns pressure change in the hanging wall
+    %   get_FW_pressure_change - Returns pressure change in the footwall
+    %   get_HW_pressure - Returns pressure in the hanging wall
+    %   get_FW_pressure - Returns pressure in the footwall
+    %   get_pressure_on_side - Calculates pressure on a given side
+    %   reduce_steps - Reduces the number of steps in the simulation
+    %   get_p_at_load_step - Returns pressure at a specific load step
+    %   get_dp_at_load_step - Returns pressure difference at a specific load step
+    %   check_if_property_exists - Checks if a property exists in the class
+    %   update_properties - Updates properties from input parameters
+    %   plot - Plots the pressure and pressure difference
+    %   updatePropertiesFromTable - Updates properties from a table
+    %   updatePropertiesFromClass - Updates properties from another class
+
     properties
         hyd_diffusivity double = 2e-6
         time_steps (:,1) double = [0,1]     % [year] time steps 
@@ -27,6 +72,11 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
     methods
         function self = PantherPressure(input_params, load_table, pressure_settings)
+            % PantherPressure Constructor to initialize the pressure model.
+            % Input:
+            %   input_params - Input parameters for the model
+            %   load_table - Load table for the model
+            %   pressure_settings - Pressure settings for the model
             if nargin >= 1
                 self = self.update_properties(input_params);
             end
@@ -40,6 +90,11 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
        
         function [p0, p0_HW, p0_FW] = get_initial_pressure(self)
+            % get_initial_pressure Returns the initial pressure in the model.
+            % Output:
+            %   p0 - Initial pressure
+            %   p0_HW - Initial pressure in the hanging wall
+            %   p0_FW - Initial pressure in the footwall
             [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
             yy = self.y + self.depth_mid;    
             p0 = zeros(size(yy));                               % intialize fault pressure
@@ -47,7 +102,6 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             p0_FW = p0; p0_HW = p0;                             % initialize FW and HW pressure with hydrostatic
             top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
             top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
-            %top_res_i = min(top_HW_i, top_FW_i);                % top most depth of reservoir interval
             base_FW_i = self.base_FW_i(self.y); 
             base_HW_i = self.base_HW_i(self.y);
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
@@ -66,15 +120,16 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             p0 = self.set_fault_pressure(p0_HW, p0_FW, self.p_fault_mode);
         end
 
-        function dp_fault = get_dp_fault(self) 
 
-            dp_fault = zeros(length(self.y), length(self.time_steps));
+        function dp_fault = get_dp_fault(self) 
+            % get_dp_fault Returns the pressure difference within the fault.
+            % Output:
+            %   dp_fault - Pressure difference within the fault
             % if reservoir compartment on either side has 0 width, set
             % pressures in that compartment to 0. 
             if self.width_FW == 0
                 dp_FW = zeros(length(self.y), length(self.time_steps));       % set dP in FW compartment to 0
             else
-                % dp_FW = self.get_pressure_change_on_side(self.y, input_params, ini.p0_FW, p_steps', loads.P_factor_FW', time_steps, diffusion, p_side);
                 dp_FW = self.get_pressure_change_on_side(self.P_factor_FW,'FW');
             end
             if self.width_HW == 0
@@ -86,8 +141,15 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             dp_fault = self.P_factor_fault' .* dp_fault;
         end
 
-        function [fault_pressure] = set_fault_pressure(self, p_HW, p_FW, side_mode)
-        %set the fault depletion pressure w.r.t. HW and FW pressure
+
+        function [fault_pressure] = set_fault_pressure(~, p_HW, p_FW, side_mode)
+            % set_fault_pressure Sets the fault pressure based on HW and FW pressures.
+            % Input:
+            %   p_HW - Pressure in the hanging wall
+            %   p_FW - Pressure in the footwall
+            %   side_mode - Mode for setting the fault pressure
+            % Output:
+            %   fault_pressure - Calculated fault pressure
             fault_pressure = zeros(size(p_HW));
             if strcmp(side_mode, 'max')
                 fault_pressure = max(p_FW, p_HW);
@@ -99,7 +161,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
                 end
             elseif strcmp(side_mode, 'min')
                 fault_pressure = min(p_FW, p_HW);
-            elseif strcmp(self.side_mode, 'min_abs')
+            elseif strcmp(side_mode, 'min_abs')
                 for i = 1 : size(p_FW,2)
                     [~, ind] = min([abs(p_FW(:,i)), abs(p_HW(:,i))],[],2);
                     fault_pressure(ind == 1, i) = p_FW(ind == 1, i);
@@ -118,13 +180,20 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
        
         function  [dp_on_side] = get_pressure_change_on_side(self, p_factor, p_side)
-            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            % get_pressure_change_on_side Calculates pressure change on a given side.
+            % Input:
+            %   p_factor - Pressure factor for the side
+            %   p_side - Side indicator ('FW' or 'HW')
+            % Output:
+            %   dp_on_side - Pressure change on the specified side
             p_on_side = self.get_pressure_on_side(p_factor, p_side);
             dp_on_side = p_on_side - self.p0;
         end
 
         function  [dp_HW] = get_HW_pressure_change(self)
-            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            % get_HW_pressure_change Returns pressure change in the hanging wall.
+            % Output:
+            %   dp_HW - Pressure change in the hanging wall
             p_HW = self.get_HW_pressure();
             [~, p0_HW, ~] = self.get_initial_pressure();
             dp_HW = p_HW - p0_HW;    
@@ -132,17 +201,25 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
 
 
         function  [dp_FW] = get_FW_pressure_change(self)
-            % p_on_side = self.get_pressure_on_side(self.y, self, self.p0, self.P_steps, p_factor, self.time_steps, self.diffusion_P, p_side);
+            % get_FW_pressure_change Returns pressure change in the footwall.
+            % Output:
+            %   dp_FW - Pressure change in the footwall
             p_FW = self.get_FW_pressure();
             [~, ~, p0_FW] = self.get_initial_pressure();
             dp_FW = p_FW - p0_FW;    
         end
 
         function [p_HW] = get_HW_pressure(self)
+            % get_HW_pressure Returns pressure in the hanging wall.
+            % Output:
+            %   p_HW - Pressure in the hanging wall
             p_HW = self.get_pressure_on_side(self.P_factor_HW, 'HW');
         end
 
         function [p_FW] = get_FW_pressure(self)
+            % get_FW_pressure Returns pressure in the footwall.
+            % Output:
+            %   p_FW - Pressure in the footwall
             p_FW = self.get_pressure_on_side(self.P_factor_FW, 'FW');
         end
 
@@ -191,10 +268,16 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
        function a = get.p0(self)
+            % get.p0 Returns the initial pressure.
+            % Output:
+            %   a - Initial pressure
             a =  self.get_initial_pressure();
        end
        
        function a = get.dp_fault(self)
+            % get.dp_fault Returns the pressure difference across the fault.
+            % Output:
+            %   a - Pressure difference across the fault
             if contains(self.load_case,'P')
                 a = self.get_dp_fault();
             else
@@ -203,10 +286,16 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
        end
 
        function p = get.p(self)
+            % get.p Returns the current pressure.
+            % Output:
+            %   p - Current pressure
             p = self.p0 + self.dp_fault;
        end
 
         function self = reduce_steps(self, steps)
+            % reduce_steps Reduces the number of steps in the simulation.
+            % Input:
+            %   steps - Number of steps to reduce to
             props = properties(self);
             % iterate over non-dependent properties
             if isnan(steps)     
@@ -224,25 +313,48 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
             end
         end
 
-        function [p_at_load_step] = get_p_at_load_step(self, load_step, p_type)
+        function [p_at_load_step] = get_p_at_load_step(self, load_step)
+            % get_p_at_load_step Returns pressure at a specific load step.
+            % Input:
+            %   load_step - Load step to get pressure for
+            % Output:
+            %   p_at_load_step - Pressure at the specified load step
             % obtain the pressure at certain loadstep, where load_step is
             % between 1 and height of loadtable
-            self.check_if_property_exists(p_type);
-            p_at_load_step = zeros(size(self.(p_type), 1), 1);
-            if nargin < 3 
-                p_type = 'p'; 
-            end
-            if load_step < 1 || load_step > size(self.(p_type), 2)
+            p_at_load_step = zeros(size(self.p, 1), 1);
+            if load_step < 1 || load_step > size(self.p, 2)
                 disp('Selected load step is outside calculation time range');
             else
-                for i = 1 : size(self.(p_type), 1)
-                    x_ind = linspace(1, size(self.(p_type), 2), size(self.(p_type), 2));% indices of time, P, or T steps
-                    p_at_load_step(i) = interp1(x_ind, self.(p_type)(i, :), load_step);
+                for i = 1 : size(self.p, 1)
+                    x_ind = linspace(1, size(self.p, 2), size(self.p, 2));% indices of time, P, or T steps
+                    p_at_load_step(i) = interp1(x_ind, self.p(i, :), load_step);
+                end     
+            end
+        end
+
+        function [dp_at_load_step] = get_dp_at_load_step(self, load_step)
+            % get_dp_at_load_step Returns pressure difference at a specific load step.
+            % Input:
+            %   load_step - Load step to get pressure difference for
+            % Output:
+            %   dp_at_load_step - Pressure difference at the specified load step
+            % obtain the pressure at certain loadstep, where load_step is
+            % between 1 and height of loadtable
+            dp_at_load_step = zeros(size(self.dp_fault, 1), 1);
+            if load_step < 1 || load_step > size(self.dp, 2)
+                disp('Selected load step is outside calculation time range');
+            else
+                for i = 1 : size(self.dp_fault, 1)
+                    x_ind = linspace(1, size(self.dp_fault, 2), size(self.dp_fault, 2));    % indices of time, P, or T steps
+                    dp_at_load_step(i) = interp1(x_ind, self.dp_fault(i, :), load_step);
                 end     
             end
         end
 
         function check_if_property_exists(self, queried_property_name)
+            % check_if_property_exists Checks if a property exists in the class.
+            % Input:
+            %   queried_property_name - Name of the property to check
             if ~ismember(queried_property_name, properties(self))
                 error(['Queried property name is not a property of Class Pressure. ',newline,...
                     'Properties must be one of: ', strjoin(properties(self),', ')]);
@@ -251,6 +363,9 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
         function [self] = update_properties(self, input)
+            % update_properties Updates properties from input parameters.
+            % Input:
+            %   input - Input parameters (table or class)
             if istable(input)
                 self = self.updatePropertiesFromTable(input);
             elseif isobject(input)
@@ -259,7 +374,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
         function plot(self)
-            
+            % plot Plots the pressure and pressure difference.
             subplot(1,2,1)
             plot(self.p(:,1));
             hold on
@@ -270,6 +385,9 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
         function self = updatePropertiesFromTable(self, inputTable)
+            % updatePropertiesFromTable Updates properties from a table.
+            % Input:
+            %   inputTable - Table containing property values
             % Get the list of properties of the class
             props = properties(self);
             
@@ -286,6 +404,9 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         end
 
         function self = updatePropertiesFromClass(self, inputClass)
+            % updatePropertiesFromClass Updates properties from another class.
+            % Input:
+            %   inputClass - Class containing property values
             % Get the list of properties of the class
             props = properties(self);
             

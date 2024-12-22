@@ -30,8 +30,8 @@ classdef (HandleCompatible) ModelGeometry
     properties
         depth_mid (1,1) double {mustBeNegative} = -3000
         thick (1,1) double {mustBePositive} = 150
-        dip (1,1) double = 66
-        dip_azi (1,1) double = 0
+        dip (:,1) double = 66
+        dip_azi (:,1) double = 0
         throw (1,1) double = 75
         width_HW (1,1) = Inf
         width_FW (1,1) = Inf
