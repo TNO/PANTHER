@@ -23,7 +23,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, run_instance.load_table, run_instance);
+            pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'P');
@@ -47,7 +47,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             y = run_instance.y;     
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, run_instance.load_table, run_instance);
+            pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
@@ -72,7 +72,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             y = run_instance.y;      
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, run_instance.load_table, run_instance);
+            pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'PT');
@@ -94,7 +94,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble{1};
-            pressure = PantherPressure(params, run_instance.load_table, run_instance);
+            pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 1, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
