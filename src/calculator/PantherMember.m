@@ -4,13 +4,6 @@ classdef PantherMember < ModelGeometry
     % singel number or an array of length(y)
 
     properties
-        % depth_mid           % [m], negative is down
-        % dip                 % [deg] degrees from horizontal
-        % dip_azi             % [deg] degrees from norththanks 
-        % thick               % [m] reservoir thickness
-        % throw               % [m] vertical fault offset
-        % width_FW            % [m] width footwall compartment
-        % width_HW            % [m]width footwall compartment
         young               % [Pa] Young's modulus
         poisson             % [-] Poisson's ratio    
         biot                % [-] Biot coefficient
@@ -24,14 +17,9 @@ classdef PantherMember < ModelGeometry
         p_offset            % [MPa] offset of pressure gradient at y=0    
         p_over              % [MPa] overpressure in the reservoir
         p_grad_res          % [MPa/km] pressure gradient in reservoir  
-        p_factor_HW         % [-] depletion factor hanging wall w.r.t unit or P_step
-        p_factor_FW         % [-] depletion factor footwall w.r.t. unit or P_step
-        p_factor_fault      % [-] depletion factor footwall w.r.t. unit or P_step
         hyd_diffusivity     % [m2/s] hydraulic diffusivity
         T_grad              % [K/km] temperature gradient
         T_offset            % [k] offset temperature gradient at y=0
-        T_factor_HW         % [-] cooling factor hanging wall
-        T_factor_FW         % [-] cooling factor footwall
         dT_dy_multiplier    % [deg/m] multiplier dT in reservoir wr.t. reservoir mid. -ve is increasing with depth
         therm_diffusivity 
         f_s

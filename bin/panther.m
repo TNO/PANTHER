@@ -87,7 +87,7 @@ function [run_results] = panther(analysis)
         % pressure and temperature changes
 
         %pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, dp_fault, p_res_mode);
-        pressure{i} = PantherPressure(ensemble{i}, load_table, analysis);
+        pressure{i} = Pressure(ensemble{i}, load_table, analysis);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes

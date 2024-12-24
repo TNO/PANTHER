@@ -1,5 +1,7 @@
-classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
-    % PantherPressure Class to represent the pressure calculations in a geological model.
+classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
+    % PantherPressure Class to represent the pressure calculations in the geological model.
+    % A simplified pressure profile is prescribed, with uniform pressure
+    % change in the reservoir and difusion to the seal and base (optional)
     % This class extends ModelGeometry and FaultMesh to include properties and methods
     % for calculating pressure changes in the model, including initial pressure, pressure
     % changes across faults, and pressure at specific load steps.
@@ -64,6 +66,9 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
         load_case = 'P'
     end
 
+    properties (Access=private)
+    end
+
     properties (Dependent)
         p0
         p
@@ -71,7 +76,7 @@ classdef (HandleCompatible) PantherPressure < ModelGeometry & FaultMesh
     end
 
     methods
-        function self = PantherPressure(input_params, load_table, pressure_settings)
+        function self = Pressure(input_params, load_table, pressure_settings)
             % PantherPressure Constructor to initialize the pressure model.
             % Input:
             %   input_params - Input parameters for the model
