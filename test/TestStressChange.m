@@ -28,7 +28,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             stress_change = FaultStressChange(length(y), size(pressure.dp_fault,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'P');
             gamma_h_infinite = (1 - 2*params.poisson)/(1 - params.poisson);   % poroelastic stress path parameter
-            %testCase.verifyEqual(stress_change.dsn(2), -gamma_h_infinite, "RelTol", 0.0001);
+            testCase.verifyEqual(stress_change.dsn(2), -gamma_h_infinite, "RelTol", 0.0001);
         end
 
          function test_thermoelastic_stress(testCase)

@@ -109,7 +109,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
         function test_stochastic(testCase)
              % test depth-variable initial stress ratio shsv
-            stochastic_run = PantherInput;
+            stochastic_run = PantherInput();
             % set shsv as a stochastic parameter
             stochastic_run.input_parameters.shsv.stochastic = 1;  % make shsv a stochastic parameter
             stochastic_run.input_parameters.shsv.a = 0.69;        % lower value of uniform distribution

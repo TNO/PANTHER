@@ -1,5 +1,4 @@
 function Gxy = Gxy_rectangle(p, q, r, s, x, y)
-% TODO allow inf width
   
 % Green's function for stresses within and outside a rectangle, shear
 % Equation 34 from Supplements Jansen et al. 2019:
@@ -16,8 +15,7 @@ function Gxy = Gxy_rectangle(p, q, r, s, x, y)
 
 % theta  = atan2((s-r), (p-o));
 
-%Equation 34 from Supplements Jansen et al. 2019:
-% quick fix for infinite. TODO derive exact equation for rectangle
+% Equation 34 from Supplements Jansen et al. 2019:
 if q == inf
     q = 1e15;
 end

@@ -56,7 +56,6 @@ classdef FaultStressChange
                 dsigma_T.dsn = zeros(size(self.dsn)); 
                 dsigma_T.dtau = zeros(size(self.dtau)); 
             end    
-            % self.dsn = -self.dsn;
             self.dsn = -(dsigma_P.dsn + dsigma_T.dsn);
             self.dtau = dsigma_P.dtau + dsigma_T.dtau;
         end
