@@ -62,7 +62,6 @@ classdef MultiFaultCalculator
 
         function self = run(self)
             % run Runs the simulation for all fault pillars.
-            % run simulation for all the fault pillars
             all_pillars = self.pillars;
             n = self.n_pillars;
             self.pillar_results = cell(n, 1);
@@ -88,8 +87,6 @@ classdef MultiFaultCalculator
             % Input:
             %   info_table_to_be_added - Table of height n_faults
             % adds meta data into the pillar_info table
-            % INPUT
-            % info_table_to_be_added    table of height n_faults
             if height(info_table_to_be_added) ~= height(self.pillar_info)
                 disp(['Cant append fault info, table size does not match. Height should be ',num2str(height(self.pillar_info)) ]);
             else
@@ -102,10 +99,7 @@ classdef MultiFaultCalculator
             % Input:
             %   parameter_name - Name of the parameter
             %   values - Cell array of length n_pillars, containing arrays of doubles of length(y)
-            % sets numeric input Panther input parameters
-            % INPUT
-            % values    cell array length(n_pillars), containing arrays of
-            % doubles of length(y)
+            % sets numeric input of depth-dependent Panther input parameters
             if ~iscell(values)
                 error('Input depth dependent variable in a cell array of length n_pillars');
             end
@@ -130,9 +124,6 @@ classdef MultiFaultCalculator
             %   values - Array of doubles
             %   parameter_type - Property type ('value', 'a', or 'b')
             % sets numeric input Panther input parameters
-            % INPUT
-            % values    array of doubles
-            % property  'value', 'a', or 'b' 
             if nargin < 4
                 parameter_type = 'value';
             end
@@ -150,10 +141,7 @@ classdef MultiFaultCalculator
             % Input:
             %   input_table - Table containing property values
             %   parameter_type - Property type ('value', 'a', or 'b')
-            % updatePropertiesFromTable Updates properties from a table.
-            % Input:
-            %   input_table - Table containing property values
-            
+
             % Check if height table matches number of pillar
             if ~(height(input_table) == length(self.pillars))
                 error(['Input table height should match number of pillars on the fault',...
@@ -263,7 +251,8 @@ classdef MultiFaultCalculator
         end
 
         function [nuc_load_step] = get_minimum_nucleation_load_step(self)
-            % get_minimum_nucleation_load_step Gets the minimum nucleation load step.
+            % get_minimum_nucleation_load_step Gets the minimum nucleation
+            % load step over all the fault pillars
             if self.run_done
                 nuc_load_step = min(self.result_summary.nucleation_load_step);
             else
@@ -289,14 +278,15 @@ classdef MultiFaultCalculator
             % provide nan if you don't want to store output (only reac and
             % nuc stresses are stored)
                 for i = 1 : length(self.pillar_results)
-%                 if max(time_step_indices) < size(self.pillar_results{i}.stress{1}.sne, 2)  & ...
-%                 (min(time_step_indices) > 1)
+                    if max(time_step_indices) < size(self.pillar_results{i}.stress{1}.sne, 2)  & ...
+                        (min(time_step_indices) > 1)
                     self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(time_step_indices);
                     self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(time_step_indices);
-                    if ~isnan(time_step_indices)
-                        self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                        if ~isnan(time_step_indices)
+                            self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                        end
                     end
                 end
         end
@@ -318,7 +308,6 @@ classdef MultiFaultCalculator
             % X_column      string, column name of the X_coordinate in pillar_info
             % Y_column      string, column name of the X_coordinate in pillar_info
             % new_column    string, column name of Z_value
-            % TODO add some checks
             i5 = floor(self.n_pillars/10);
             reverseStr = '';
             for i = 1 : length(self.pillars)
@@ -343,7 +332,8 @@ classdef MultiFaultCalculator
         end
 
         function [summary] = get_results_summary(self)
-            % get_results_summary Gets the summary of results.
+            % get_results_summary Gets the summary of results of individual
+            % pillars
             if self.run_done
                 summary = self.pillar_results{1}.summary;
                 % concatenate summary tables of individual fault pillars
@@ -384,6 +374,8 @@ classdef MultiFaultCalculator
             % Input:
             %   submitted_name - Name of the parameter to validate
             % validate whether specified input parameter name is valid
+            % Output:
+            % valid_name: true or false
             valid_field_names = fields(self.pillars{1}.input_parameters);
             if ismember(submitted_name, valid_field_names)
                 valid_name = true;
