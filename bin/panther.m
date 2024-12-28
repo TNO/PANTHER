@@ -20,9 +20,6 @@ function [run_results] = panther(analysis)
         analysis.generate_ensemble;
     end
 
-    % perform validation of input
-    % TODO: validation functionality to be written
-
     % unpack some parameters
     y = analysis.y;
     load_table = analysis.load_table;

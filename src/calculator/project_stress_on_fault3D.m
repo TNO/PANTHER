@@ -2,7 +2,7 @@ function [s_normal, tau_dip, tau_strike] = project_stress_on_fault3D(SHdir, stri
     
     % take Sh SH and SV as the principal stress    
     % SHdir, strike, and dip can be the a constant, different array lengths of
-    % SH, Sv, and Sh allowed     % TODO add check on array lengths
+    % SH, Sv, and Sh allowed
     
     
     s_normal = zeros(size(Shall));      % total normal stress

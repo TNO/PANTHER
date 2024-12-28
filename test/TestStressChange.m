@@ -14,7 +14,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;
             % set 0 throw, 90 degree dip
-            run_instance.input_parameters.throw.value = 0;
+            run_instance.input_parameters.throw.value = -50;
             run_instance.input_parameters.dip.value = 90;
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;

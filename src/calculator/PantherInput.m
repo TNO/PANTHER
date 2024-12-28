@@ -1,12 +1,8 @@
 classdef (HandleCompatible) PantherInput < FaultMesh
     % Initializes input, and sets run and save settings for Panther
-    % Consider renaming to ModelSettings or ModelInput for clarity
 
     properties
-        input_parameters                            % object containing input parameter settings
-        % dy {mustBePositive} = 2;                    % [m] y-spacing
-        % y_extent {mustBePositive} = 500;            % [m] extent up and down from depth over which stresses are calculated
-        dx double = 0;     % [m] y-spacing
+        input_parameters                            % object containing input parameter settings 
         p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
         p_fault_mode {mustBeMember(p_fault_mode,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
         dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min';     % [-] assumed pressure in fault. max=max(dp_HW, dp_FW), etc. 
@@ -15,7 +11,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         stochastic logical = 0;                     % activate stochastic analysis
         n_stochastic {mustBeInteger} = 1;           % number of stochastic runs
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
-        load_case = 'P';                            % load case 'P': pressure changes, 'T': temperature changes (TODO: combine)
+        load_case = 'P';                            % load case 'P': pressure changes, 'T': temperature changes
         load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
         ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
         ensemble                                    % ensemble of n_stochastic members 
@@ -24,34 +20,29 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;    
     end
-    % 
-    % properties (Dependent)
-    %      y
-    % end
+
+    properties (Constant)
+        dx double  = 0;                             % [m] distance from from (for now only on fault allowed)
+    end
 
     methods
         
         function self = PantherInput()
             % PantherInput Load default input parameters
-            self.input_parameters = PantherParameterList;
+            self.input_parameters = PantherParameterList();
             self.load_table = initialize_load_table();
-            % disp('Initialized run instance');
-            % automatically initialize 1 ensemble member?
         end
 
         function self = generate_ensemble(self)
             % Generates ensemble of n_stochastic members
             % Input parameters that are stochastic are randomly sampled
-            % for each ensemble member. TODO check in case none of the
-            % parameters are stochastic
+            % for each ensemble member. 
             if self.stochastic
                 for i = 1 : self.n_stochastic
                     self.ensemble{i,1} = PantherMember(self.input_parameters, 1);
                 end
-                % disp(['Ensemble of ', num2str(self.n_stochastic), ' members generated']);
             else
                 self.ensemble{1,1} = PantherMember(self.input_parameters, 0);
-                % disp(['Ensemble of 1 member generated']);
             end
             self.ensemble_generated = 1;
         end
@@ -62,6 +53,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         end
 
         function self = generate_ensemble_from_table(self, input_table)
+            % generates a model ensemble from a table
             % turn off stochastic (for now). Input values not in the input
             % table will have a fixed value. No-depth dependency. 
             self.stochastic = 0; 
@@ -73,8 +65,6 @@ classdef (HandleCompatible) PantherInput < FaultMesh
             column_indices = [];
             if any(matching_columns)
                 column_indices = find(matching_columns);
-               % for k = 1 : 
-
                 self.ensemble_generated = 1;
                 for i = 1 : n_ensemble
                     
@@ -86,8 +76,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                 end
             else
                 disp('Table column names do not match Panther input parameter names');
-            end
-            
+            end     
         end
 
         function ensemble_table = ensemble_to_table(self)
@@ -111,16 +100,5 @@ classdef (HandleCompatible) PantherInput < FaultMesh
             end
         end
 
-        % function a = get.y(self)
-        %     % y initializes depth y relative to depth_mid
-        %     a = get_fault_y(self.dy, self.y_extent);
-        % end
-
-        % TODO: add csv writer and reader. include example csv
-        % TODO: allow for different thickness HW and FW
-        % TODO: allow for custom depth-dependent input parameters (in that case, disable stochastic?)
-        % functionality to check whether all stress path parameters are
-        % depth-independent (nu, biot, dip)
-        % interpolate to y. 
     end
 end
