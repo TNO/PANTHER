@@ -11,7 +11,7 @@ classdef PantherParameterList
         throw = PantherParam(50, 'Thickness','m', 1, nan, 0, 'uniform', 25, 75);                         % [m] vertical fault offset
         width_FW = PantherParam(inf, 'Width of footwall block','m', 1, nan, 0, 'uniform', 1000,5000 );   % [m] width footwall compartment
         width_HW = PantherParam(inf, 'Width of hanging wall block','m', 1, nan,0, 'uniform', 1000,5000);% [m]width footwall compartment
-        young = PantherParam(15e3, 'Young''s modulus','Pa', 1, nan, 0, 'uniform', 10e3, 20e3);           % [MPa] Young's modulus
+        young = PantherParam(15e3, 'Young''s modulus','MPa', 1, nan, 0, 'uniform', 10e3, 20e3);           % [MPa] Young's modulus
         poisson = PantherParam(0.15, 'Poisson''s ratio','-',1, nan, 0, 'uniform', 0.1, 0.2);             % [-] Poisson's ratio    
         biot = PantherParam(1, 'Biot coefficient','-', 1, nan, 0, 'uniform',0.7, 1.0);                   % [-] Biot coefficient
         therm_exp = PantherParam(1e-5, 'Thermal expansion coefficient','1/K', 1, nan, 0, 'uniform', 0.9e-5, 1.2e-5);  %[1/K] thermal expansion coefficient
