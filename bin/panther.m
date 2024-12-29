@@ -32,7 +32,7 @@ function [run_results] = panther(analysis)
     ensemble = analysis.ensemble;
     nucleation_criterion = analysis.nucleation_criterion;
     nucleation_length = analysis.nucleation_length_fixed;
-    dy = y(1) - y(2);
+    % dy = y(1) - y(2);
  
     % define output steps
     if ~ismember(analysis.save_stress,'none')
