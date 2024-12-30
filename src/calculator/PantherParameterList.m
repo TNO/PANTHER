@@ -33,6 +33,23 @@ classdef PantherParameterList
         f_d =  PantherParam(0.45, 'Dynamic friction coefficient','-', 1, nan, 0, 'uniform',0.35,0.49);    % [-] dynamic friction coefficient
         d_c =  PantherParam(0.005, 'Critical slip distance','m', 1, nan, 0, 'uniform',  0.002, 0.01);     % [-] critical slip distance
         cohesion = PantherParam(0, 'Cohesion','MPa', 1, nan, 0, 'uniform', 0, 5);                         % [MPa] cohesion
-    end     
+    end
+
+    methods
+        
+        function self = PantherParameterList()
+        end
+
+        function [depth_dependent_properties] = get_depth_dependent_properties(self)
+            props = properties(self);
+            depth_dependent_properties = {};
+            for i = 1 : length(props)
+                if self.(props{i}).uniform_with_depth == false
+                    depth_dependent_properties{end + 1} = props{i};
+                end
+            end
+        end
+
+    end
 
 end

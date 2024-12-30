@@ -20,6 +20,9 @@ function [run_results] = panther(analysis)
         analysis.generate_ensemble;
     end
 
+    % validate input
+    validate_input(analysis);
+
     % unpack some parameters
     y = analysis.y;
     load_table = analysis.load_table;
@@ -32,8 +35,8 @@ function [run_results] = panther(analysis)
     ensemble = analysis.ensemble;
     nucleation_criterion = analysis.nucleation_criterion;
     nucleation_length = analysis.nucleation_length_fixed;
-    % dy = y(1) - y(2);
- 
+    
+
     % define output steps
     if ~ismember(analysis.save_stress,'none')
            if ismember(analysis.save_stress,'all')
