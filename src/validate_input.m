@@ -77,6 +77,18 @@ function validate_input(analysis)
                     '. Depth dependent properties are dip,dip_azi, young, poisson,',...
                     'biot,therm_exp,sH_dir,shsv,sHsh,f_s, f_d,d_c,cohesion']);
             end
+            % set stochastic mode for depth dependent properties off
+            for i = 1 : length(depth_dependent_properties)
+                input_value_length = length(analysis.input_parameters.(depth_dependent_properties{i}).value_with_depth);
+                if (length(analysis.y) ~= length(input_value_length)) & (~input_value_length == 1 )
+                    error(['Length of depth dependent property ', depth_dependent_properties{i},...
+                        ' does not seem to match length of y, please check input']);
+                elseif input_value_length == 1 
+                    warning(['Depth dependency set for ', depth_dependent_properties{i},...
+                        ' but length of value with depth is 1']);
+                end
+                analysis.input_parameters.(depth_dependent_properties{i}).stochastic = 0;
+            end
         end
 
 end
