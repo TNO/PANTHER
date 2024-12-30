@@ -125,5 +125,53 @@ classdef TestPanther < matlab.unittest.TestCase
             testCase.verifyEqual(actual, expected);
          end
 
+        function test_sH_dir(testCase)
+            % test to check whether sH_dir is handled correctly
+            % initialize run and simplify pressure steps
+            run_instance = PantherInput();
+            run_instance.load_table(3:end, :) = [];
+            run_instance.load_table.time_steps(2) = 1;
+            run_instance.load_table.P_steps(2) = -1;
+            % set 0 throw, 90 degree dip
+            run_instance.input_parameters.throw.value = 0;
+            run_instance.input_parameters.dip.value = 90;
+            run_instance.input_parameters.poisson.value = 0.2;
+            run_instance.input_parameters.biot.value = 1;
+            run_instance.input_parameters.sv_grad.value = 22;
+            run_instance.input_parameters.shsv.value = 0.75;
+            run_instance.input_parameters.sHsh.value = 1.1;
+            run_instance.y_extent = 0;
+
+            % test with strike parallel to sH_dir
+            run_instance.input_parameters.sH_dir.value = 0;
+            run_instance.input_parameters.dip_azi.value = 90;   % strike parallel to sH_dir
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1); 
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv) - run_instance.ensemble{1}.p_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10);
+            
+            % test with sH_dir perpendicular to strike (parallel to
+            % dip_azi)
+            run_instance.input_parameters.sH_dir.value = 90;
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1);
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.p_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
+
+            % test with sH_dir perpendicular to strike (parallel to
+            % dip_azi), with sH_dir given as negative
+            run_instance.input_parameters.sH_dir.value = -90;
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1);
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.p_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
+        end
+
     end
 end

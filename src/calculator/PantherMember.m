@@ -4,28 +4,28 @@ classdef PantherMember < ModelGeometry
     % singel number or an array of length(y)
 
     properties
-        young               % [Pa] Young's modulus
-        poisson             % [-] Poisson's ratio    
-        biot                % [-] Biot coefficient
-        therm_exp           % [1/K] thermal expansion coefficient
-        sH_dir              % [deg] direction SHmax from north
-        sHsh                % [-] ratio SH/Sh
-        shsv                % [-] ratio Sh/Sv
-        sv_grad             % [MPa/km] Vertical stress gradient
-        sv_offset           % [MPa] Offset vertical stress gradient at y=0
-        p_grad              % [MPa/km] pressure gradient
-        p_offset            % [MPa] offset of pressure gradient at y=0    
-        p_over              % [MPa] overpressure in the reservoir
-        p_grad_res          % [MPa/km] pressure gradient in reservoir  
-        hyd_diffusivity     % [m2/s] hydraulic diffusivity
-        T_grad              % [K/km] temperature gradient
-        T_offset            % [k] offset temperature gradient at y=0
-        dT_dy_multiplier    % [deg/m] multiplier dT in reservoir wr.t. reservoir mid. -ve is increasing with depth
-        therm_diffusivity 
-        f_s
-        f_d
-        d_c
-        cohesion
+        young double {mustBePositive} = 15e3                    % [MPa] Young's modulus
+        poisson double {mustBeInRange(poisson, 0, 0.5)} = 0.2   % [-] Poisson's ratio    
+        biot double {mustBeInRange(biot, 0, 1)} = 1             % [-] Biot coefficient
+        therm_exp double {mustBePositive} = 1e-5                % [1/K] thermal expansion coefficient
+        sH_dir double = 0                                       % [deg] direction SHmax from north
+        sHsh double {mustBePositive} = 1                        % [-] ratio SH/Sh
+        shsv double {mustBePositive} = 0.75                     % [-] ratio Sh/Sv
+        sv_grad double {mustBePositive} = 22                    % [MPa/km] Vertical stress gradient
+        sv_offset double = 0                                    % [MPa] Offset vertical stress gradient at y=0
+        p_grad double {mustBePositive} = 10.5                   % [MPa/km] pressure gradient
+        p_offset double = 0                                     % [MPa] offset of pressure gradient at y=0    
+        p_over double = 0                                       % [MPa] overpressure in the reservoir
+        p_grad_res double {mustBePositive} = 10.5               % [MPa/km] pressure gradient in reservoir  
+        hyd_diffusivity double {mustBePositive} = 1e-6          % [m2/s] hydraulic diffusivity
+        T_grad double {mustBePositive} = 31                     % [K/km] temperature gradient
+        T_offset double {mustBePositive} = 10                   % [k] offset temperature gradient at y=0
+        dT_dy_multiplier = 1                                    % [deg/m] multiplier dT in reservoir wr.t. reservoir mid. -ve is increasing with depth
+        therm_diffusivity double {mustBePositive} = 1e-6        % thermal diffusivity 
+        f_s double {mustBeInRange(f_s, 0, 1)} = 0.6             % [-] static friction coefficient
+        f_d double {mustBeInRange(f_d, 0, 1)} = 0.45            % [-] dynamic friction coefficient
+        d_c double {mustBePositive}                             % [m] critical slip distance for linear slip weakening function
+        cohesion double {mustBeNonnegative} = 0                 % [MPa] cohesion
     end    
 
     methods

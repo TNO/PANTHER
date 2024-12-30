@@ -11,10 +11,10 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         stochastic logical = 0;                     % activate stochastic analysis
         n_stochastic {mustBeInteger} = 1;           % number of stochastic runs
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
-        load_case = 'P';                            % load case 'P': pressure changes, 'T': temperature changes
+        load_case {mustBeMember(load_case, {'P','T','PT'})} = 'P';               % load case 'P': pressure changes, 'T': temperature changes
         load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
         ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
-        ensemble                                    % ensemble of n_stochastic members 
+        ensemble
         parallel logical = 1                        % parallel computing for large number of simulations
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
@@ -23,6 +23,9 @@ classdef (HandleCompatible) PantherInput < FaultMesh
 
     properties (Constant)
         dx double  = 0;                             % [m] distance from from (for now only on fault allowed)
+    end
+
+    properties (Dependent) 
     end
 
     methods
@@ -50,33 +53,6 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         function reset_ensemble(self)
             self.ensemble = [];
             self.ensemble_generated = 0;
-        end
-
-        function self = generate_ensemble_from_table(self, input_table)
-            % generates a model ensemble from a table
-            % turn off stochastic (for now). Input values not in the input
-            % table will have a fixed value. No-depth dependency. 
-            self.stochastic = 0; 
-            % check for matching table field names
-            panther_input_names = properties(self.input_parameters);
-            table_names = fields(input_table);
-            matching_columns = ismember(table_names, panther_input_names);
-            n_ensemble = height(input_table);
-            column_indices = [];
-            if any(matching_columns)
-                column_indices = find(matching_columns);
-                self.ensemble_generated = 1;
-                for i = 1 : n_ensemble
-                    
-                    self.ensemble{i,1} = PantherMember(self.input_parameters, 0);
-                    for j = 1 : length(column_indices)
-                        var = table_names{column_indices(j)};
-                        self.ensemble{i,1}.(var) = input_table.(var)(i);
-                    end
-                end
-            else
-                disp('Table column names do not match Panther input parameter names');
-            end     
         end
 
         function ensemble_table = ensemble_to_table(self)
