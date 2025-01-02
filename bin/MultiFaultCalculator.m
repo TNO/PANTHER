@@ -393,9 +393,9 @@ classdef MultiFaultCalculator
             %   submitted_name - Name of the setting to validate
             % check if run setting name is valid
             valid_setting_names = fields(self.pillars{1});
-            if ismember(submitted_name, valid_setting_names) & ~ismember(submitted_name,{'input_parameters','load_table','y','ensemble'})
+            if ismember(submitted_name, valid_setting_names) & ~ismember(submitted_name,{'input_parameters','load_table','ensemble'})
                 valid_name = true;
-                if ismember(submitted_name,{'p_res_mode','p_fault','load_case','nucleation_criterion'})
+                if ismember(submitted_name,{'p_res_mode','p_fault_mode','dp_fault_mode','load_case','nucleation_criterion'})
                     value_type = 'char';
                 else
                     value_type = 'double';
