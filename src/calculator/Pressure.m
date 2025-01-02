@@ -33,6 +33,9 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
     %   get_initial_pressure - Returns the initial pressure in the model
     %   get_dp_fault - Returns the pressure difference across the fault
     %   set_fault_pressure - Sets the fault pressure based on HW and FW pressures
+    %   get_initial_pressure_on_side - Returns the HW or FW initial pressure 
+    %   get_HW_p0 - Returns initial pressure in the hanging wall
+    %   get_FW_p0 - Returns initial pressure in the footwall
     %   get_pressure_change_on_side - Calculates pressure change on a given side
     %   get_HW_pressure_change - Returns pressure change in the hanging wall
     %   get_FW_pressure_change - Returns pressure change in the footwall
@@ -94,37 +97,16 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
         end  
 
        
-        function [p0, p0_HW, p0_FW] = get_initial_pressure(self)
-            % get_initial_pressure Returns the initial pressure in the model.
+        function [p0] = get_initial_pressure(self)
+            % get_initial_pressure Returns the initial fault pressure
             % Output:
-            %   p0 - Initial pressure
-            %   p0_HW - Initial pressure in the hanging wall
-            %   p0_FW - Initial pressure in the footwall
-            [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
-            yy = self.y + self.depth_mid;    
-            p0 = zeros(size(yy));                               % intialize fault pressure
-            p0 = -(yy/1000).*self.p_grad + self.p_offset;       % [MPa] hydrostatic pressure
-            p0_FW = p0; p0_HW = p0;                             % initialize FW and HW pressure with hydrostatic
-            top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
-            top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
-            base_FW_i = self.base_FW_i(self.y); 
-            base_HW_i = self.base_HW_i(self.y);
-            % set overpressure w.r.t. hydrostatic gradient, in reservoir
-            % and base
-            p0_HW(top_HW_i:end) = p0_HW(top_HW_i:end) + self.p_over;  
-            p0_FW(top_FW_i:end) = p0_FW(top_FW_i:end) + self.p_over;  
-            % set reservoir pressure gradient within the reservoir compartments
-            if strcmp(self.p_res_mode, 'same')
-                base_res_i = max(base_FW_i, base_HW_i );
-                p0_FW(top_FW_i:base_res_i) = p0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
-                p0_HW(top_HW_i:base_res_i) = p0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
-            else
-                p0_FW(next_to_FW) = p0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*self.p_grad_res/1000;
-                p0_HW(next_to_HW) = p0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*self.p_grad_res/1000; 
-            end
+            %   p0 - Initial pressure in the fault
+            p0_FW = self.get_FW_p0();
+            p0_HW = self.get_HW_p0();
             p0 = self.set_fault_pressure(p0_HW, p0_FW, self.p_fault_mode);
         end
 
+       
 
         function dp_fault = get_dp_fault(self) 
             % get_dp_fault Returns the pressure difference within the fault.
@@ -183,6 +165,70 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             end
         end
 
+        function [p0_on_side] = get_p0_on_side(self, p_side)
+            % get_p0_on_side returns pressure on HW or FW side
+            % Input:
+            % p_side - 'HW' or 'FW'
+            % Output:
+            % p0_on_side 
+
+            if strcmp(p_side, 'FW')
+                p0_on_side = self.get_FW_p0();
+            elseif strcmp(p_side, 'HW')
+                p0_on_side = self.get_HW_p0();
+            else
+                error('Incorrect side indicator entered, should be FW or HW');
+            end
+
+        end
+
+        function [p0_FW] = get_FW_p0(self)
+            % get_FW_p0 return initial pressure in the footwall compartment
+            % Output:
+            %   p0_FW - Initial pressure in the footwall
+            [next_to_FW, ~, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
+            yy = self.y + self.depth_mid;    
+            p0_FW = -(yy/1000).*self.p_grad + self.p_offset;       % [MPa] hydrostatic pressure
+            top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
+            base_FW_i = self.base_FW_i(self.y);
+            base_HW_i =  self.base_HW_i(self.y);
+            % set overpressure w.r.t. hydrostatic gradient, in reservoir
+            % and base
+            p0_FW(top_FW_i:end) = p0_FW(top_FW_i:end) + self.p_over;  
+            % set reservoir pressure gradient within the reservoir compartments
+            if strcmp(self.p_res_mode, 'same')
+                % if same, pressure is equal at the base of the deepest
+                % compartment
+                base_res_i = max(base_FW_i, base_HW_i );
+                p0_FW(top_FW_i:base_res_i) = p0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
+            else
+                p0_FW(next_to_FW) = p0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*self.p_grad_res/1000;
+            end
+
+        end
+
+        function [p0_HW] = get_HW_p0(self)
+            % get_HW_p0 return initial pressure in the footwall compartment
+            % Output:
+            %   p0_HW - Initial pressure in the footwall
+            [~, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
+            yy = self.y + self.depth_mid;    
+            p0_HW = -(yy/1000).*self.p_grad + self.p_offset;       % [MPa] hydrostatic pressure
+            top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
+            base_HW_i = self.base_HW_i(self.y);
+            base_FW_i = self.base_FW_i(self.y);
+            % set overpressure w.r.t. hydrostatic gradient, in reservoir
+            % and base. Overpressure is defined at top reservoir
+            % compartment
+            p0_HW(top_HW_i:end) = p0_HW(top_HW_i:end) + self.p_over;  
+            % set reservoir pressure gradient within the reservoir compartments
+            if strcmp(self.p_res_mode, 'same')
+                base_res_i = max(base_FW_i, base_HW_i );
+                p0_HW(top_HW_i:base_res_i) = p0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*self.p_grad_res/1000;
+            else
+                p0_HW(next_to_HW) = p0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*self.p_grad_res/1000; 
+            end
+        end
        
         function  [dp_on_side] = get_pressure_change_on_side(self, p_factor, p_side)
             % get_pressure_change_on_side Calculates pressure change on a given side.
@@ -192,7 +238,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Output:
             %   dp_on_side - Pressure change on the specified side
             p_on_side = self.get_pressure_on_side(p_factor, p_side);
-            dp_on_side = p_on_side - self.p0;
+            p0_on_side = self.get_p0_on_side(p_side);
+            dp_on_side = p_on_side - p0_on_side;
         end
 
         function  [dp_HW] = get_HW_pressure_change(self)
@@ -200,7 +247,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Output:
             %   dp_HW - Pressure change in the hanging wall
             p_HW = self.get_HW_pressure();
-            [~, p0_HW, ~] = self.get_initial_pressure();
+            p0_HW = self.get_HW_p0();
             dp_HW = p_HW - p0_HW;    
         end
 
@@ -210,7 +257,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Output:
             %   dp_FW - Pressure change in the footwall
             p_FW = self.get_FW_pressure();
-            [~, ~, p0_FW] = self.get_initial_pressure();
+            p0_FW = self.get_FW_p0();
             dp_FW = p_FW - p0_FW;    
         end
 
@@ -251,6 +298,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             else
                 error('Incorrect side indicator entered, should be FW or HW');
             end
+            p0_on_side = self.get_p0_on_side(p_side);
 
             % Get top and base y-coordinates for the reservoir compartment
             y_top = self.get_top_y(p_side);
@@ -266,7 +314,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             p_factor = p_factor(:)';
              
              dp_on_side = dp_unit * self.P_steps' .* p_factor;
-             p_on_side = dp_on_side + self.p0;
+             
+             p_on_side = dp_on_side + p0_on_side;
              if self.diffusion_P
                 p_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, p_on_side, self.hyd_diffusivity);
              end
