@@ -58,8 +58,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
         P_factor_HW (:,1) = [1,1]
         P_factor_FW (:,1) = [1,1]
         P_factor_fault (:,1) = [1,1]
-        p_fault_mode {mustBeMember(p_fault_mode,{'max','min','mean','FW','HW'})} = 'max';
-        dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min'; 
+        p0_fault_mode {mustBeMember(p0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';
+        p_fault_mode {mustBeMember(p_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min'; 
         p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same'
         diffusion_P logical = false
         p_grad (:,1) double {mustBePositive} = 10.2
@@ -103,15 +103,35 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             %   p0 - Initial pressure in the fault
             p0_FW = self.get_FW_p0();
             p0_HW = self.get_HW_p0();
-            p0 = self.set_fault_pressure(p0_HW, p0_FW, self.p_fault_mode);
+            p0 = self.set_fault_pressure(p0_HW, p0_FW, self.p0_fault_mode);
         end
 
        
 
-        function dp_fault = get_dp_fault(self) 
-            % get_dp_fault Returns the pressure difference within the fault.
+        % function dp_fault = get_dp_fault(self) 
+        %     % get_dp_fault Returns the pressure difference within the fault.
+        %     % Output:
+        %     %   dp_fault - Pressure difference within the fault
+        %     % if reservoir compartment on either side has 0 width, set
+        %     % pressures in that compartment to 0. 
+        %     if self.width_FW == 0
+        %         dp_FW = zeros(length(self.y), length(self.time_steps));       % set dP in FW compartment to 0
+        %     else
+        %         dp_FW = self.get_pressure_change_on_side(self.P_factor_FW,'FW');
+        %     end
+        %     if self.width_HW == 0
+        %         dp_HW = zeros(length(self.y), length(self.time_steps));       % set dP in HW compartment to 0
+        %     else
+        %         dp_HW = self.get_pressure_change_on_side(self.P_factor_HW,'HW');
+        %     end
+        %     dp_fault = self.set_fault_pressure(dp_HW, dp_FW, self.dp_fault_mode);
+        %     dp_fault = self.P_factor_fault' .* dp_fault;
+        % end
+
+        function p_fault = get_p_fault(self) 
+            % get_p_fault Returns the pressure difference within the fault.
             % Output:
-            %   dp_fault - Pressure difference within the fault
+            %   p_fault - Pressure change within the fault
             % if reservoir compartment on either side has 0 width, set
             % pressures in that compartment to 0. 
             if self.width_FW == 0
@@ -124,8 +144,23 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             else
                 dp_HW = self.get_pressure_change_on_side(self.P_factor_HW,'HW');
             end
-            dp_fault = self.set_fault_pressure(dp_HW, dp_FW, self.dp_fault_mode);
-            dp_fault = self.P_factor_fault' .* dp_fault;
+            p0_FW = self.get_p0_on_side('FW');
+            p0_HW = self.get_p0_on_side('HW');
+            p_FW = p0_FW + dp_FW;
+            p_HW = p0_HW + dp_HW;
+            p0_fault = self.get_initial_pressure();
+            % plot(p_FW(:,end),self.y, p_HW(:,end), self.y, p0_fault, self.y)
+            % plot(p_FW(:,end),self.y, p_HW(:,end), self.y, p_fault, self.y)
+            % dp_fault = self.set_fault_pressure(p_HW - p0_fault, p_FW - p0_fault, self.p_fault_mode);
+            p_fault = self.set_fault_pressure(p_HW, p_FW, self.p_fault_mode);
+            % set initial pressure again
+            % otherwise different p0_fault_mode and p_fault_mode settings
+            % lead to inconsistent state at t = 0;
+            if self.time_steps(1) == 0
+                p_fault(:,1) = p0_fault;
+            end
+            % p_fault = dp_fault + p0_fault
+            % dp_fault = self.P_factor_fault' .* dp_fault;
         end
 
 
@@ -333,7 +368,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Output:
             %   a - Pressure difference across the fault
             if contains(self.load_case,'P')
-                a = self.get_dp_fault();
+                a = self.get_p_fault() - self.get_initial_pressure;
+                % a = self.get_dp_fault();
             else
                 a = zeros(length(self.y), length(self.time_steps));
             end
@@ -343,7 +379,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % get.p Returns the current pressure.
             % Output:
             %   p - Current pressure
-            p = self.p0 + self.dp_fault;
+            % p = self.p0 + self.dp_fault;
+            p = self.get_p_fault();
        end
 
         function self = reduce_steps(self, steps)

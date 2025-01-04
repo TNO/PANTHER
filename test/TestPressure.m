@@ -29,8 +29,8 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "RelTol", 1e-10);
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
             
-            % set dp fault to max(dp_Hw, dp_FW)
-            tc.dp_fault_mode = 'max';
+            % set p fault to max(p_Hw, p_FW)
+            tc.p_fault_mode = 'max';
             tc.generate_ensemble;
             p = Pressure(tc.ensemble{1}, tc.load_table, tc);
           
@@ -41,7 +41,7 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
             
             % single side scenario
-            tc.dp_fault_mode = 'min';
+            tc.p_fault_mode = 'min';
             tc.input_parameters.width_FW.value = 0;
             tc.input_parameters.width_HW.value = inf;
             tc.generate_ensemble;
@@ -80,7 +80,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.load_table.P_steps(2) = -10;
             tc.diffusion_P = 1;
             tc.input_parameters.p_over.value = 2;
-            tc.dp_fault_mode = 'max_abs';
+            tc.p_fault_mode = 'min';
             tc.generate_ensemble();
             
             % case t < h, p_res_mode = 'same', p_fault = 'min', diffusion =
@@ -101,8 +101,8 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.load_table.P_steps(2) = -1;
             tc.diffusion_P = 1;
             tc.input_parameters.p_grad_res.value = 0.2;
-            tc.dp_fault_mode = 'min';
-            tc.p_fault_mode = 'max';
+            tc.p0_fault_mode = 'max';
+            tc.p_fault_mode = 'min';
             tc.generate_ensemble();
             
             % case t < h, p_res_mode = 'same', dp_fault_mode = 'min', diffusion =
@@ -122,6 +122,29 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(max(abs(dp_fault(:,1))), 0, "RelTol", 1e-10);
         end
         
+        function test_pressure_setting_for_different_p_grad(testCase)
+             % default case
+            tc = PantherInput;
+            tc.load_table = tc.load_table(1:2,:);
+            tc.load_table.time_steps(2) = 1;
+            tc.load_table.P_steps(2) = -1;
+            tc.diffusion_P = 0;
+            tc.input_parameters.p_grad_res.value = 0.2;
+            tc.input_parameters.p_over.value = 0.2;
+            tc.p_fault_mode = 'max';
+            tc.p0_fault_mode = 'min';
+            tc.p_res_mode = 'same';
+            tc.generate_ensemble();
+            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            % seal reservoir juxtaposition
+            i_seal_res = floor((p.top_FW_i(p.y) + p.top_HW_i(p.y))/2);
+            % expected pressure equal to p gradient without p_grad_res and
+            % p_over because p_fault_mode = 'min' 
+            expected = -(1/1000)*(p.y(i_seal_res) + tc.input_parameters.depth_mid.value)...,
+                *tc.input_parameters.p_grad.value + tc.input_parameters.p_offset.value;
+            observed = p.p(i_seal_res, 1) ;
+            testCase.verifyEqual(observed, expected, "RelTol", 1e-10);
+        end
 
     end
 end
