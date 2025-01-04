@@ -379,8 +379,11 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % get.p Returns the current pressure.
             % Output:
             %   p - Current pressure
-            % p = self.p0 + self.dp_fault;
-            p = self.get_p_fault();
+            if contains(self.load_case,'P')
+                p = self.get_p_fault();
+            else
+                p = repmat(self.p0, 1, length(self.time_steps));
+            end
        end
 
         function self = reduce_steps(self, steps)

@@ -26,8 +26,8 @@ classdef TestPressure < matlab.unittest.TestCase
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), -1, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "AbsTol", 1e-10);
             
             % set p fault to max(p_Hw, p_FW)
             tc.p_fault_mode = 'max';
@@ -35,10 +35,10 @@ classdef TestPressure < matlab.unittest.TestCase
             p = Pressure(tc.ensemble{1}, tc.load_table, tc);
           
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "AbsTol", 1e-10);
             
             % single side scenario
             tc.p_fault_mode = 'min';
@@ -49,9 +49,9 @@ classdef TestPressure < matlab.unittest.TestCase
             
             testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), -1, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "AbsTol", 1e-10);
 
             % single side scenario
             tc.p_fault_mode = 'min';
@@ -60,11 +60,11 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.generate_ensemble;
             p = Pressure(tc.ensemble{1}, tc.load_table, tc);
             
-            testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), -1, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "RelTol", 1e-10);
-            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "RelTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_res, end), -1, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.res_seal, end), -1, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.base_base, end), 0, "AbsTol", 1e-10);
+            testCase.verifyEqual(p.dp_fault(i_mid.seal_seal, end), 0, "AbsTol", 1e-10);
 
              % dp_HW = p.get_HW_pressure_change();
              % dp_FW = p.get_FW_pressure_change();

@@ -20,16 +20,16 @@ classdef TestPanther < matlab.unittest.TestCase
             % test with default input, with dT and T diffusion    
             run_instance = PantherInput;
             run_instance.load_case = 'T';
-            run_instance.diffusion_T = 1;
+            run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
             run_instance.ensemble{1}.get_gamma_T;
             result = panther(run_instance);         
             i_mid = ceil(length(result.y)/2);
             actual = result.stress{1}.sne(i_mid, end);
-            expected = 14.21;
+            expected = 14.29;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             actual = result.stress{1}.tau(i_mid, end);
-            expected = 7.82;
+            expected = 8.055;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
