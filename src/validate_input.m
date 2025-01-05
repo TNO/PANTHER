@@ -24,10 +24,10 @@ function validate_input(analysis)
     end
 
     % check sensibility of the chosen pressure gradient
-    if analysis.input_parameters.p_grad.value < 9 || analysis.input_parameters.p_grad.value > 15
+    if analysis.input_parameters.P_grad.value < 9 || analysis.input_parameters.P_grad.value > 15
         warning(['Pore stress gradient in in MPa/km, and lies typically ',...
             'in the range of 10 - 12 MPa/km. Given input was ', ...
-            num2str(analysis.input_parameters.p_grad.value),' please check']);
+            num2str(analysis.input_parameters.P_grad.value),' please check']);
     end
 
     % check sensibility of the chosen temperature gradient

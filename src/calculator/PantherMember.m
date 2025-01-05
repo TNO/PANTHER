@@ -13,10 +13,10 @@ classdef PantherMember < ModelGeometry
         shsv double {mustBePositive} = 0.75                     % [-] ratio Sh/Sv
         sv_grad double {mustBePositive} = 22                    % [MPa/km] Vertical stress gradient
         sv_offset double = 0                                    % [MPa] Offset vertical stress gradient at y=0
-        p_grad double {mustBePositive} = 10.5                   % [MPa/km] pressure gradient
-        p_offset double = 0                                     % [MPa] offset of pressure gradient at y=0    
-        p_over double = 0                                       % [MPa] overpressure in the reservoir
-        p_grad_res double {mustBePositive} = 10.5               % [MPa/km] pressure gradient in reservoir  
+        P_grad double {mustBePositive} = 10.5                   % [MPa/km] pressure gradient
+        P_offset double = 0                                     % [MPa] offset of pressure gradient at y=0    
+        P_over double = 0                                       % [MPa] overpressure in the reservoir
+        P_grad_res double {mustBePositive} = 10.5               % [MPa/km] pressure gradient in reservoir  
         hyd_diffusivity double {mustBePositive} = 1e-6          % [m2/s] hydraulic diffusivity
         T_grad double {mustBePositive} = 31                     % [K/km] temperature gradient
         T_offset double {mustBePositive} = 10                   % [k] offset temperature gradient at y=0

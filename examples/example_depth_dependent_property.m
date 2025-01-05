@@ -78,7 +78,7 @@ sc2_variable_dip = PantherInput;
 sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
 y = sc2_variable_dip.y;
 sc2_variable_dip.input_parameters.dip.value_with_depth = 80*ones(size(y));
-i_mid = floor(length(y)/2)
+i_mid = floor(length(y)/2);
 sc2_variable_dip.input_parameters.dip.value_with_depth(i_mid:end) = 60;
 % sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
 

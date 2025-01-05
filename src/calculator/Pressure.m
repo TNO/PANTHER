@@ -74,9 +74,9 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
     end
 
     properties (Dependent)
-        P0
-        P
-        dP_fault
+        P0          % Initial pressure in the fault
+        P           % Pressure in the fault during load steps
+        dP          % Pressure change in the fault during load steps
     end
 
     methods
@@ -336,7 +336,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             P0 =  self.get_initial_pressure();
        end
        
-       function dP = get.dP_fault(self)
+       function dP = get.dP(self)
             % get.dP_fault Returns the pressure difference across the fault.
             % Output:
             %   dP - Pressure difference across the fault
@@ -406,13 +406,13 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             %   dp_at_load_step - Pressure difference at the specified load step
             % obtain the pressure at certain loadstep, where load_step is
             % between 1 and height of loadtable
-            dP_at_load_step = zeros(size(self.dP_fault, 1), 1);
+            dP_at_load_step = zeros(size(self.dP, 1), 1);
             if load_step < 1 || load_step > size(self.dp, 2)
                 disp('Selected load step is outside calculation time range');
             else
-                for i = 1 : size(self.dP_fault, 1)
-                    x_ind = linspace(1, size(self.dP_fault, 2), size(self.dP_fault, 2));    % indices of time, P, or T steps
-                    dP_at_load_step(i) = interp1(x_ind, self.dP_fault(i, :), load_step);
+                for i = 1 : size(self.dP, 1)
+                    x_ind = linspace(1, size(self.dP, 2), size(self.dP, 2));    % indices of time, P, or T steps
+                    dP_at_load_step(i) = interp1(x_ind, self.dP(i, :), load_step);
                 end     
             end
         end
@@ -446,7 +446,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             hold on
             plot(self.P(:,end));
             subplot(1,2,2)
-            plot(self.dP_fault(:,end));
+            plot(self.dP(:,end));
      
         end
 
