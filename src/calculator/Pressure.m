@@ -13,7 +13,6 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
     %   P_steps - Pressure change steps
     %   P_factor_HW - Pressure factor for the hanging wall
     %   P_factor_FW - Pressure factor for the footwall
-    %   P_factor_fault - Pressure factor for the fault
     %   P0_fault_mode - Mode to set initial fault pressure
     %   P_fault_mode - Mode to set fault pressure during loading
     %   P_res_mode - Mode to set initial reservoir pressures
@@ -58,7 +57,6 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
         P_steps (:,1) = [0,-1]              % [MPa] pressure change
         P_factor_HW (:,1) = [1,1]
         P_factor_FW (:,1) = [1,1]
-        P_factor_fault (:,1) = [1,1]
         P0_fault_mode {mustBeMember(P0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';
         P_fault_mode {mustBeMember(P_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min'; 
         P_res_mode {mustBeMember(P_res_mode, {'same','different'})} = 'same'
@@ -98,7 +96,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
         end  
 
        
-        function [P0] = get_initial_pressure(self)
+        function [P0] = get_P0(self)
             % get_initial_pressure Returns the initial fault pressure
             % Output:
             %   P0 - Initial pressure in the fault
@@ -129,7 +127,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             P0_HW = self.get_P0_on_side('HW');
             P_FW = P0_FW + dP_FW;
             P_HW = P0_HW + dP_HW;
-            P0_fault = self.get_initial_pressure();
+            P0_fault = self.get_P0();
             P_fault = self.set_fault_pressure(P_HW, P_FW, self.P_fault_mode);
             % set initial pressure again to ensure consistent state at t = 0;
             if self.time_steps(1) == 0
@@ -352,7 +350,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % get.P0 Returns the initial pressure.
             % Output:
             %   P0 - Initial pressure
-            P0 =  self.get_initial_pressure();
+            P0 =  self.get_P0();
        end
        
        function dP = get.dP(self)
@@ -360,7 +358,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Output:
             %   dP - Pressure difference across the fault
             if contains(self.load_case,'P')
-                dP = self.get_P_fault() - self.get_initial_pressure;
+                dP = self.get_P_fault() - self.get_P0;
             else
                 dP = zeros(length(self.y), length(self.time_steps));
             end

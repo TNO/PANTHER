@@ -22,7 +22,6 @@ function [load_table] = initialize_load_table()
     load_table.P_steps = -1* linspace(0, 35, n_steps)';
     load_table.P_factor_HW = ones(size(load_table.P_steps));
     load_table.P_factor_FW = ones(size(load_table.P_steps));
-    load_table.P_factor_fault = ones(size(load_table.P_steps));
     load_table.T_steps = -1* linspace(0, 35, n_steps)';
     load_table.T_multiply = ones(size(load_table.P_steps));
     load_table.T_factor_HW = ones(size(load_table.P_steps));
