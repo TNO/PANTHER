@@ -34,7 +34,7 @@ classdef (HandleCompatible) ModelGeometry
         dip_azi (:,1) double = 90
         throw (1,1) double = 75
         width_HW (1,1) {mustBeNonnegative} = Inf
-        width_FW (1,1) = Inf
+        width_FW (1,1) {mustBeNonnegative} = Inf
     end
 
     methods
