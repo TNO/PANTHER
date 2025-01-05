@@ -109,9 +109,10 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
 
 
         function P_fault = get_P_fault(self) 
-            % get_p_fault Returns the pressure difference within the fault.
+            % get_p_fault Returns the pressure within the fault during load
+            % steps. 
             % Output:
-            %   P_fault - Pressure change within the fault
+            %   P_fault - Pressure within the fault
             % if reservoir compartment on either side has 0 width, set
             % pressures in that compartment to 0. 
             if self.width_FW == 0
@@ -203,14 +204,20 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
             % and base
             P0_FW(top_FW_i:end) = P0_FW(top_FW_i:end) + self.P_over;  
+            % assign the ambient pressure gradient if FW width = 0
+            if self.width_FW == 0
+                P_grad_res_FW = self.P_grad;
+            else
+                P_grad_res_FW = self.P_grad_res;
+            end
             % set reservoir pressure gradient within the reservoir compartments
             if strcmp(self.P_res_mode, 'same')
                 % if same, pressure is equal at the base of the deepest
                 % compartment
                 base_res_i = max(base_FW_i, base_HW_i );
-                P0_FW(top_FW_i:base_res_i) = P0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*self.P_grad_res/1000;
+                P0_FW(top_FW_i:base_res_i) = P0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*P_grad_res_FW/1000;
             else
-                P0_FW(next_to_FW) = P0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*self.P_grad_res/1000;
+                P0_FW(next_to_FW) = P0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*P_grad_res_FW/1000;
             end
 
         end
@@ -228,13 +235,19 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
             % and base. Overpressure is defined at top reservoir
             % compartment
-            P0_HW(top_HW_i:end) = P0_HW(top_HW_i:end) + self.P_over;  
+            P0_HW(top_HW_i:end) = P0_HW(top_HW_i:end) + self.P_over;
+            % assign the ambient pressure gradient if HW width = 0
+            if self.width_FW == 0
+                P_grad_res_HW = self.P_grad;
+            else
+                P_grad_res_HW = self.P_grad_res;
+            end
             % set reservoir pressure gradient within the reservoir compartments
             if strcmp(self.P_res_mode, 'same')
                 base_res_i = max(base_FW_i, base_HW_i );
-                P0_HW(top_HW_i:base_res_i) = P0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*self.P_grad_res/1000;
+                P0_HW(top_HW_i:base_res_i) = P0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*P_grad_res_HW/1000;
             else
-                P0_HW(next_to_HW) = P0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*self.P_grad_res/1000; 
+                P0_HW(next_to_HW) = P0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*P_grad_res_HW/1000; 
             end
         end
        
@@ -318,15 +331,21 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
                  dP_unit = dP_unit';
             end
 
-            % Ensure P_steps and p_factor are row vectors
+            % set P_factor, set to 0 when width of FW or HW is 0
             P_factor = P_factor(:)';
+            if strcmp(P_side, 'FW') && (self.width_FW == 0)
+                P_factor = P_factor*0;
+            elseif strcmp(P_side, 'HW') && (self.width_HW == 0)
+                P_factor = P_factor*0;
+            end
+            
+            % Ensure P_steps and p_factor are row vectors         
+            dP_on_side = dP_unit * self.P_steps' .* P_factor;
              
-             dP_on_side = dP_unit * self.P_steps' .* P_factor;
-             
-             P_on_side = dP_on_side + P0_on_side;
-             if self.diffusion_P
-                P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
-             end
+            P_on_side = dP_on_side + P0_on_side;
+            if self.diffusion_P
+               P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
+            end
         end
 
        function P0 = get.P0(self)
