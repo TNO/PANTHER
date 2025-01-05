@@ -3,9 +3,9 @@ classdef (HandleCompatible) PantherInput < FaultMesh
 
     properties
         input_parameters                            % object containing input parameter settings 
-        p_res_mode {mustBeMember(p_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
-        p0_fault_mode {mustBeMember(p0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
-        p_fault_mode {mustBeMember(p_fault_mode,{'max','min','mean','FW','HW'})} = 'min';
+        P_res_mode {mustBeMember(P_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
+        P0_fault_mode {mustBeMember(P0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault. max=max(p_HW, p_FW), etc. 
+        P_fault_mode {mustBeMember(P_fault_mode,{'max','min','mean','FW','HW'})} = 'min';
         % dp_fault_mode {mustBeMember(dp_fault_mode,{'max','max_abs','min', 'min_abs','mean','FW','HW'})} = 'min';     % [-] assumed pressure in fault. max=max(dp_HW, dp_FW), etc. 
         diffusion_P logical = 0;                    % activate pressure diffusion
         diffusion_T logical = 0;                    % activate pressure diffusion
