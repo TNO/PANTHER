@@ -20,10 +20,10 @@ classdef PantherParameterList
         shsv = PantherParam(0.75, '\sigma_h / \sigma_v','-',1, nan, 0, 'uniform', 0.7, 0.75);            % [-] ratio Sh/Sv
         sv_grad = PantherParam(22, 'Vertical stress gradient','MPa/km', 1, nan, 0, 'uniform', 21.5, 22.5);      % [MPa/km] Vertical stress gradient
         sv_offset = PantherParam(0, 'Vertical stress offset','MPa', 1, nan, 0, 'uniform', 0, 1);         % [MPa] Offset vertical stress gradient at y=0
-        p_grad = PantherParam(10.5, 'Pressure gradient','MPa/km', 1, nan, 0, 'uniform', 10, 11);         % [MPa/km] pressure gradient
-        p_offset = PantherParam(0, 'Pressure gradient offset','MPa', 1, nan, 0, 'uniform', 0, 0);        % [MPa] offset of pressure gradient at y=0    
-        p_over = PantherParam(0, 'Hydrostatic overpressure','MPa', 1, nan, 0, 'uniform', 0, 2);            % [MPa] hydrostatic overpressure in/below reservoir 
-        p_grad_res = PantherParam(10.5, 'Pressure gradient reservoir fluid','MPa/km', 1, nan, 0, 'uniform',10.5, 10.5); % [MPa/km] pressure gradient in reservoir  
+        P_grad = PantherParam(10.5, 'Pressure gradient','MPa/km', 1, nan, 0, 'uniform', 10, 11);         % [MPa/km] pressure gradient
+        P_offset = PantherParam(0, 'Pressure gradient offset','MPa', 1, nan, 0, 'uniform', 0, 0);        % [MPa] offset of pressure gradient at y=0    
+        P_over = PantherParam(0, 'Hydrostatic overpressure','MPa', 1, nan, 0, 'uniform', 0, 2);            % [MPa] hydrostatic overpressure in/below reservoir 
+        P_grad_res = PantherParam(10.5, 'Pressure gradient reservoir fluid','MPa/km', 1, nan, 0, 'uniform',10.5, 10.5); % [MPa/km] pressure gradient in reservoir  
         hyd_diffusivity = PantherParam(1e-6, 'Hydraulic diffusivity','m2/s', 1, nan, 0, 'uniform', 0.8e-6,2e-6);   % [m2/s] hydraulic diffusivity
         T_grad = PantherParam(31, 'Temperature gradient',[char(176),'C/km'], 1, nan, 0, 'uniform', 30, 32);   % [K/km] temperature gradient
         T_offset = PantherParam(10, 'Temperature gradient offset',[char(176),'C'], 1, nan, 0, 'uniform', 10, 10); % [k] offset temperature gradient at y=0

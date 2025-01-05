@@ -66,7 +66,7 @@ classdef FaultStressChange
             if and(~vary_dip, ~vary_PT)
                 dsigma = self.get_stress_change_uniform(params, GF{1}, y, pressure, gamma_P, 'P');
             else
-                dsigma = self.get_stress_change_nonuniform( GF, y, size(pressure.dp_fault, 2), pressure, gamma_P, 'P');
+                dsigma = self.get_stress_change_nonuniform( GF, y, size(pressure.dP, 2), pressure, gamma_P, 'P');
             end
         end
 
@@ -84,8 +84,8 @@ classdef FaultStressChange
             % calculate the stress change for each timestep, for uniform P or T change in the reservoir blocks
             % find the pressure in the HW or FW compartment
             if strcmp(load, 'P') 
-                dP_FW = PT_change.get_FW_pressure_change();
-                dP_HW = PT_change.get_HW_pressure_change();
+                dP_FW = PT_change.get_dP_FW();
+                dP_HW = PT_change.get_dP_HW();
                 for i = 1 : size(dP_FW,2)
                     i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
                     dP_FW_mid = dP_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
@@ -114,8 +114,8 @@ classdef FaultStressChange
                 % refactor. element-wise multiplication in get stress
                 % change component
                 if contains(load_case,'P')
-                    dP_FW = PT_change.get_FW_pressure_change();
-                    dP_HW = PT_change.get_HW_pressure_change();
+                    dP_FW = PT_change.get_dP_FW();
+                    dP_HW = PT_change.get_dP_HW();
                 end
                 for j = 1 : length(y)
                     if contains(load_case,'P')
@@ -164,12 +164,12 @@ classdef FaultStressChange
         % function to check if pressure change is uniform (consider moving
         % to pressure object)
         function check_uniform(~, pressure)
-            unique_P = unique(pressure.dp_FW);
-            if length(unique_P) > (size(pressure.dp_FW, 2) + 1)
+            unique_P = unique(pressure.dP_FW);
+            if length(unique_P) > (size(pressure.dP_FW, 2) + 1)
                 error('Pressure change in footwall is not uniform');
             end
-            unique_P = unique(pressure.dp_HW);
-            if length(unique_P) > (size(pressure.dp_HW, 2) + 1)
+            unique_P = unique(pressure.dP_HW);
+            if length(unique_P) > (size(pressure.dP_HW, 2) + 1)
                 error('Pressure change in hanging wall is not uniform');
             end
         end
@@ -179,8 +179,8 @@ classdef FaultStressChange
             % return true if they vary . move to pressure object
             vary_P = 0;
             vary_T = 0;
-            dp_FW = pressure.get_FW_pressure_change();
-            dp_HW = pressure.get_HW_pressure_change();
+            dp_FW = pressure.get_dP_FW();
+            dp_HW = pressure.get_dP_HW();
             if length(unique(dp_FW)) > size(dp_FW,2) + 1
                 vary_P = 1;
             elseif length(unique(dp_HW)) > size(dp_FW,2) + 1

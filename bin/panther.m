@@ -85,12 +85,12 @@ function [run_results] = panther(analysis)
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes
-        stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dp_fault,2));        % initialize fault stresses for P
+        stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dP,2));        % initialize fault stresses for P
         stress_change{i} = stress_change{i}.calc_stress_changes(ensemble{i}, y, analysis.dx, pressure{i}, temperature{i}, load_case);
         
         % stress (initial + change)
-        stress{i} = FaultStress(length(y), size(pressure{i}.dp_fault,2));
-        stress{i} = stress{i}.compute_fault_stress(initial_stress{i}, stress_change{i}, pressure{i}.p);
+        stress{i} = FaultStress(length(y), size(pressure{i}.dP,2));
+        stress{i} = stress{i}.compute_fault_stress(initial_stress{i}, stress_change{i}, pressure{i}.P);
         
         % fault slip, reactivation, nucleation
         slip{i} = FaultSlip(size(stress{i}.sne, 1), size(stress{i}.sne, 2));

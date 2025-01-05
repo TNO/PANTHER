@@ -149,7 +149,7 @@ classdef TestPanther < matlab.unittest.TestCase
             result = panther(run_instance);
             actual = result.stress{1}.sne(1); 
             expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
-                * run_instance.ensemble{1}.shsv) - run_instance.ensemble{1}.p_grad) ; 
+                * run_instance.ensemble{1}.shsv) - run_instance.ensemble{1}.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10);
             
             % test with sH_dir perpendicular to strike (parallel to
@@ -159,7 +159,7 @@ classdef TestPanther < matlab.unittest.TestCase
             result = panther(run_instance);
             actual = result.stress{1}.sne(1);
             expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
-                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.p_grad) ; 
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
 
             % test with sH_dir perpendicular to strike (parallel to
@@ -169,7 +169,7 @@ classdef TestPanther < matlab.unittest.TestCase
             result = panther(run_instance);
             actual = result.stress{1}.sne(1);
             expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
-                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.p_grad) ; 
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
         end
 
