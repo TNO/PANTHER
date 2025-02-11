@@ -38,7 +38,7 @@ classdef MultiFaultCalculator
         pillar_results cell
         result_summary table
         run_done logical
-        parallel = 1
+        parallel = 1        % overrides parallel setting of individual pillars
     end
 
     properties (Dependent)
@@ -248,6 +248,25 @@ classdef MultiFaultCalculator
                 disp('Specified setting type does not seem the right type or dimension, check');
             end
             
+        end
+
+        function self = set_load_tables(self, load_table_array)
+            % load_table_array must be a cell array of size n_pillars x 1,
+            % or contain a single load table
+            if ~iscell(load_table_array)
+                disp('ERROR: Input cell array of load tables');
+            end
+           if ~(size(load_table_array,2) == 1)
+               disp('ERROR: Input cell array of load tables must be n_pillars x 1, or 1 x 1. Value not assigned');
+           end
+           if ~(size(load_table_array,1) == 1 | size(load_table_array,1) == length(self.pillars))
+               disp('ERROR: Input cell array of load tables must be n_pillars x 1, or 1 x 1. Value not assigned');
+           else
+               for i = 1 : length(self.pillars)
+                   self.pillars{i}.load_table = load_table_array{i};
+               end
+           end
+           
         end
 
         function [nuc_load_step] = get_minimum_nucleation_load_step(self)
