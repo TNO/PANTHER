@@ -171,7 +171,14 @@ classdef FaultSlip
                     else
                         if length(x) > 1 && ~strcmp(nuc_crit, 'fixed')
                             [~, unique_index] = unique(l_difference);
-                            nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
+                            % Ensure there are at least two unique points for interpolation
+                            if numel(unique(l_difference(unique_index))) > 1
+                                nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
+                            else
+                                % Handle the case where there is only one unique value
+                                nucleation_per_slip_zone(j) = x(unique_index(1));  % Take the first value or handle as needed
+                            end
+
                         elseif length(x) > 1 && strcmp(nuc_crit, 'fixed')
                             [~, unique_index] = unique(l_difference);
                             nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
