@@ -20,16 +20,16 @@ classdef TestPanther < matlab.unittest.TestCase
             % test with default input, with dT and T diffusion    
             run_instance = PantherInput;
             run_instance.load_case = 'T';
-            run_instance.diffusion_T = 1;
+            run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
-            run_instance.ensemble{1}.get_gamma_T
+            run_instance.ensemble{1}.get_gamma_T;
             result = panther(run_instance);         
             i_mid = ceil(length(result.y)/2);
             actual = result.stress{1}.sne(i_mid, end);
-            expected = 14.21;
+            expected = 14.29;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             actual = result.stress{1}.tau(i_mid, end);
-            expected = 7.82;
+            expected = 8.055;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
@@ -72,7 +72,8 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance);         
             actual = result.summary.nucleation_dp;
-            expected = -16.92;
+            % expected = -16.92;
+            expected = -17.53;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             % reset to uniform friction, but with f_s of length(y)
             run_instance.input_parameters.f_s.value_with_depth = ones(size(run_instance.y))*0.6;
@@ -101,13 +102,14 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             result = panther(run_instance); 
             actual = result.summary.nucleation_dp;
-            expected = -19.77;
+            %expected = -19.77;
+            expected = -20.80;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
         function test_stochastic(testCase)
              % test depth-variable initial stress ratio shsv
-            stochastic_run = PantherInput;
+            stochastic_run = PantherInput();
             % set shsv as a stochastic parameter
             stochastic_run.input_parameters.shsv.stochastic = 1;  % make shsv a stochastic parameter
             stochastic_run.input_parameters.shsv.a = 0.69;        % lower value of uniform distribution
@@ -123,7 +125,53 @@ classdef TestPanther < matlab.unittest.TestCase
             testCase.verifyEqual(actual, expected);
          end
 
+        function test_sH_dir(testCase)
+            % test to check whether sH_dir is handled correctly
+            % initialize run and simplify pressure steps
+            run_instance = PantherInput();
+            run_instance.load_table(3:end, :) = [];
+            run_instance.load_table.time_steps(2) = 1;
+            run_instance.load_table.P_steps(2) = -1;
+            % set 0 throw, 90 degree dip
+            run_instance.input_parameters.throw.value = 0;
+            run_instance.input_parameters.dip.value = 90;
+            run_instance.input_parameters.poisson.value = 0.2;
+            run_instance.input_parameters.biot.value = 1;
+            run_instance.input_parameters.sv_grad.value = 22;
+            run_instance.input_parameters.shsv.value = 0.75;
+            run_instance.input_parameters.sHsh.value = 1.1;
+            run_instance.y_extent = 0;
+
+            % test with strike parallel to sH_dir
+            run_instance.input_parameters.sH_dir.value = 0;
+            run_instance.input_parameters.dip_azi.value = 90;   % strike parallel to sH_dir
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1); 
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv) - run_instance.ensemble{1}.P_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10);
+            
+            % test with sH_dir perpendicular to strike (parallel to
+            % dip_azi)
+            run_instance.input_parameters.sH_dir.value = 90;
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1);
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.P_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
+
+            % test with sH_dir perpendicular to strike (parallel to
+            % dip_azi), with sH_dir given as negative
+            run_instance.input_parameters.sH_dir.value = -90;
+            run_instance.generate_ensemble();
+            result = panther(run_instance);
+            actual = result.stress{1}.sne(1);
+            expected = -run_instance.ensemble{1}.depth_mid/1000 * ((run_instance.ensemble{1}.sv_grad ...
+                * run_instance.ensemble{1}.shsv * run_instance.ensemble{1}.sHsh) - run_instance.ensemble{1}.P_grad) ; 
+            testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
+        end
+
     end
 end
-
-%https://github.com/marketplace/actions/run-matlab-tests

@@ -74,7 +74,7 @@ wirdum_eq.fault_rdx
 
 if run_option == 1
     wirdum_variables = {'depth_mid','dip','dip_azi','throw','thick'};
-    depth_variable = {'f_s','f_d','d_c','sv_grad','shsv'};
+    depth_variable = {'f_s','f_d','d_c','shsv'};
     Zechstein_defaults = [0.8, 0.4, 0.01, 22, 0.99];
     for i = 1 : height(wirdum)
         pillar{i} = PantherInput;
@@ -156,6 +156,8 @@ end
 
 
 %% plot dip, strike, throw, reactivation and nucleation pressure along fault with events
+clear ax
+
 h2 = figure(2); clf(h2);
 set(gcf, 'Units', 'centimeters','Position',[15,5,18,20]);
 aw = 16;
@@ -206,6 +208,8 @@ set([ax(4), ax(5)],'YLim',[-35,-8]);
 
 %% plot dip, strike, throw, reactivation and nucleation pressure along fault with events
 % plotted against X RD
+clear ax 
+
 h2 = figure(2); clf(h2);
 set(gcf, 'Units', 'centimeters','Position',[15,5,18,20]);
 aw = 16;
@@ -252,11 +256,11 @@ set(ax,'Box','on');
 set([ax(4), ax(5)],'YLim',[-35,-22]);
 
 fig_path = '\\tsn.tno.nl\data\sv\sv-053185\Kluis\Research\DeepNL\PhysMax\Widrum_nucleation_modeling\';
-print(gcf,[fig_path, f_name, '_XRD_zoom.png'],'-dpng','-r300');
+% print(gcf,[fig_path, f_name, '_XRD_zoom.png'],'-dpng','-r300');
 
 
 %% 
-
+clear ax 
 % mapview fault and events
 h7 = figure(7); clf(h7); 
 plot(wirdum.x_coor/1000, wirdum.y_coor/1000);

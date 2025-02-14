@@ -65,6 +65,22 @@ classdef Temperature
 
         end
 
+
+        function [T_at_load_step] = get_T_at_load_step(self, load_step)
+            % obtain the temperature at certain loadstep, where load_step is
+            % between 1 and height of loadtable
+            T_at_load_step = zeros(size(self.T, 1), 1);
+            if load_step < 1 || load_step > size(self.T, 2)
+                disp('Selected load step is outside calculation time range');
+            else
+                for i = 1 : size(self.p, 1)
+                    x_ind = linspace(1, size(self.p, 2), size(self.p, 2));% indices of time, P, or T steps
+                    T_at_load_step(i) = interp1(x_ind, self.p(i, :), load_step);
+                end     
+            end
+        end
+
+
         function self = reduce_steps(self, steps)
             props = properties(self);
             % iterate over non-dependent properties

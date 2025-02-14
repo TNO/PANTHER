@@ -20,23 +20,19 @@ function [run_results] = panther(analysis)
         analysis.generate_ensemble;
     end
 
-    % perform validation of input
-    % TODO: validation functionality to be written
+    % validate input
+    validate_input(analysis);
 
     % unpack some parameters
     y = analysis.y;
     load_table = analysis.load_table;
     load_case = analysis.load_case;
-    p_fault = analysis.p_fault;
-    dp_fault = analysis.dp_fault;
-    p_res_mode = analysis.p_res_mode;
-    diffusion_P = analysis.diffusion_P;
     diffusion_T = analysis.diffusion_T;
     ensemble = analysis.ensemble;
     nucleation_criterion = analysis.nucleation_criterion;
     nucleation_length = analysis.nucleation_length_fixed;
-    dy = y(1) - y(2);
- 
+    
+
     % define output steps
     if ~ismember(analysis.save_stress,'none')
            if ismember(analysis.save_stress,'all')
@@ -85,16 +81,16 @@ function [run_results] = panther(analysis)
         initial_stress{i} = InitialStress(y, ensemble{i});
         
         % pressure and temperature changes
-        pressure{i} = PantherPressure(ensemble{i}, y, load_table, load_case, diffusion_P, p_fault, dp_fault, p_res_mode);
+        pressure{i} = Pressure(ensemble{i}, load_table, analysis);
         temperature{i} = Temperature(ensemble{i}, y, load_table, diffusion_T, 'min');
         
         % stress changes
-        stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dp_fault,2));        % initialize fault stresses for P
+        stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dP,2));        % initialize fault stresses for P
         stress_change{i} = stress_change{i}.calc_stress_changes(ensemble{i}, y, analysis.dx, pressure{i}, temperature{i}, load_case);
         
         % stress (initial + change)
-        stress{i} = FaultStress(length(y), size(pressure{i}.dp_fault,2));
-        stress{i} = stress{i}.compute_fault_stress(initial_stress{i}, stress_change{i}, pressure{i}.p);
+        stress{i} = FaultStress(length(y), size(pressure{i}.dP,2));
+        stress{i} = stress{i}.compute_fault_stress(initial_stress{i}, stress_change{i}, pressure{i}.P);
         
         % fault slip, reactivation, nucleation
         slip{i} = FaultSlip(size(stress{i}.sne, 1), size(stress{i}.sne, 2));
