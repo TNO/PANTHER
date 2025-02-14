@@ -1,26 +1,26 @@
 classdef LoadFigure
 
     properties
-        figure_width = 16
-        figure_height = 8.5
-        axes_width = 3
-        axes_height = 7
-        axes_x0 (1,1) double = 1.5
-        axes_y0 (1,1) double = 1
-        axes_xspacing (1,1) double = 0.5
-        axes_yspacing = 1
-        n_subplots {mustBeInteger} = 4
-        n_rows {mustBeInteger} = 1
-        n_columns {mustBeInteger} = 4
+        figure_width (1,1) double {mustBeNonnegative} = 16
+        figure_height (1,1) double {mustBeNonnegative} = 8.5
+        axes_width (1,1) double {mustBeNonnegative} = 3
+        axes_height (1,1) double {mustBeNonnegative} = 7
+        axes_x0 (1,1) double {mustBeNonnegative} = 1.5
+        axes_y0 (1,1) double {mustBeNonnegative} = 1
+        axes_xspacing (1,1) double {mustBeNonnegative} = 0.5
+        axes_yspacing (1,1) double {mustBeNonnegative} = 1
+        axes_setting {mustBeMember(axes_setting, {'explicit','auto'})} = 'explicit';
+        n_subplots {mustBeInteger, mustBeNonnegative} = 4
+        n_rows {mustBeInteger, mustBeNonnegative} = 1
+        n_columns {mustBeInteger, mustBeNonnegative} = 4
         units {mustBeMember(units, {'inches','pixels','centimeters', 'normalized','points','characters'})} = 'centimeters'
-        annotate = 1
+        annotate logical = true
         annotation_type {mustBeMember(annotation_type, {'alphabetic','numeric','roman'})} = 'alphabetic'
         annotation_unit {mustBeMember(annotation_unit, {'inches','pixels','centimeters', 'normalized','points','characters'})} = 'normalized'
         annotation_x = 0.85
         annotation_y = 0.05
-        annotation_location = 'center'
-        axes_font_size double = 9
-        
+        annotation_alignment {mustBeMember(annotation_alignment,{'center','left','right'})} = 'center'
+        axes_font_size double {mustBeNonnegative} = 9
     end
 
     methods
@@ -28,7 +28,7 @@ classdef LoadFigure
         function self = LoadFigure()
         end
 
-        function h = load(self)
+        function [h] = load(self)
             % result: result object
             h_open_figs =  findobj('type','figure');
             number_of_open_figures = length(h_open_figs);
@@ -75,8 +75,13 @@ classdef LoadFigure
                 x0_ax = x0 + (col-1) * (dx + ax_w);
                 y0_ax = y0 + (self.n_rows - row)*(dy + ax_h);
                 ax_handle(i) = axes('Units','centimeters','Position',[x0_ax, y0_ax, ax_w, ax_h],'Box','on',...
-                    'FontSize',8);
+                    'FontSize',self.axes_font_size);
             end
+        end
+
+        function [axes_handles] = set_axes_auto(self)
+            % calculate axes width and height automatically
+
         end
 
         function annotation_handles = annotate_subplots(self, axes_handles)
@@ -85,6 +90,7 @@ classdef LoadFigure
                 axes(axes_handles(i));
                 annotation_handles(i) = text(self.annotation_x, self.annotation_y, annotations{i}, 'Units',self.annotation_unit);
             end
+            set(annotation_handles,'HorizontalAlignment', self.annotation_alignment);
         end
 
         function annotation_array = load_annotation_array(self)
