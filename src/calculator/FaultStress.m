@@ -76,6 +76,7 @@ classdef FaultStress
             % fault as well as the CFF
             % INPUT
             % time      % time in yrs. should be equal to size(self.sne, 2)
+            % time_range [min, max] time range over which CFF is computed
             min_index  = time_range(1);
             max_index = time_range(2);    % must be indices within
             cff_max = 0;        % maximum stress rate

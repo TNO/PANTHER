@@ -22,7 +22,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.y_extent = 0;
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
-            params = run_instance.ensemble{1};
+            params = run_instance.ensemble_members{1};
             pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -46,7 +46,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.generate_ensemble();
             y = run_instance.y;     
             dx = 0;
-            params = run_instance.ensemble{1};
+            params = run_instance.ensemble_members{1};
             pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -71,7 +71,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.generate_ensemble();
             y = run_instance.y;      
             dx = 0;
-            params = run_instance.ensemble{1};
+            params = run_instance.ensemble_members{1};
             pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -93,7 +93,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.generate_ensemble();
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
-            params = run_instance.ensemble{1};
+            params = run_instance.ensemble_members{1};
             pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 1, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT_fault,2));

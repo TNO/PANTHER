@@ -15,14 +15,14 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.generate_ensemble();
             
             % 
-            i_mid.seal_seal = floor(find(tc.y > max(tc.ensemble{1}.top_HW_y, tc.ensemble{1}.top_FW_y),1,'last')/2);
+            i_mid.seal_seal = floor(find(tc.y > max(tc.ensemble_members{1}.top_HW_y, tc.ensemble_members{1}.top_FW_y),1,'last')/2);
             i_mid.res_res = floor(length(tc.y)/2) ;
-            i_mid.res_base = floor((tc.ensemble{1}.base_FW_i(tc.y) + tc.ensemble{1}.base_HW_i(tc.y)) /2);
-            i_mid.res_seal = floor((tc.ensemble{1}.top_FW_i(tc.y) + tc.ensemble{1}.top_HW_i(tc.y)) /2);
-            i_mid.base_base = floor(find(tc.y < min(tc.ensemble{1}.base_HW_y, tc.ensemble{1}.base_FW_y),1,'first'));
+            i_mid.res_base = floor((tc.ensemble_members{1}.base_FW_i(tc.y) + tc.ensemble_members{1}.base_HW_i(tc.y)) /2);
+            i_mid.res_seal = floor((tc.ensemble_members{1}.top_FW_i(tc.y) + tc.ensemble_members{1}.top_HW_i(tc.y)) /2);
+            i_mid.base_base = floor(find(tc.y < min(tc.ensemble_members{1}.base_HW_y, tc.ensemble_members{1}.base_FW_y),1,'first'));
             
             % case t < h, P_res_mode = 'same', P_fault_mode = 'min', diffusion=0
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             testCase.verifyEqual(p.dP(i_mid.res_res, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dP(i_mid.res_base, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dP(i_mid.res_seal, end), -1, "RelTol", 1e-10);
@@ -32,7 +32,7 @@ classdef TestPressure < matlab.unittest.TestCase
             % set p fault to max(p_Hw, p_FW)
             tc.P_fault_mode = 'max';
             tc.generate_ensemble;
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
           
             testCase.verifyEqual(p.dP(i_mid.res_res, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dP(i_mid.res_base, end), 0, "AbsTol", 1e-10);
@@ -45,7 +45,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.input_parameters.width_FW.value = 0;
             tc.input_parameters.width_HW.value = inf;
             tc.generate_ensemble;
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             
             testCase.verifyEqual(p.dP(i_mid.res_res, end), -1, "RelTol", 1e-10);
             testCase.verifyEqual(p.dP(i_mid.res_base, end), -1, "RelTol", 1e-10);
@@ -58,7 +58,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.input_parameters.width_FW.value = inf;
             tc.input_parameters.width_HW.value = 0;
             tc.generate_ensemble;
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             
             testCase.verifyEqual(p.dP(i_mid.res_res, end), -1, "AbsTol", 1e-10);
             testCase.verifyEqual(p.dP(i_mid.res_base, end), 0, "AbsTol", 1e-10);
@@ -81,7 +81,7 @@ classdef TestPressure < matlab.unittest.TestCase
             
             % case t < h, P_res_mode = 'same', p_fault = 'min', diffusion =
             % 1, p_over = 2 MPa
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
 
             y_eval = -150;
             p_at_eval = interp1(tc.y, p.P(:,end), y_eval);
@@ -105,7 +105,7 @@ classdef TestPressure < matlab.unittest.TestCase
             % 1, P_fault_mode = 'max'
             % initial pressure should be equal to pressure computed at t =
             % 0 (sanity checks, pressures at t=0 should be equal, dp should be 0)
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             P_HW = p.get_P_HW();
             P0_HW = p.get_P0_HW();
             P_HW_diff = P_HW(:,1) - P0_HW;
@@ -130,7 +130,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.P0_fault_mode = 'min';
             tc.P_res_mode = 'same';
             tc.generate_ensemble();
-            p = Pressure(tc.ensemble{1}, tc.load_table, tc);
+            p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             % seal reservoir juxtaposition
             i_seal_res = floor((p.top_FW_i(p.y) + p.top_HW_i(p.y))/2);
             % expected pressure equal to p gradient without p_grad_res and

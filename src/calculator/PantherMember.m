@@ -24,7 +24,7 @@ classdef PantherMember < ModelGeometry
         therm_diffusivity double {mustBePositive} = 1e-6        % thermal diffusivity 
         f_s double {mustBeInRange(f_s, 0, 1)} = 0.6             % [-] static friction coefficient
         f_d double {mustBeInRange(f_d, 0, 1)} = 0.45            % [-] dynamic friction coefficient
-        d_c double {mustBePositive}                             % [m] critical slip distance for linear slip weakening function
+        d_c double {mustBePositive} = 0.005                     % [m] critical slip distance for linear slip weakening function
         cohesion double {mustBeNonnegative} = 0                 % [MPa] cohesion
     end    
 
@@ -67,6 +67,19 @@ classdef PantherMember < ModelGeometry
                 error('Other distributions than uniform not yet implemented in the code');
             end
 
+        end
+
+        function [member_table] = to_table(self)
+            % Get all property names
+            propNames = properties(self);
+            % Extract values for each property dynamically
+            propValues = cell(1, numel(propNames));
+            for i = 1:numel(propNames)
+                propValues{i} = self.(propNames{i});
+            end
+            
+            % Create a table with property names as variable names
+            member_table = cell2table(propValues, 'VariableNames', propNames);
         end
 
         function [gamma_P] = get_gamma_P(self)
