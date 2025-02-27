@@ -16,8 +16,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
-        ensemble_members cell                       % cell array of ensemble member objects
-        ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
+        ensemble_members cell                       % cell array of ensemble member objects (can be generated per request, but will also be regenerated when running PANTHER)
         parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
@@ -57,14 +56,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                 self.ensemble_members = cell(1, 1);
                 self.ensemble_members{1,1} = PantherMember(self.input_parameters, 0);
             end
-            self.ensemble_generated = 1;
         end
-
-        function reset_ensemble(self)
-            self.ensemble_members = {};
-            self.ensemble_generated = 0;
-        end
-
 
         function ensemble_table = ensemble_to_table(self)
             % create table of input parameter values for easy inspection
