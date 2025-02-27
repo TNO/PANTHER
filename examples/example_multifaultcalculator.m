@@ -22,6 +22,7 @@ fault.set_run_setting('diffusion_P', 1);
 
 % change MultiFaultCalculator settings
 fault.parallel = 0;
+fault.suppress_pillar_run_status_output  = 0;
 
 % change pressure loading on the last 5 pillars
 load_tables = cell(height(fault_segments), 1);

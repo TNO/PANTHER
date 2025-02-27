@@ -3,9 +3,8 @@ classdef MultiFaultCalculator
     % This class allows for different input and run settings for each pillar.
     %
     % Properties:
-    %   pillars - Cell array of PANTHER input objects (1 ensemble per entry)
+    %   pillars - Cell array of PANTHER input and results objects (1 ensemble per entry)
     %   pillar_info - Table with pillar custom meta_data (e.g. name, coordinates)
-    %   pillar_results - Cell array to store results for each pillar
     %   result_summary - Table to summarize results
     %   run_done - Logical flag indicating if the run is completed
     %   parallel - Flag to enable parallel processing (default is 1)
@@ -33,12 +32,12 @@ classdef MultiFaultCalculator
     %   get.n_pillars - Gets the number of pillars
 
     properties
-        pillars cell        % cell array of PANTHER input objects (1 ensemble per entry, can be modified to multiple) 
+        pillars cell        % cell array of PANTHER input & result objects (1 ensemble meber per entry, no stochastic analysis) 
         pillar_info table   % table with pillar custom meta_data (e.g. name, coordinates)
-        pillar_results cell
         result_summary table
         run_done logical
         parallel = 1        % overrides parallel setting of individual pillars
+        suppress_pillar_run_status_output = 0
     end
 
     properties (Dependent)
@@ -66,24 +65,29 @@ classdef MultiFaultCalculator
 
         function self = run(self)
             % run Runs the simulation for all fault pillars.
-            all_pillars = self.pillars;
+            all_pillars = self.pillars;   % contains input objects for each pillar
             n = self.n_pillars;
-            self.pillar_results = cell(n, 1);
+            pillars_updated_with_results = cell(n, 1);  % generate a separate output array to be able to use in parfor loop
+            suppress_pillar_run_status_output = self.suppress_pillar_run_status_output;
             if self.parallel
                 parfor i = 1 : n
-                    results{i,1} = panther(all_pillars{i});
-                    disp(['Fault ', num2str(i),' of ', num2str(n)]);
+                    pillars_updated_with_results{i,1} = panther(all_pillars{i});
+                    if ~suppress_pillar_run_status_output
+                        disp(['Pillar ', num2str(i),' of ', num2str(n)]);
+                    end
                 end
             else
-                results = cell(n,1);
+                pillars_updated_with_results = cell(n,1);
                 for i = 1 : n
-                    results{i,1} = panther(all_pillars{i});
-                    disp(['Fault ', num2str(i),' of ', num2str(n)]);
+                    pillars_updated_with_results{i,1} = panther(all_pillars{i});
+                    if ~suppress_pillar_run_status_output
+                        disp(['Pillar ', num2str(i),' of ', num2str(n)]);
+                    end
                 end
             end      
-            self.pillar_results = results;
+            self.pillars = pillars_updated_with_results;        % update pantherinput objects with the results
             self.run_done = true;
-            self.result_summary = self.get_results_summary();
+            self.result_summary = self.get_results_summary();  
         end
 
         function self = add_pillar_info_as_table(self, info_table_to_be_added)
@@ -287,9 +291,9 @@ classdef MultiFaultCalculator
             % overwrite_nucleation_stress Overwrites nucleation stress.
             % Input:
             %   new_nucleation_load_step - New nucleation load step
-            for i = 1 : length(self.pillar_results)
+            for i = 1 : length(self.pillars)
                 nuc = new_nucleation_load_step;
-                self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.get_nucleation_stress(nuc);
+                self.pillars{i}.stress{1} = self.pillars{i}.stress{1}.get_nucleation_stress(nuc);
             end
         end
 
@@ -300,15 +304,15 @@ classdef MultiFaultCalculator
             % return output only at give time step indices
             % provide nan if you don't want to store output (only reac and
             % nuc stresses are stored)
-                for i = 1 : length(self.pillar_results)
-                    if max(time_step_indices) < size(self.pillar_results{i}.stress{1}.sne, 2)  & ...
+                for i = 1 : length(self.pillars)
+                    if max(time_step_indices) < size(self.pillars{i}.stress{1}.sne, 2)  & ...
                         (min(time_step_indices) > 1)
-                    self.pillar_results{i}.stress{1} = self.pillar_results{i}.stress{1}.reduce_steps(time_step_indices);
-                    self.pillar_results{i}.temperature{1} = self.pillar_results{i}.temperature{1}.reduce_steps(time_step_indices);
-                    self.pillar_results{i}.pressure{1} = self.pillar_results{i}.pressure{1}.reduce_steps(time_step_indices);
-                    self.pillar_results{i}.slip{1} = self.pillar_results{i}.slip{1}.reduce_steps(time_step_indices);
+                    self.pillars{i}.stress{1} = self.pillars{i}.stress{1}.reduce_steps(time_step_indices);
+                    self.pillars{i}.temperature{1} = self.pillars{i}.temperature{1}.reduce_steps(time_step_indices);
+                    self.pillars{i}.pressure{1} = self.pillars{i}.pressure{1}.reduce_steps(time_step_indices);
+                    self.pillars{i}.slip{1} = self.pillars{i}.slip{1}.reduce_steps(time_step_indices);
                         if ~isnan(time_step_indices)
-                            self.pillar_results{i}.load_table = self.pillar_results{i}.load_table(time_step_indices,:);
+                            self.pillars{i}.load_table = self.pillars{i}.load_table(time_step_indices,:);
                         end
                     end
                 end
@@ -358,10 +362,10 @@ classdef MultiFaultCalculator
             % get_results_summary Gets the summary of results of individual
             % pillars
             if self.run_done
-                summary = self.pillar_results{1}.summary;
+                summary = self.pillars{1}.summary;
                 % concatenate summary tables of individual fault pillars
                 for i = 1 : self.n_pillars - 1
-                    summary = [summary; self.pillar_results{i}.summary];
+                    summary = [summary; self.pillars{i}.summary];
                 end
             else
                 disp('Run not yet exectued, empty summary');
