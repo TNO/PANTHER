@@ -20,6 +20,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
         ensemble_generated = 0;                     % toggle specifying whether model ensemble has been generated
         parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
+        suppress_status_output logical = false      % indicate ensemble member calculation 
         pressure cell
         temperature cell
         stress cell
@@ -66,7 +67,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
 
 
         function ensemble_table = ensemble_to_table(self)
-            % create table of input parameter values
+            % create table of input parameter values for easy inspection
             props = properties(self.input_parameters);
             ensemble_table = table;
             for j = 1 : length(self.ensemble_members)
@@ -125,7 +126,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                     self.summary.nucleation_dP(i) = nan;
                     self.summary.nucleation_dT(i) = nan;
                 end
-                [self.summary.cff_max(i), self.summary.cff_ymid(i)]  = self.stress{i}.get_cff_rates(self.ensemble.f_s(i), self.ensemble.cohesion(i), ...
+                [self.summary.cff_max(i), self.summary.cff_ymid(i)]  = self.stress{i}.get_cff_rates(self.ensemble_members{i}.f_s, self.ensemble_members{i}.cohesion, ...
                 self.load_table.time_steps, [1, height(self.load_table)]);
                 i_ymid = ceil(size(self.stress{i}.sne,1)/2);
                 self.summary.ini_sne(i) = self.stress{i}.sne(i_ymid, 1);

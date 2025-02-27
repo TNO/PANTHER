@@ -7,7 +7,8 @@ fault_segments = readtable(fullfile(fileparts(matlab.desktop.editor.getActiveFil
 % create MultiFaultCalculator object
 fault = MultiFaultCalculator(height(fault_segments));
 
-% save the metadata of interest
+% save the metadata of interest, which will be added to the fault info in
+% the fault instance of MultiFaultCalculator
 metadata_to_add = fault_segments(:,2:end);
 fault = fault.add_pillar_info_as_table(metadata_to_add);
 
@@ -38,8 +39,8 @@ fault = fault.run();
 h1 = figure(1); clf(h1);
 subplot(3,1,1)
 hold on
-plot(fault.pillar_info.y,fault.result_summary.reactivation_dp);
-plot(fault.pillar_info.y,fault.result_summary.nucleation_dp);
+plot(fault.pillar_info.y,fault.result_summary.reactivation_dP);
+plot(fault.pillar_info.y,fault.result_summary.nucleation_dP);
 legend({'Reactivation pressure change (MPa)','Nucleation pressure change (MPa)'});
 xlabel('Distance along y');
 ylabel('\DeltaP (MPa)');

@@ -63,7 +63,7 @@ classdef TestPanther < matlab.unittest.TestCase
             % set a different friction at the top of the reservoir
             run_instance.generate_ensemble();
             i_reservoir_top = run_instance.ensemble_members{1}.top_HW_i(run_instance.y);
-            run_instance.input_parameters.f_s.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55; 
+            run_instance.input_parameters.f_s.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
             % ensure the property is set to depth-dependent (uniform = 0)
             run_instance.input_parameters.f_s.uniform_with_depth = 0;
             % run the model

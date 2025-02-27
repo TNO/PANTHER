@@ -76,8 +76,7 @@ classdef PantherMember < ModelGeometry
             propValues = cell(1, numel(propNames));
             for i = 1:numel(propNames)
                 propValues{i} = self.(propNames{i});
-            end
-            
+            end   
             % Create a table with property names as variable names
             member_table = cell2table(propValues, 'VariableNames', propNames);
         end

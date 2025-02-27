@@ -62,7 +62,9 @@ function validate_input(analysis)
         first_row = analysis.load_table(1,:);
         first_row{1,:} = 0;
         analysis.load_table = [first_row; old_table];
-        disp('Added time step 0 row to load table');
+        if ~analysis.suppress_status_output
+            disp('Added time step 0 row to load table');
+        end
     end
 
     depth_dependent_properties = analysis.input_parameters.get_depth_dependent_properties();

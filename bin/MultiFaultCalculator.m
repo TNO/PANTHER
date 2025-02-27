@@ -58,6 +58,10 @@ classdef MultiFaultCalculator
             for i = 1 : length(self.pillars)
                 self.pillars{i} = PantherInput();
             end
+            % suppresses output of every single pillar
+            % instead, during the running of MultiFaultCalculator output
+            % status will be given per fault
+            self = self.set_run_setting('suppress_status_output', 1);
         end
 
         function self = run(self)
@@ -68,13 +72,13 @@ classdef MultiFaultCalculator
             if self.parallel
                 parfor i = 1 : n
                     results{i,1} = panther(all_pillars{i});
-                    disp([num2str(i),'/', num2str(n)]);
+                    disp(['Fault ', num2str(i),' of ', num2str(n)]);
                 end
             else
                 results = cell(n,1);
                 for i = 1 : n
                     results{i,1} = panther(all_pillars{i});
-                    disp([num2str(i),'/', num2str(n)]);
+                    disp(['Fault ', num2str(i),' of ', num2str(n)]);
                 end
             end      
             self.pillar_results = results;

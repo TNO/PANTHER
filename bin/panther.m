@@ -29,7 +29,7 @@ function [analysis] = panther(analysis)
     ensemble_members = analysis.ensemble_members;
     nucleation_criterion = analysis.nucleation_criterion;
     nucleation_length = analysis.nucleation_length_fixed;
-    
+    suppress_status_output = analysis.suppress_status_output;
 
     % define output steps
     if ~ismember(analysis.save_stress,'none')
@@ -65,9 +65,10 @@ function [analysis] = panther(analysis)
     % calculate pressure and stress changes (parallel)
     % starting up the Matlab parallel pool (parpool) for the first time may take several 10s
     % of seconds. If it is already running (type gcp to check), parfor will initiate much faster
-    % parfor (i = 1 : n_members, matlab_workers)
-    for i = 1 : n_members
-       % disp([num2str(i),'/', num2str(n_members)]);
+    parfor (i = 1 : n_members, matlab_workers)
+        if ~suppress_status_output
+            disp([num2str(i),'/', num2str(n_members)]);
+        end
         L{i} = y./sin(ensemble_members{i}.dip*pi/180);
 
         % initial stress
@@ -103,11 +104,6 @@ function [analysis] = panther(analysis)
         % get the fault stressses at onset of reactivation and nucleation 
         stress{i} = stress{i}.get_reactivation_stress(slip{i}.reactivation_load_step);
         stress{i} = stress{i}.get_nucleation_stress(slip{i}.nucleation_load_step);
-        
-        % store some derivative data
-        [cff_max{i,1}, cff_ymid{i,1}] = stress{i}.get_cff_rates(ensemble_members{i}.f_s, ensemble_members{i}.cohesion, ...
-            load_table.time_steps, [1: length(load_table.time_steps)]);
-
         
         % reduce output
         pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
