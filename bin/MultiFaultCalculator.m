@@ -80,7 +80,7 @@ classdef MultiFaultCalculator
                 pillars_updated_with_results = cell(n,1);
                 for i = 1 : n
                     pillars_updated_with_results{i,1} = panther(all_pillars{i});
-                    if ~suppress_pillar_run_status_output
+                    if ~self.suppress_pillar_run_status_output
                         disp(['Pillar ', num2str(i),' of ', num2str(n)]);
                     end
                 end
@@ -306,7 +306,7 @@ classdef MultiFaultCalculator
             % nuc stresses are stored)
                 for i = 1 : length(self.pillars)
                     if max(time_step_indices) < size(self.pillars{i}.stress{1}.sne, 2)  & ...
-                        (min(time_step_indices) > 1)
+                        (min(time_step_indices) >= 1)
                     self.pillars{i}.stress{1} = self.pillars{i}.stress{1}.reduce_steps(time_step_indices);
                     self.pillars{i}.temperature{1} = self.pillars{i}.temperature{1}.reduce_steps(time_step_indices);
                     self.pillars{i}.pressure{1} = self.pillars{i}.pressure{1}.reduce_steps(time_step_indices);

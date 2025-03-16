@@ -35,6 +35,7 @@ fault = fault.set_load_tables(load_tables);
 
 % run the simulation over all pillars of the fault
 fault = fault.run();
+fault = fault.reduce_output([1:5:35]);
 
 % plot some summary results 
 h1 = figure(1); clf(h1);
