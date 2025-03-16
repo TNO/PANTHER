@@ -19,10 +19,10 @@ analysis.load_table.time_steps(3) = 30;             % 30 years
 analysis.load_table.P_steps(3) = -30;               % -30 MPa depletion
 analysis.diffusion_P = 1;                           % diffusion on (=1) or off (=0)
 
-result = panther(analysis);
-plot_pressures(result, analysis, height(analysis.load_table));
+analysis = panther(analysis);
+plot_pressures(analysis, height(analysis.load_table));
 
-function [h2] = plot_pressures(result, analysis, t_step)
+function [h2] = plot_pressures(analysis, t_step)
 
     h2 = figure(2); clf(h2); 
     set(gcf,'Units','centimeters','Position',[15,10,15,10]);
@@ -33,31 +33,31 @@ function [h2] = plot_pressures(result, analysis, t_step)
     ax0 = 1.5;
     ay0 = 1;
     % t_step = 2;
-    run_description = ['\DeltaP: ', num2str(result.load_table.P_steps(t_step),'%.0f'),' MPa, ',...
-        'w_{FW}: ', num2str(result.ensemble.width_FW(1),'%.0f' ), ' m, ', ...
-        'w_{HW}: ', num2str(result.ensemble.width_HW(1),'%.0f' ), ' m, ', ...
+    run_description = ['\DeltaP: ', num2str(analysis.load_table.P_steps(t_step),'%.0f'),' MPa, ',...
+        'w_{FW}: ', num2str(analysis.ensemble.width_FW(1),'%.0f' ), ' m, ', ...
+        'w_{HW}: ', num2str(analysis.ensemble.width_HW(1),'%.0f' ), ' m, ', ...
         'p0 mode: ', analysis.P0_fault_mode,', ',...
         'p mode: ', analysis.P_fault_mode];
 
     figure_name = ['Fig_LargethrowDiff1_p0mode_',analysis.P0_fault_mode,'_pmode_',analysis.P_fault_mode,...
-        '_dp_',num2str(result.load_table.P_steps(t_step),'%.0f'),...
-        '_wFW_',num2str(result.ensemble.width_FW(1),'%.0f' ),...
-        '_wHW_',num2str(result.ensemble.width_HW(1),'%.0f' )];
+        '_dp_',num2str(analysis.load_table.P_steps(t_step),'%.0f'),...
+        '_wFW_',num2str(analysis.ensemble.width_FW(1),'%.0f' ),...
+        '_wHW_',num2str(analysis.ensemble.width_HW(1),'%.0f' )];
 
-    P_HW = result.pressure{1}.get_P_HW();
-    P_FW = result.pressure{1}.get_P_FW();
+    P_HW = analysis.pressure{1}.get_P_HW();
+    P_FW = analysis.pressure{1}.get_P_FW();
     
-    dP_HW = result.pressure{1}.get_dP_HW();
-    dP_FW = result.pressure{1}.get_dP_FW();
+    dP_HW = analysis.pressure{1}.get_dP_HW();
+    dP_FW = analysis.pressure{1}.get_dP_FW();
     
     % Initial pressures
     ax_num = 1; 
     
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(result.pressure{1}.P(:,1), result.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.pressure{1}.P(:,1), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
-    plot(P_HW(:,1), result.y , 'LineStyle','-.' ,'LineWidth', 1.5);
-    plot(P_FW(:,1), result.y, 'LineStyle','--' ,'LineWidth', 1.5);
+    plot(P_HW(:,1), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
+    plot(P_FW(:,1), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);
     grid on
     legend({'P0_{fault}','P0_{HW}','P0_{FW}'});
     xlabel('Initial pressure p0 (MPa)');
@@ -67,10 +67,10 @@ function [h2] = plot_pressures(result, analysis, t_step)
     ax_num = ax_num + 1;
     
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(result.pressure{1}.P(:,t_step), result.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.pressure{1}.P(:,t_step), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
-    plot(P_HW(:,t_step), result.y , 'LineStyle','-.' ,'LineWidth', 1.5);
-    plot(P_FW(:,t_step), result.y, 'LineStyle','--' ,'LineWidth', 1.5);
+    plot(P_HW(:,t_step), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
+    plot(P_FW(:,t_step), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);
     grid on
     legend({'P_{fault}','P_{HW}','P_{FW}'});
     xlabel('Pressure (MPa)');
@@ -80,10 +80,10 @@ function [h2] = plot_pressures(result, analysis, t_step)
     % Pressure changes
     ax_num = ax_num + 1;
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(result.pressure{1}.dP(:,t_step), result.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.pressure{1}.dP(:,t_step), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
-    plot(dP_HW(:,t_step), result.y , 'LineStyle','-.' ,'LineWidth', 1.5);
-    plot(dP_FW(:,t_step), result.y, 'LineStyle','--' ,'LineWidth', 1.5);
+    plot(dP_HW(:,t_step), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
+    plot(dP_FW(:,t_step), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);
     grid on
     legend({'\DeltaP_{fault}','\DeltaP_{HW}','\DeltaP_{FW}'});
     xlabel('Pressure change \Delta P (MPa)');

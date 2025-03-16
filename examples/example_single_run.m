@@ -17,6 +17,6 @@ hfig = Plot1DResult();
 hfig.axes_font_size = 8;
 hfig.ax_scale = 'explicit';
 hfig.ylim = [run_instance.ensemble.depth_mid(1) - 300, run_instance.ensemble.depth_mid(1) + 300];
-hfig.plot_PANTHER_result(run_instance.input_parameters, run_instance);
+hfig.plot_PANTHER_result(run_instance);
 
 

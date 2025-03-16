@@ -29,14 +29,14 @@ classdef Plot1DResult < LoadFigure
             disp('Initialize plot for on-fault results');
         end
 
-        function self = plot_PANTHER_result(self, inputs, result)
+        function self = plot_PANTHER_result(self, fault_data)
             % here
             self.n_rows = 1;
             self.n_columns = length(self.plot_results);
             self.axes_width = 2.5;
             self.axes_xspacing = 0.3;
             [self.plot_handles] = self.load();  % load default figure
-            n_steps = size(result.stress{1}.sne, 2);
+            n_steps = size(fault_data.stress{1}.sne, 2);
             if strcmp(self.plot_step,'last')
                 i_step = n_steps;
             elseif isnumeric(self.plot_step) & self.plot_step <= n_steps
@@ -44,11 +44,11 @@ classdef Plot1DResult < LoadFigure
             else
                 i_step = n_stepts;
             end
-            y  = result.y +  inputs.depth_mid.value;
+            y  = fault_data.y +  fault_data.input_parameters.depth_mid.value;
             for i = 1 : length(self.plot_results)
-                x{i} = self.retrieve_result_plot_data(inputs, result, self.plot_results{i}, i_step);
+                x{i} = self.retrieve_result_plot_data(fault_data, fault_data, self.plot_results{i}, i_step);
                 if self.plot_initial
-                    x_ini{i} = self.retrieve_result_plot_data(inputs, result, self.plot_results{i}, 1);
+                    x_ini{i} = self.retrieve_result_plot_data(fault_data, fault_data, self.plot_results{i}, 1);
                 end
             end
             x_labels = self.retrieve_labels();
@@ -110,8 +110,8 @@ classdef Plot1DResult < LoadFigure
             elseif contains(parameter, 'slip' )
                 array_to_plot = result.slip{1}.(parameter)(:,i_step);
             elseif contains(parameter, 'scu' )
-                f_s = inputs.f_s.value;
-                coh = inputs.cohesion.value;
+                f_s = inputs.input_parameters.f_s.value;
+                coh = inputs.input_parameters.cohesion.value;
                 scu = result.stress{1}.get_scu(f_s, coh);
                 array_to_plot = scu(:, i_step);
             end

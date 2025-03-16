@@ -24,48 +24,48 @@ sc1_variable_friction.input_parameters.shsv.uniform_with_depth = 0;
 sc1_variable_friction.generate_ensemble();
 
 % run panther with current input instance
-sc1_result = panther(sc1_variable_friction);
+sc1_variable_result = panther(sc1_variable_friction);
 
 %% plot the results
 h1 = figure(1); clf(h1);
 
 subplot(1,3,1)
 hold on
-y = sc1_result.y + sc1_result.ensemble.depth_mid;
-hp(1) = plot(sc1_result.stress{1}.sne(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(2) = plot(sc1_result.stress{1}.sne(:,end), y);
+y = sc1_variable_result.y + sc1_variable_result.ensemble.depth_mid;
+hp(1) = plot(sc1_variable_result.stress{1}.sne(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(2) = plot(sc1_variable_result.stress{1}.sne(:,end), y);
 
-hp(3) = plot(sc1_result.stress{1}.tau(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(4) = plot(sc1_result.stress{1}.tau(:,end), y);
+hp(3) = plot(sc1_variable_result.stress{1}.tau(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(4) = plot(sc1_variable_result.stress{1}.tau(:,end), y);
 
 set(hp, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
 ylabel('Depth (m)');
-ylim([sc1_result.ensemble.depth_mid - 300, sc1_result.ensemble.depth_mid + 300]);
+ylim([sc1_variable_result.ensemble.depth_mid - 300, sc1_variable_result.ensemble.depth_mid + 300]);
 set(gca,'Box',1);
 legend(hp, {'Initial normal stress', 'Final normal stress',...
     'Initial shear stress', 'Final shear stress'});
 
 subplot(1,3,2); hold on;
-scu = sc1_result.stress{1}.get_scu(0.6,0);
+scu = sc1_variable_result.stress{1}.get_scu(0.6,0);
 hs(1) = plot(scu(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
 hs(2) = plot(scu(:,end), y);
 set(hs, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
 ylabel('Depth (m)');
-ylim([sc1_result.ensemble.depth_mid - 300, sc1_result.ensemble.depth_mid + 300]);
+ylim([sc1_variable_result.ensemble.depth_mid - 300, sc1_variable_result.ensemble.depth_mid + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
 
 
 subplot(1,3,3); hold on;
 
-hs(1) = plot(sc1_result.slip{1}.slip(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hs(2) = plot(sc1_result.slip{1}.slip(:,end), y);
+hs(1) = plot(sc1_variable_result.slip{1}.slip(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hs(2) = plot(sc1_variable_result.slip{1}.slip(:,end), y);
 set(hs, 'LineWidth', 1.5);
 xlabel('Slip (m)');
 ylabel('Depth (m)');
-ylim([sc1_result.ensemble.depth_mid - 300, sc1_result.ensemble.depth_mid + 300]);
+ylim([sc1_variable_result.ensemble.depth_mid - 300, sc1_variable_result.ensemble.depth_mid + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
 
