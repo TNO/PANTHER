@@ -17,7 +17,7 @@ function [T_reservoir] = calc_dT_diffusion(y, y_top, y_base, time_steps, T_reser
     top_i = find(y < y_top, 1, 'first');  % index of first non-zero pressure value (top reservoir )
     base_i = find(y_base < y , 1, 'last');  % index of last non-zero pressure value (base reservoir)
     
-    time_s_all = time_steps * 365.25* 24 * 60 *60;
+    time_s_all = (time_steps - time_steps(1)) * 365.25* 24 * 60 *60;
     % diffusion into the seal
     diff_y = y - y_top; 
     T_temp = T_reservoir(top_i, :) .* erfc(diff_y./(2*sqrt(diffusivity*time_s_all')));

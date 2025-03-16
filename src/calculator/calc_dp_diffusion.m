@@ -6,7 +6,7 @@ function [p_reservoir] = calc_dp_diffusion(y, y_top, y_base, time_steps, p_reser
     % same diffusivity
     % INPUT
     % y             [m] depth, relative to mid reservoir depth 
-    % time          [yr] operation time
+    % time          [yr] operation time relative to the first row
     % p_reservoir   [MPa] reservoir pressure (size length(y) x length(t))
     % i_reservoir   [-] indices of the reservoir section
     % OUTPUT
@@ -16,7 +16,7 @@ function [p_reservoir] = calc_dp_diffusion(y, y_top, y_base, time_steps, p_reser
     top_i = find(y < y_top, 1, 'first');  % index of first non-zero pressure value (top reservoir)
     base_i = find(y_base < y , 1, 'last');  % index of last non-zero pressure value (base reservoir)
     
-    time_s_all = time_steps * 365.25* 24 * 60 *60;
+    time_s_all = (time_steps - time_steps(1)) * 365.25* 24 * 60 *60;
     % diffusion into the seal
     diff_y = y - y_top; 
     p_ini = p_reservoir;

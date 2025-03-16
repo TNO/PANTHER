@@ -56,16 +56,6 @@ function validate_input(analysis)
         error(['Thickness of ', num2str(analysis.input_parameters.thick.value),...
             ' exceeds reservoir depth']);
     end
-    % add a time = 0 row to table if that is missing
-    if ~(analysis.load_table.time_steps(1) ==  0)
-        old_table = analysis.load_table;
-        first_row = analysis.load_table(1,:);
-        first_row{1,:} = 0;
-        analysis.load_table = [first_row; old_table];
-        if ~analysis.suppress_status_output
-            disp('Added time step 0 row to load table');
-        end
-    end
 
     depth_dependent_properties = analysis.input_parameters.get_depth_dependent_properties();
     allowed_depth_dependent_properties = {'dip','dip_azi','young','poisson',...
