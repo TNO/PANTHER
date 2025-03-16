@@ -67,7 +67,7 @@ classdef TestPanther < matlab.unittest.TestCase
             % ensure the property is set to depth-dependent (uniform = 0)
             run_instance.input_parameters.f_s.uniform_with_depth = 0;
             % run the model
-            run_instance.generate_ensemble()
+            run_instance.generate_ensemble();
             run_instance = panther(run_instance);         
             actual = run_instance.summary.nucleation_dP;
             expected = -17.53;
