@@ -117,11 +117,17 @@ classdef MultiFaultCalculator
                         self.pillars{i}.input_parameters.(parameter_name).uniform_with_depth = 0;
                         self.pillars{i}.input_parameters.(parameter_name).value_with_depth = values{i};
                     else
-                        disp(['depth dependent variable could not be set, size not equal to y, length is ', num2str(self.pillars{i}.y)]);
+                        disp(['Depth dependent variable could not be set, size not equal to y, length is ', num2str(self.pillars{i}.y)]);
                     end
                 end
             else
-                disp(['variable ', parameter_name,' not assigned, check that length of input values equals number of pillars']);
+                if ~self.is_valid_input_parameter_name(parameter_name)
+                disp(['Depth dependent variable ', parameter_name,' was not assigned, ',...
+                    ' wrong input name given']);
+                elseif ~(length(values) == length(self.pillars))
+                    disp(['Depth dependent variable ', parameter_name,' was not assigned, ',...
+                    ' length of input array does not equals number of pillars']);
+                end
             end
         end
 
@@ -135,12 +141,19 @@ classdef MultiFaultCalculator
             if nargin < 4
                 parameter_type = 'value';
             end
-            if self.is_valid_input_parameter_name(parameter_name) && (length(values) == length(self.pillars))
+            valid_name = self.is_valid_input_parameter_name(parameter_name);
+            if  valid_name && (length(values) == length(self.pillars))
                 for i = 1 : length(self.pillars)
                     self.pillars{i}.input_parameters.(parameter_name).(parameter_type) = values(i);
                 end
             else
-                disp(['variable ', parameter_name,' not assigned, check that length of input values equals number of pillars']);
+                if ~valid_name
+                    disp(['Variable ', parameter_name,' was not assigned, ',...
+                    ' wrong input name given']);
+                elseif ~(length(values) == length(self.pillars))
+                    disp(['Variable ', parameter_name,' was not assigned, ',...
+                    ' length of input array does not equals number of pillars']);
+                end
             end
         end
 
@@ -409,7 +422,8 @@ classdef MultiFaultCalculator
             else
                 valid_name = false;
                 fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
-                disp(['Check length, or input parameter name not valid, should be one of the following: ',...
+                disp(['Given input parameter name ', submitted_name,...
+                    ' should be one of the following: ',...
                      [fields_cellstring{:}]]);
             end
         end
@@ -422,7 +436,8 @@ classdef MultiFaultCalculator
             valid_setting_names = fields(self.pillars{1});
             if ismember(submitted_name, valid_setting_names) & ~ismember(submitted_name,{'input_parameters','load_table','y','ensemble'})
                 valid_name = true;
-                if ismember(submitted_name,{'p_res_mode','p_fault','load_case','nucleation_criterion'})
+                if ismember(submitted_name,{'P_res_mode','P_fault_mode','P0_fault_mode',...
+                        'load_case','nucleation_criterion'})
                     value_type = 'char';
                 else
                     value_type = 'double';
@@ -431,7 +446,7 @@ classdef MultiFaultCalculator
                 valid_name = false;
                 value_type = 'double';
                 fields_cellstring = [append(valid_setting_names, repmat({', '},length(valid_setting_names),1))];
-                disp(['Run setting name not valid, should be one of the following: ',...
+                disp(['Run setting name ', submitted_name', ' not valid, should be one of the following: ',...
                      [fields_cellstring{:}]]);
             end
         end
