@@ -54,6 +54,15 @@ function [analysis] = panther(analysis)
     temperature = cell(n_members,1);
     stress = cell(n_members,1);
     slip = cell(n_members,1);
+    L_II = cell(n_members,1);
+    L_II_ymid = cell(n_members,1);
+    L_II_dtau = cell(n_members,1);
+
+    % calculate rupture length using LEFM
+    G_set.dy = 1;           % desired step for length along fault
+    G_set.da_dy = 1;        % spacing crack length as factor of dy
+    G_set.calc_full_Gmap = 1;
+    G_set.plot_full_Gmap = 0;     
 
     % set number of workers for parallel processing
     if or(n_members < 10, ~analysis.parallel)
@@ -105,11 +114,37 @@ function [analysis] = panther(analysis)
         stress{i} = stress{i}.get_reactivation_stress(slip{i}.reactivation_load_step);
         stress{i} = stress{i}.get_nucleation_stress(slip{i}.nucleation_load_step);
         
+        if slip{i}.nucleation    
+            [G_arrest{i}, ~] = calc_LEFM_rupture_len(ensemble{i}, -L{i}, stress{i}.sne_nuc, stress{i}.tau_nuc, G_set);
+            L_II{i} = G_arrest{i}.L_II;
+            L_II_center{i} = -G_arrest{i}.L_II_center;
+            L_II_ymid{i} = interp1(L{i}, y, L_II_center{i});
+            L_II_dtau{i} = G_arrest{i}.dtau_seis_II; 
+            dtau{i} = G_arrest{i}.dtau;
+            rupture{i} = FaultSlip(size(stress{i}.sne, 1), 1);
+            fault_strength{i} = stress{i}.sne_nuc.*ensemble{i}.f_s + ensemble{i}.cohesion;
+            fault_strength_dyn{i} = stress{i}.sne_nuc.*ensemble{i}.f_d + ensemble{i}.cohesion;
+            fault_strength{i}(~(dtau{i}==0)) = fault_strength_dyn{i}(~(dtau{i}==0));
+            [rupture{i}, stress{i}.tau_rup] = rupture{i}.calculate_fault_slip(L{i}, stress{i}.sne_nuc, stress{i}.tau_nuc, ...
+                                                         fault_strength{i}, ensemble{i}.get_mu_II);
+            %             if G_arrest.L_II_all(1) > fault_out.Lc + 2*(G_set.da_dy*G_set.dy)  
+            %                 fault_out.L_II = NaN;
+            %                 fault_out.dtau_L_II = NaN;
+            %             end
+            else
+            L_II{i} = nan;
+            L_II_center{i} = nan;
+            L_II_ymid{i} = nan;
+            L_II_dtau{i} = nan;
+            rupture{i} = FaultSlip(size(stress{i}.sne, 1), 1);
+        end
+
         % reduce output
         pressure{i} = pressure{i}.reduce_steps(indices_for_saving);
         stress{i} = stress{i}.reduce_steps(indices_for_saving);
         temperature{i} = temperature{i}.reduce_steps(indices_for_saving);
         slip{i} = slip{i}.reduce_steps(indices_for_saving);
+        rupture{i} = rupture{i}.reduce_steps(indices_for_saving);
 
     end
     
@@ -122,6 +157,7 @@ function [analysis] = panther(analysis)
             analysis.temperature{i} = temperature{i};
             analysis.stress{i} = stress{i};
             analysis.slip{i} = slip{i};
+            analysis.rupture{i} = rupture{i};
             analysis.load_table = reduced_load_table;
         end
     end
