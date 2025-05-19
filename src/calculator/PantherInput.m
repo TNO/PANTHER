@@ -74,13 +74,30 @@ classdef (HandleCompatible) PantherInput < FaultMesh
 
         function self = make_result_summary(self)
             %warning('off');
+            % reactivation: [boolean] 1 if reactivation detected during any time step, 0 if not
+            % reactivation_load_step: [index] index in time array at which
+            % reactivation was detected
+            % reactivation_dP: [MPa] corresponding pressure change at which
+            % reactivation occurred
+            % reactivation_dT: [deg] corresponding temperature change at
+            % which reactivation occurred
+            % nucleation: [boolean] 1 if nucleation detected during any time step, 0 if not
+            % nucleation_load_step: [index] index in time array at which
+            % nucleation was detected
+            % nucleation_dP: [MPa] corresponding pressure change at which
+            % nucleation occurred
+            % nucleation_dT: [deg] corresponding temperature change at
+            % which nucleation occurred
+            
             column_names = {'reactivation', 'reactivation_load_step','reactivation_dP',...
                 'reactivation_dT', 'nucleation', 'nucleation_load_step', 'nucleation_dP',...
-                'nucleation_dT','cff_max', 'cff_ymid','ini_sne','ini_tau'};
+                'nucleation_dT','nucleation_length','nucleation_zone_ymid',...
+                'slip_length','cff_max', 'cff_ymid','ini_sne','ini_tau'};
             num_rows = length(self.ensemble_members);
             self.summary = table(nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
+                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 'VariableNames', column_names);
             for i = 1 : length(self.stress)
                 self.summary.reactivation(i) = self.slip{i}.reactivation;
@@ -88,6 +105,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                 self.summary.nucleation(i) = self.slip{i}.nucleation;
                 self.summary.nucleation_load_step(i) = self.slip{i}.nucleation_load_step;
                 n_steps = linspace(1,length(self.load_table.time_steps),length(self.load_table.time_steps));
+                % get the reactivation pressure and temperatures
                 if ~isnan(self.slip{i}.reactivation_load_step)
                     if strcmp(self.load_case,'P')
                         self.summary.reactivation_dP(i) = interp1(n_steps, self.load_table.P_steps, self.slip{i}.reactivation_load_step);
@@ -103,6 +121,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                         self.summary.reactivation_dP(i) = nan;
                         self.summary.reactivation_dT(i) = nan;
                 end
+                % get the nucleation pressure and temperatures
                 if ~isnan(self.slip{i}.nucleation_load_step)
                     if strcmp(self.load_case,'P') 
                         self.summary.nucleation_dP(i) = interp1(n_steps, self.load_table.P_steps, self.slip{i}.nucleation_load_step);
@@ -117,6 +136,13 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                 else
                     self.summary.nucleation_dP(i) = nan;
                     self.summary.nucleation_dT(i) = nan;
+                end
+                self.summary.nucleation_length(i) = self.slip{i}.nucleation_length;
+                self.summary.nucleation_zone_ymid(i) = self.slip{i}.nucleation_zone_ymid;
+                if ~isnan(self.summary.nucleation_length(i))
+                    self.summary.slip_length(i) = self.summary.nucleation_length(i);
+                else
+                    self.summary.slip_length(i) = self.slip{i}.max_slip_length;
                 end
                 [self.summary.cff_max(i), self.summary.cff_ymid(i)]  = self.stress{i}.get_cff_rates(self.ensemble_members{i}.f_s, self.ensemble_members{i}.cohesion, ...
                 self.load_table.time_steps, [1, height(self.load_table)]);

@@ -5,10 +5,14 @@ classdef FaultSlip
     properties
         slip double                 % shear slip on the fault
         slip_length double          % length of fault that is slipping (num rows is number of slip patches)
+        slip_zone_ymid double       % center depth of the slip zones
         reactivation logical        % indicator whether fault has been reactivated
         reactivation_load_step double   % load index at which fault has been reactivated
         nucleation logical          % indicator whether nucleation has occurred on the fault
-        nucleation_load_step double     % load index at which nucleation occurs
+        nucleation_load_step double % load index at which nucleation occurs
+        nucleation_length double    % nucleation length at the nucleation point
+        nucleation_zone_ymid double      % center y of the nucleation zone
+        max_slip_length double
     end
 
     properties (Dependent)
@@ -22,6 +26,9 @@ classdef FaultSlip
             self.reactivation_load_step = nan(1,1);
             self.nucleation = 0;
             self.nucleation_load_step = nan(1,1);
+            self.nucleation_length = nan(1,1);
+            self.nucleation_zone_ymid = nan(1,1);
+            self.max_slip_length = nan(1,1);
         end
 
         function [self, tau_slip] = calculate_fault_slip(self, L, sne, tau, tau_f, mu_II)
@@ -50,6 +57,7 @@ classdef FaultSlip
             end
             %L = self.
             K = self.stiffness_matrix(L_new, mu_II);
+            islip = cell(size(tau,2),1);  % indices of slipping cells
             for i = 1 : size(tau, 2)
                 % interpolate shear stress and strength for new L
                 if non_uniform_L
@@ -86,10 +94,12 @@ classdef FaultSlip
             end
         end
 
-        function [self] = detect_nucleation(self, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
+        function [self] = detect_nucleation(self, y, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
             % identify whether nucleation occurs by comparing slip length
             % to theoretical nucleation length by Uenishi & Rice 2003
             % INPUT
+            % y     depth
+            % L     along fault length L
             % sne   array size(y) x size(t). effective normal stress
             % tau   array size(y) x size(t). shear stress
             % f_s   static friction coefficient
@@ -104,7 +114,7 @@ classdef FaultSlip
             % length(time). 
             slip_zone_indices = self.get_slip_zone_indices(slipping);
             slip_zone_length = nan(size(slip_zone_indices));        % along-fault length of slip zones
-            nucleation_length = nan(size(slip_zone_indices));       % nucleation length, per slip zone
+            nucleation_length_per_slip_zone = nan(size(slip_zone_indices));       % nucleation length, per slip zone
             % iterate over time steps
             for i = 1 : size(slip_zone_indices,2)
                 % iterate over number of slip zones
@@ -119,19 +129,19 @@ classdef FaultSlip
                             L_end = L_end + 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); % add half element 
                         end
                         slip_zone_length(j,i) = L_start - L_end;
-                        sne_slip = (sne(slip_zone_indices{j,i}, i));
-                        tau_slip = (tau(slip_zone_indices{j,i}, i));
+                        sne_slip = (sne(slip_zone_indices{j,i}, i));    % normal stresses at all slipping indices within a slip zone j
+                        tau_slip = (tau(slip_zone_indices{j,i}, i));    % shear stresses at all within a slip zone j
                         
                         if length(f_s) == size(tau,1)
                             % add ,i here if friction changes per timestep
-                            f_s_slip = f_s(slip_zone_indices{j,i}) ;
+                            f_s_slip = f_s(slip_zone_indices{j,i}) ;    % friction at all slipping indices (heterogeneous f_s)
                         else
-                            f_s_slip = f_s;
+                            f_s_slip = f_s;                             % friction coefficient at all slipping indices (uniform f_s)
                         end
                         if length(f_d) == size(tau,1)
-                            f_d_slip = (f_d(slip_zone_indices{j,i}));
+                            f_d_slip = (f_d(slip_zone_indices{j,i}));   % dynamic friction coefficient at all slipping indiced (heterogeneous f_d)
                         else
-                            f_d_slip = f_d;
+                            f_d_slip = f_d;                             % dynamic friction coefficient at all slipping indices (uniform f_d)
                         end
                         if length(d_c) == size(tau,1)
                             d_c_slip = mean(d_c(slip_zone_indices{j,i}));
@@ -143,44 +153,68 @@ classdef FaultSlip
                         else
                             mu_II_slip = mu_II;
                         end
-                        delta_tau = mean(sne_slip .* (f_s_slip - f_d_slip));
-                        tau_0_d = mean(tau_slip - sne_slip .* f_d_slip);
+                        delta_tau = mean(sne_slip .* (f_s_slip - f_d_slip));   % strength drop
+                        tau_0_d = mean(tau_slip - sne_slip .* f_d_slip);        % mean potential stress drop in slip zone
 
-                        nucleation_length(j,i) = self.calculate_nucleation_length(delta_tau, tau_0_d, d_c_slip, mu_II_slip, nuc_crit, nuc_len_fixed);
+                        nucleation_length_per_slip_zone(j,i) = self.calculate_nucleation_length(delta_tau, tau_0_d, d_c_slip, mu_II_slip, nuc_crit, nuc_len_fixed);
                         %nucleation_length(j,i) = 1.158 * mu_II * d_c./((f_s - f_d) * average_sne_in_slip_zone);
                     end
                 end
             end
             % detect reactivation and nucleation, per slip zone
             reactivation_per_slip_zone = repmat(size(slip_zone_indices,2), size(slip_zone_indices,1), 1);
-            nucleation_per_slip_zone = nan(size(reactivation_per_slip_zone));  
+            nucleation_index_per_slip_zone = nan(size(reactivation_per_slip_zone));  
+            y_mid = nan(size(slip_zone_indices));
             for j = 1 : size(slip_zone_indices, 1)
-                if any(~isnan(nucleation_length(j,:))) && ~isempty(slip_zone_indices)
+                if any(~isnan(nucleation_length_per_slip_zone(j,:))) && ~isempty(slip_zone_indices)
                     self.reactivation = 1;
-                    reactivation_per_slip_zone(j) = find(~isnan(nucleation_length(j,:)),1,'first');
-                    nucleation_length_j = nucleation_length(j, ~isnan(nucleation_length(j,:)));
-                    slip_length_j = slip_zone_length(j, ~isnan(nucleation_length(j,:)));
+                    reactivation_per_slip_zone(j) = find(~isnan(nucleation_length_per_slip_zone(j,:)),1,'first');
+                    nucleation_length_j = nucleation_length_per_slip_zone(j, ~isnan(nucleation_length_per_slip_zone(j,:)));
+                    slip_length_j = slip_zone_length(j, ~isnan(nucleation_length_per_slip_zone(j,:)));
                     l_difference = nucleation_length_j - slip_length_j;
                     x = linspace(1, length(l_difference), length(l_difference)) + reactivation_per_slip_zone(j) - 1;
                     if l_difference(1) < 0
                         % if the first timestep of reactivation already
                         % reaches nucleation, take that step
-                        nucleation_per_slip_zone(j) = x(1);
+                        nucleation_index_per_slip_zone(j) = x(1);
                     else
-                        if length(x) > 1 && ~strcmp(nuc_crit, 'fixed')
+                        if any(l_difference < 0)
                             [~, unique_index] = unique(l_difference);
-                            nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
-                        elseif length(x) > 1 && strcmp(nuc_crit, 'fixed')
-                            [~, unique_index] = unique(l_difference);
-                            nucleation_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
+                            nucleation_index_per_slip_zone(j) = interp1(l_difference(unique_index), x(unique_index), 0);
                         end
                     end
                 end
+                for i = 1 : size(slip_zone_indices,2) 
+                    if ~isempty(slip_zone_indices{j, i})
+                        y_tops(j, i) = y(slip_zone_indices{j, i}(1));
+                        y_base(j, i) = y(slip_zone_indices{j, i}(end));
+                        y_mid(j, i) = (y_tops(i) + y_base(i))/2;
+                    end
+                end
+                self.slip_zone_ymid = y_mid;
+                
             end
+
+            % find the earliest reactivation and nucleation for the
+            % different slip zones
             self.reactivation_load_step = min(reactivation_per_slip_zone);
-            self.nucleation_load_step = min(nucleation_per_slip_zone);
+            [self.nucleation_load_step, nucleation_zone_number] = min(nucleation_index_per_slip_zone);
             if ~isnan(self.nucleation_load_step)
                 self.nucleation = 1;
+                indices = linspace(1, length(nucleation_length_per_slip_zone),length(nucleation_length_per_slip_zone));
+                % get the nucleation length (alternatively derive from
+                % slip_zone_length and nucleation_load_step)
+                self.nucleation_length = interp1(indices, nucleation_length_per_slip_zone(nucleation_zone_number,:), self.nucleation_load_step);
+                nucleation_zone_indices = slip_zone_indices(nucleation_zone_number,:);
+                self.nucleation_zone_ymid =  interp1(indices, self.slip_zone_ymid(nucleation_zone_number,:), self.nucleation_load_step);
+                self.max_slip_length = self.nucleation_length;
+            else
+                self.nucleation_zone_ymid = nan; 
+                if self.reactivation
+                    self.max_slip_length = max(max(self.slip_length));
+                else
+                    self.max_slip_length = nan;
+                end
             end
             self.slip_length = slip_zone_length;
         end
