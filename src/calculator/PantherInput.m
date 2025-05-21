@@ -139,7 +139,7 @@ classdef (HandleCompatible) PantherInput < FaultMesh
                 end
                 self.summary.nucleation_length(i) = self.slip{i}.nucleation_length;
                 self.summary.nucleation_zone_ymid(i) = self.slip{i}.nucleation_zone_ymid;
-                if ~isnan(self.summary.nucleation_length(i))
+                if self.slip{i}.nucleation
                     self.summary.slip_length(i) = self.summary.nucleation_length(i);
                 else
                     self.summary.slip_length(i) = self.slip{i}.max_slip_length;

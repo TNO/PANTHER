@@ -162,7 +162,9 @@ classdef FaultSlip
                 end
             end
             % detect reactivation and nucleation, per slip zone
-            reactivation_per_slip_zone = repmat(size(slip_zone_indices,2), size(slip_zone_indices,1), 1);
+            % initialize reactivation and nucleation load step arrays 
+            % (size n_slip zones x time_steps)
+            reactivation_per_slip_zone = nan(size(slip_zone_indices,1), 1);
             nucleation_index_per_slip_zone = nan(size(reactivation_per_slip_zone));  
             y_mid = nan(size(slip_zone_indices));
             for j = 1 : size(slip_zone_indices, 1)
@@ -194,7 +196,7 @@ classdef FaultSlip
                 self.slip_zone_ymid = y_mid;
                 
             end
-
+            self.slip_length = slip_zone_length;
             % find the earliest reactivation and nucleation for the
             % different slip zones
             self.reactivation_load_step = min(reactivation_per_slip_zone);
@@ -205,7 +207,7 @@ classdef FaultSlip
                 % get the nucleation length (alternatively derive from
                 % slip_zone_length and nucleation_load_step)
                 self.nucleation_length = interp1(indices, nucleation_length_per_slip_zone(nucleation_zone_number,:), self.nucleation_load_step);
-                nucleation_zone_indices = slip_zone_indices(nucleation_zone_number,:);
+                % nucleation_zone_indices = slip_zone_indices(nucleation_zone_number,:);
                 self.nucleation_zone_ymid =  interp1(indices, self.slip_zone_ymid(nucleation_zone_number,:), self.nucleation_load_step);
                 self.max_slip_length = self.nucleation_length;
             else
@@ -216,7 +218,6 @@ classdef FaultSlip
                     self.max_slip_length = nan;
                 end
             end
-            self.slip_length = slip_zone_length;
         end
 
         function slip_zone_indices = get_slip_zone_indices(~, slipping)
