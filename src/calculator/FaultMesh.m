@@ -39,13 +39,17 @@ classdef (HandleCompatible) FaultMesh < handle
         end
 
         function y = get_fault_y(~, dy, y_extent)
+            % Computes the depth array y
+            % y will run to the nearest value specified by y_extent
+            % (dy will not be rescaled to precisely match y_extent)
+            % Input
+            %   dy:         depth spacing
+            %   y_extent:   depth extent +- with respect to zero
+            % Output
+            %   y:          depth array. runs from +ve (upwards) to -ve
+            %   (downwards) 
             ny = 1 + 2*floor(y_extent/dy);
-            dy_2 = 2*y_extent/ny;           % Rescale dy
-            y = zeros(ny, 1);
-
-            for i = 1 : ny
-                y(i) = y_extent - (i-1)*dy_2;
-            end
+            y = -linspace(-dy*fix(ny/2), dy*fix(ny/2), ny)';
         end
 
     end
