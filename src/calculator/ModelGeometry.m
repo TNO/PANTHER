@@ -138,6 +138,16 @@ classdef (HandleCompatible) ModelGeometry
                 error('Incorrect side indicator entered, should be FW or HW');
             end
         end
+
+        function [L] = get_along_fault_length(self, y)
+            % Obtains the length along the fault, with 0 being the mid
+            % depth (y=0)
+            % Input:
+            %   y - Depth values
+            % Output
+            %   L - Along-fault length
+            L = y / sin(self.dip * pi/ 180);
+        end
         
      
     end
