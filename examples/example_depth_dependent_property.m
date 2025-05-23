@@ -80,9 +80,6 @@ y = sc2_variable_dip.y;
 sc2_variable_dip.input_parameters.dip.value_with_depth = 80*ones(size(y));
 i_mid = floor(length(y)/2);
 sc2_variable_dip.input_parameters.dip.value_with_depth(i_mid:end) = 60;
-% sc2_variable_dip.input_parameters.dip.value_with_depth = 60 + y*dip_gradient_per_m;
-
-%sc2_variable_dip.input_parameters.width_HW.value = 0;
 
 % turn aseismic slip off
 sc2_variable_dip.aseismic_slip = 0;
@@ -92,7 +89,6 @@ sc2_variable_dip.generate_ensemble();
 
 % run panther with current input instance
 sc2_result = panther(sc2_variable_dip);
-
 
 % plot the results Scenario 2
 h2 = figure(2); clf(h2);

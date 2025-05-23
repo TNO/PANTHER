@@ -139,14 +139,23 @@ classdef (HandleCompatible) ModelGeometry
             end
         end
 
-        function [L] = get_along_fault_length(self, y)
+        function [L, dL] = get_along_fault_length(self, y)
             % Obtains the length along the fault, with 0 being the mid
             % depth (y=0)
             % Input:
             %   y - Depth values
             % Output
             %   L - Along-fault length
-            L = y / sin(self.dip * pi/ 180);
+            %   dL  - Along-fault length spacing. Single value for
+            %   uniformly spaced L, length(L) for varying L spacing
+            L = y ./ sin(self.dip * pi/ 180);
+            unique_dL = (uniquetol(diff(L), 0.001));
+            if isscalar(unique_dL)
+                dL = abs(unique_dL);
+            else
+                dL = abs(diff(L));
+                dL = [dL; dL(end)];
+            end
         end
         
      
