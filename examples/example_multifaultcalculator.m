@@ -69,6 +69,9 @@ legend({ 'Dip azimuth'});
 xlabel('Distance along Y');
 ylabel('Dip azimuth (deg)');
 
+% plot the fault surface
+[along_fault_length_grid, depth_grid, values, ~] = fault.get_fault_grid_for_input_parameter('dip');
+
 
 
 

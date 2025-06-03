@@ -46,6 +46,7 @@ classdef MultiFaultCalculator
 
     properties (Dependent)
         n_pillars double
+        L double
     end
 
     methods
@@ -365,14 +366,23 @@ classdef MultiFaultCalculator
                     cutoff_distance = 200;
                 end
             end
-            % parameters for status display
-            i5 = floor(self.n_pillars/10);
-            reverseStr = '';
+
+            % Validation of input
+            if ~isnumeric(cutoff_distance) || ~isnumeric(cutoff_value)
+                error('Cutoff distance and value should be double');
+                if max(size(cutoff_value)) > 1 || max(size(cutoff_distance)) > 1
+                    error('Cutoff distance and value should be single numbers');
+                end
+            end
             if ~( (size(X_input, 1) == size(Y_input, 1)) & (size(Y_input, 1) == size(Z_value,1)) ) | ...
                 ~( (size(X_input, 2) == size(Y_input, 2)) & (size(Y_input, 2) == size(Z_value,2)) )
                 warning('Dimensions of X, Y input coordinates and input value are not equal, please check input');
                 return
             end
+
+            % parameters for status display
+            i5 = floor(self.n_pillars/10);
+            reverseStr = '';
             for i = 1 : length(self.pillars)
                 if ~isvector(X_input)
                     X_input = X_input(:);
@@ -395,6 +405,59 @@ classdef MultiFaultCalculator
                 end
             end
             sprintf(newline);
+        end
+
+        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_input_parameter(self, parameter_name, depth_spacing)
+            if nargin < 3
+                depth_spacing = self.pillars{1}.dy;
+            end
+            % check whether the parsed input parameter name is valid
+            self.is_valid_input_parameter_name(parameter_name);
+            x_vector = self.L;
+            [min_depth, max_depth] = self.get_min_max_depth();
+            z_vector = (min_depth : depth_spacing : max_depth)';
+            [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+            absolute_depths = self.get_absolute_depths();
+            grid_value = zeros(size(L_grid));
+            for i = 1 : length(self.pillars)
+                parameter = self.pillars{i}.input_parameters.(parameter_name);
+                if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
+                    grid_value(:,i) = parameter.value;
+                    grid_attributes.z_line(i,1) = parameter.value;
+                    grid_attributes.uniform_value = true; 
+                else
+                    value_with_depth = parameter.value_with_depth;
+                    depth = absolute_depths{i};
+                    grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                    grid_attributes.z_line(i,1) = nan;
+                    grid_attributes.uniform_value = false; 
+                end
+            end
+        end
+
+        function [min_depth, max_depth] = get_min_max_depth(self)
+            % get_min_max_depth Gets the shallowest and deepest point on the fault surface 
+            absolute_depths = self.get_absolute_depths();
+            for i = 1 : length(self.pillars)
+                depth = absolute_depths{i};
+                if i == 1
+                    min_depth = min(depth);
+                    max_depth = max(depth);
+                else
+                    min_depth = min(min_depth, min(depth));
+                    max_depth = max(max_depth, max(depth));
+                end
+            end
+        end
+
+        function [absolute_depths] = get_absolute_depths(self)
+            % get_absolute depths Gets the absolute depth range at each
+            % pillar of the fault. 
+            absolute_depths = cell(self.n_pillars, 1);
+            for i = 1 : length(self.pillars)
+                depth_mid = self.pillars{i}.input_parameters.depth_mid.value;
+                absolute_depths{i} = self.pillars{i}.y + depth_mid;
+            end
         end
 
         function [summary] = get_results_summary(self)
@@ -421,20 +484,10 @@ classdef MultiFaultCalculator
             %   X_query - x-coordinate of the query point
             %   Y_query - y-coordinate of the query point
             % Output:
-            %   i_min - Index of the coordinate in X and Y vector
+            %   i_min - Index of the nearest coordinate in X and Y vector
+            %   i_dist - Distance of the nearest coordinate to query point
             distance_to_query_point = ((X_vector - X_query).^2 + (Y_vector - Y_query).^2).^0.5;
             [i_min, i_dist] = min(distance_to_query_point);
-            % [~, i_min_x] = min(abs(X_query - X_grid));
-            % [~, i_min_y] = min(abs(Y_query - Y_grid));
-            % i_min = find((X_grid == X_grid(i_min_x)) & (Y_grid == Y_grid(i_min_y)));
-            % if isempty(i_min)
-            %     distance = nan(size(X_grid));
-            %     for i = 1 : length(X_grid)
-            %         distance(i) = pdist([X_query, Y_query; X_grid(i), Y_grid(i)]);
-            %         [~, i_min] = min(distance);
-            %     end
-            %     disp('The query point seems to be outside the grid, closest value was assinged');
-            % end
         end
 
         function [valid_name] = is_valid_input_parameter_name(self, submitted_name)
@@ -450,7 +503,7 @@ classdef MultiFaultCalculator
             else
                 valid_name = false;
                 fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
-                disp(['Given input parameter name ', submitted_name,...
+                error(['Given input parameter name ', submitted_name,...
                     ' should be one of the following: ',...
                      [fields_cellstring{:}]]);
             end
@@ -486,5 +539,21 @@ classdef MultiFaultCalculator
             % number of faults in the object
             num = length(self.pillars);
         end
+
+        function L = get.L(self)
+            % get.L Gets the along-fault length based on the X and Y
+            % coordinates of the pillars. Assumes the coordinates are in
+            % the right order. 
+            X = self.pillar_info.X;
+            Y = self.pillar_info.Y;
+            L = zeros(size(X));
+            for i = 1 : length(X) - 1
+                dx = X(i+1) - X(i);
+                dy = Y(i+1) - Y(i);
+                L(i+1) = (dx^2 + dy^2)^0.5;
+            end
+            L = cumsum(L);
+        end
+
     end
 end
