@@ -435,6 +435,34 @@ classdef MultiFaultCalculator
             end
         end
 
+        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_output(self, output_name, time_step, depth_spacing)
+            if self.run_done
+                if nargin < 4
+                    depth_spacing = self.pillars{1}.dy;
+                    if nargin < 3
+                        time_step = height(self.pillars{1}.load_table);
+                    end
+                end
+                % check whether the parsed output name is valid
+                [~, output_type] = self.is_valid_output_name(output_name);
+                x_vector = self.L;
+                [min_depth, max_depth] = self.get_min_max_depth();
+                z_vector = (min_depth : depth_spacing : max_depth)';
+                [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+                absolute_depths = self.get_absolute_depths();
+                grid_value = zeros(size(L_grid));
+                for i = 1 : length(self.pillars)
+                    value_with_depth = self.pillars{i}.(output_type){1}.(output_name)(:,time_step);
+                    depth = absolute_depths{i};
+                    grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                    grid_attributes.z_line(i,1) = nan;
+                    grid_attributes.uniform_value = false; 
+                end
+            else
+                warning('Calculation has not yet been performed, no output available');
+            end      
+        end
+
         function [min_depth, max_depth] = get_min_max_depth(self)
             % get_min_max_depth Gets the shallowest and deepest point on the fault surface 
             absolute_depths = self.get_absolute_depths();
@@ -506,6 +534,34 @@ classdef MultiFaultCalculator
                 error(['Given input parameter name ', submitted_name,...
                     ' should be one of the following: ',...
                      [fields_cellstring{:}]]);
+            end
+        end
+
+        function [valid_name, output_category] = is_valid_output_name(~, submitted_name)
+            % is_valid_output_name Validates output parameter name.
+            % Input:
+            %   submitted_name - Name of the parameter to validate
+            % validate whether specified output name is valid
+            % Output:
+            % valid_name: true or false
+            valid_field_names = {'P','P0','dP','T','T0','dT','sne','tau','slip'};
+            if ismember(submitted_name, valid_field_names)
+                valid_name = true;
+            else
+                valid_name = false;
+                fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
+                error(['Given output name ', submitted_name,...
+                    ' should be one of the following: ',...
+                     [fields_cellstring{:}]]);
+            end
+            if ismember(submitted_name, {'P','P0','dP'})
+                output_category = 'pressure';
+            elseif ismember(submitted_name, {'T','T0','dT'})
+                output_category = 'temperature';
+            elseif ismember(submitted_name, {'sne', 'tau'})
+                output_category = 'stress';
+            elseif ismember(submitted_name, {'slip'})
+                output_category = 'slip';
             end
         end
 

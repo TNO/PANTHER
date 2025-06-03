@@ -69,10 +69,20 @@ legend({ 'Dip azimuth'});
 xlabel('Distance along Y');
 ylabel('Dip azimuth (deg)');
 
-% plot the fault surface
+%% example plot of an input parameter along the fault surface
 [along_fault_length_grid, depth_grid, values, ~] = fault.get_fault_grid_for_input_parameter('dip');
-
-
+[~, ~, tau_on_fault, ~] = fault.get_fault_grid_for_output('tau', 7);
+h2 = figure(2); clf(h2);
+hs = surf(along_fault_length_grid, depth_grid, values);
+view([0,90]);
+set(hs, 'EdgeColor','none');
+xlabel('Along fault length (m)');
+ylabel('Depth (m)');
+cb = colorbar();
+ylabel(cb, 'Dip');
+xlim([min(fault.L), max(fault.L)]);
+[ymin, ymax]  = fault.get_min_max_depth;
+ylim([ymin, ymax]);
 
 
 
