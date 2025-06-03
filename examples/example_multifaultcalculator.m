@@ -12,9 +12,20 @@ fault = MultiFaultCalculator(height(fault_segments));
 metadata_to_add = fault_segments(:,2:end);
 fault = fault.add_pillar_info_as_table(metadata_to_add);
 
+% specify an example net-to-gross grid and add to pillar metadata
+x_vector = linspace(min(fault.pillar_info.X), max(fault.pillar_info.Y), 12);
+y_vector = linspace(min(fault.pillar_info.Y), max(fault.pillar_info.Y), 12);
+[X_grid, Y_grid] = meshgrid(x_vector, y_vector);
+ntg_grid = ones(size(X_grid))*0.8;
+ntg_grid = ntg_grid + repmat(linspace(0,10,size(X_grid,2))*0.02,size(X_grid,1), 1);
+fault = fault.add_info_from_closest_point(X_grid, Y_grid, ntg_grid, 'NTG');
+friction_from_ntg = 0.6 - 0.2*(1-fault.pillar_info.NTG);  % arbitrary example relation NTG and friction
+clear x_vector y_vector X_grid Y_grid ntg_grid
+
 % change the input for the different fault pillars
 fault.set_input_parameter('dip', fault_segments.dip);
 fault.set_input_parameter('dip_azi', fault_segments.azimuth);
+fault.set_input_parameter('f_s', friction_from_ntg);
 
 % change the run settings (pillar settings like diffusion_P, save_stress,
 % aseismic_slip, nucleation_criterion, etc. )

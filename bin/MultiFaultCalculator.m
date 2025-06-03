@@ -61,10 +61,10 @@ classdef MultiFaultCalculator
                 self.pillars{i} = PantherInput();
             end
             % add default information to the pillar_info table
-            default_x_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate X
-            default_y_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate Y
-            self.pillar_info = table((1:n_pillars)', default_x_coordinates, ...
-                default_y_coordinates,'VariableNames',{'ID','X','Y'});
+            default_X_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate X
+            default_Y_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate Y
+            self.pillar_info = table((1:n_pillars)', default_X_coordinates, ...
+                default_Y_coordinates,'VariableNames',{'ID','X','Y'});
             % suppresses output of every single pillar
             % instead, during the running of MultiFaultCalculator output
             % status will be given per fault
@@ -183,7 +183,7 @@ classdef MultiFaultCalculator
                 error(['Input table height should match number of pillars on the fault',...
                     ' # of pillars = ', num2str(length(self.pillars)), ' but # of table rows is ', num2str(height(input_table))]);
             end
-            
+ 
             if nargin < 3
                 parameter_type = 'value';
             end
@@ -346,41 +346,52 @@ classdef MultiFaultCalculator
                 end
         end
 
-        function self = add_info_from_closest_point(self, X, Y, Z_value, X_column, Y_column, new_column)
+        function self = add_info_from_closest_point(self, X_input, Y_input, Z_value, new_column_name, cutoff_distance, cutoff_value)
             % add_info_from_closest_point Adds meta data info based on nearest point.
             % Input:
-            %   X - x-coordinates
-            %   Y - y-coordinates
-            %   Z_value - Spatial value
-            %   X_column - Column name of the X_coordinate in pillar_info
-            %   Y_column - Column name of the Y_coordinate in pillar_info
-            %   new_column - Column name of Z_value
-            % add meta data info based on nearest point 
-            % INPUT
-            % X             x-coordinates
-            % Y             y-coordinates
-            % Z_value       spatial value
-            % X_column      string, column name of the X_coordinate in pillar_info
-            % Y_column      string, column name of the X_coordinate in pillar_info
-            % new_column    string, column name of Z_value
+            %   X_input - x-coordinates of data to append to the fault
+            %   info. Can be a grid or a coordinate vector
+            %   Y_input - y-coordinates of data to append to the fault info
+            %   Can be a grid or a coordinate vector
+            %   Z_value - Spatial value Can be a grid or a coordinate vector
+            %   new_column_name - Column name of added Z_value in pillar_info
+            %   cutoff distance - distance from fault pillar beyond which
+            %   no value should be added
+            %   cutoff_value - value to be specified for points too far
+            %   away from the input coordinates
+            if nargin < 7
+                cutoff_value = NaN;
+                if nargin < 6
+                    cutoff_distance = 200;
+                end
+            end
+            % parameters for status display
             i5 = floor(self.n_pillars/10);
             reverseStr = '';
+            if ~( (size(X_input, 1) == size(Y_input, 1)) & (size(Y_input, 1) == size(Z_value,1)) ) | ...
+                ~( (size(X_input, 2) == size(Y_input, 2)) & (size(Y_input, 2) == size(Z_value,2)) )
+                warning('Dimensions of X, Y input coordinates and input value are not equal, please check input');
+                return
+            end
             for i = 1 : length(self.pillars)
-                xq = self.pillar_info.(X_column)(i);
-                yq = self.pillar_info.(Y_column)(i);
-                [closest_index] = self.nearest_rectangular_grid_coordinate(X,Y,xq, yq);
-                if isempty(closest_index)
-                    self.pillar_info.(new_column)(i) = Z_value(closest_index(1));
-                    %self.display_progress(i, self.n_pillars, 20, ...
-                    %    ['Progress assigning spatial data ', new_column,' : ']);
-                    if rem(i, i5) == 0
-                        percentDone = 100*i / self.n_pillars;
-                        msg = sprintf('Progress assigning spatial data : %3.1f', percentDone);
-                        fprintf([reverseStr, msg]);
-                        reverseStr = repmat(sprintf('\b'), 1, length(msg));
-                    end
+                if ~isvector(X_input)
+                    X_input = X_input(:);
+                    Y_input = Y_input(:);
+                    Z_value = Z_value(:);
+                end
+                xq = self.pillar_info.X(i);
+                yq = self.pillar_info.Y(i);
+                [distance_to_query_point, closest_index] = self.index_of_nearest_coordinate(X_input,Y_input, xq, yq);
+                if distance_to_query_point <= cutoff_distance
+                    self.pillar_info.(new_column_name)(i) = Z_value(closest_index);
                 else
-                    self.pillar_info.(new_column)(i) = Z_value(closest_index(1));
+                    self.pillar_info.(new_column_name)(i) = cutoff_value;
+                end
+                if rem(i, i5) == 0
+                    percentDone = 100*i / self.n_pillars;
+                    msg = sprintf('Progress assigning spatial data: %3.1f', percentDone);
+                    fprintf([reverseStr, msg]);
+                    reverseStr = repmat(sprintf('\b'), 1, length(msg));
                 end
             end
             sprintf(newline);
@@ -401,27 +412,29 @@ classdef MultiFaultCalculator
             end
         end
 
-        function [i_min] = nearest_rectangular_grid_coordinate(~, X_grid, Y_grid, X_query, Y_query)
-            % nearest_rectangular_grid_coordinate Finds the nearest rectangular grid coordinate.
+        function [i_min, i_dist] = index_of_nearest_coordinate(~, X_vector, Y_vector, X_query, Y_query)
+            % index_of_nearest_coordinate Finds the index of the nearest coordinate 
+            % to x_query and y_query in the X and Y vectors.
             % Input:
-            %   X_grid - x-coordinates of the grid
-            %   Y_grid - y-coordinates of the grid
+            %   X_vector - x-coordinates
+            %   Y_vector - y-coordinates 
             %   X_query - x-coordinate of the query point
             %   Y_query - y-coordinate of the query point
             % Output:
-            %   i_min - Index of the nearest grid coordinate
-            % only works for rectangular grids
-            [~, i_min_x] = min(abs(X_query - X_grid));
-            [~, i_min_y] = min(abs(Y_query - Y_grid));
-            i_min = find((X_grid == X_grid(i_min_x)) & (Y_grid == Y_grid(i_min_y)));
-            if isempty(i_min)
-                distance = nan(size(X_grid));
-                for i = 1 : length(X_grid)
-                    distance(i) = pdist([X_query, Y_query; X_grid(i), Y_grid(i)]);
-                    [~, i_min] = min(distance);
-                end
-                disp('The query point seems to be outside the grid, closest value was assinged');
-            end
+            %   i_min - Index of the coordinate in X and Y vector
+            distance_to_query_point = ((X_vector - X_query).^2 + (Y_vector - Y_query).^2).^0.5;
+            [i_min, i_dist] = min(distance_to_query_point);
+            % [~, i_min_x] = min(abs(X_query - X_grid));
+            % [~, i_min_y] = min(abs(Y_query - Y_grid));
+            % i_min = find((X_grid == X_grid(i_min_x)) & (Y_grid == Y_grid(i_min_y)));
+            % if isempty(i_min)
+            %     distance = nan(size(X_grid));
+            %     for i = 1 : length(X_grid)
+            %         distance(i) = pdist([X_query, Y_query; X_grid(i), Y_grid(i)]);
+            %         [~, i_min] = min(distance);
+            %     end
+            %     disp('The query point seems to be outside the grid, closest value was assinged');
+            % end
         end
 
         function [valid_name] = is_valid_input_parameter_name(self, submitted_name)
