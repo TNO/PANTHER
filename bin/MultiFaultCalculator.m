@@ -1,6 +1,8 @@
 classdef MultiFaultCalculator
-    % MultiFaultCalculator Class to perform calculations on multiple faults (pillars).
-    % This class allows for different input and run settings for each pillar.
+    % MultiFaultCalculator Class to perform calculations on multiple 2D cross-sections (pillars)
+    % along the same fault
+    % This class allows for different input settings and run settings for each fault pillar.
+    % In addition, this class allows to specify additional metadata for the pillars
     %
     % Properties:
     %   pillars - Cell array of PANTHER input and results objects (1 ensemble per entry)
@@ -8,6 +10,8 @@ classdef MultiFaultCalculator
     %   result_summary - Table to summarize results
     %   run_done - Logical flag indicating if the run is completed
     %   parallel - Flag to enable parallel processing (default is 1)
+    %   suppress_pillar_run_status_output - 1: do not display status update
+    %   on number of pillars that were processed
     %
     % Dependent Properties:
     %   n_pillars - Number of pillars
@@ -51,12 +55,16 @@ classdef MultiFaultCalculator
             %   n_pillars - Number of pillars
             % construct the class with n_pillars, assign ID in the
             % information table
+            % initialize the default PANTHER model for each pillar
             self.pillars = cell(n_pillars, 1);
-            self.pillar_info = table([1:n_pillars]','VariableNames',{'ID'});
-            % initialize the default PANTHER input for each pillar
             for i = 1 : length(self.pillars)
                 self.pillars{i} = PantherInput();
             end
+            % add default information to the pillar_info table
+            default_x_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate X
+            default_y_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate Y
+            self.pillar_info = table((1:n_pillars)', default_x_coordinates, ...
+                default_y_coordinates,'VariableNames',{'ID','X','Y'});
             % suppresses output of every single pillar
             % instead, during the running of MultiFaultCalculator output
             % status will be given per fault
@@ -68,11 +76,11 @@ classdef MultiFaultCalculator
             all_pillars = self.pillars;   % contains input objects for each pillar
             n = self.n_pillars;
             pillars_updated_with_results = cell(n, 1);  % generate a separate output array to be able to use in parfor loop
-            suppress_pillar_run_status_output = self.suppress_pillar_run_status_output;
+            suppress_run_status_output = self.suppress_pillar_run_status_output;
             if self.parallel
                 parfor i = 1 : n
                     pillars_updated_with_results{i,1} = panther(all_pillars{i});
-                    if ~suppress_pillar_run_status_output
+                    if ~suppress_run_status_output
                         disp(['Pillar ', num2str(i),' of ', num2str(n)]);
                     end
                 end
@@ -98,7 +106,14 @@ classdef MultiFaultCalculator
             if height(info_table_to_be_added) ~= height(self.pillar_info)
                 disp(['Cant append fault info, table size does not match. Height should be ',num2str(height(self.pillar_info)) ]);
             else
-                self.pillar_info = [self.pillar_info, info_table_to_be_added];
+                new_table_headers = info_table_to_be_added.Properties.VariableNames;
+                [overlapping_headers, columns_in_pillar_info] = ismember(new_table_headers, self.pillar_info.Properties.VariableNames);
+                if ~isempty(columns_in_pillar_info)
+                    self.pillar_info(:, find(columns_in_pillar_info))  = info_table_to_be_added(:, overlapping_headers);
+                    self.pillar_info = [self.pillar_info, info_table_to_be_added(:, ~overlapping_headers)];
+                else
+                    self.pillar_info = [self.pillar_info, info_table_to_be_added];
+                end
             end
         end
 

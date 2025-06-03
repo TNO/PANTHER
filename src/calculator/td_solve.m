@@ -12,6 +12,8 @@
 % by min (tau
 % idval   
 
+% itval = excess shear stress in the slipping zone
+
 function [t,d] = td_solve(it,itval,idval,K)
 
 if length(itval) == 1, itval = repmat(itval,length(it),1); end

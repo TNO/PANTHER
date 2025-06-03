@@ -282,6 +282,5 @@ classdef FaultSlip
                  nuc_length =  nucleation_length;
             end
         end
-
     end
 end

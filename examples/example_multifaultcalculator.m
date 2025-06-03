@@ -41,21 +41,21 @@ fault = fault.reduce_output([1:5:35]);
 h1 = figure(1); clf(h1);
 subplot(3,1,1)
 hold on
-plot(fault.pillar_info.y,fault.result_summary.reactivation_dP);
-plot(fault.pillar_info.y,fault.result_summary.nucleation_dP);
+plot(fault.pillar_info.Y,fault.result_summary.reactivation_dP);
+plot(fault.pillar_info.Y,fault.result_summary.nucleation_dP);
 legend({'Reactivation pressure change (MPa)','Nucleation pressure change (MPa)'});
 xlabel('Distance along y');
 ylabel('\DeltaP (MPa)');
 subplot(3,1,2)
 hold on
-plot(fault.pillar_info.y,fault.pillar_info.dip);
-xlabel('Distance along y');
+plot(fault.pillar_info.Y,fault.pillar_info.dip);
+xlabel('Distance along Y');
 ylabel('Dip (deg)');
 subplot(3,1,3)
 hold on
-plot(fault.pillar_info.y,fault.pillar_info.azimuth);
+plot(fault.pillar_info.Y,fault.pillar_info.azimuth);
 legend({ 'Dip azimuth'});
-xlabel('Distance along y');
+xlabel('Distance along Y');
 ylabel('Dip azimuth (deg)');
 
 
