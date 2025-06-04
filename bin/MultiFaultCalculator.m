@@ -118,60 +118,68 @@ classdef MultiFaultCalculator
             end
         end
 
-        function self = set_depth_dependent_input_parameter(self, parameter_name, values)
+        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
             % set_depth_dependent_input_parameter Sets depth-dependent input parameters.
             % Input:
             %   parameter_name - Name of the parameter
             %   values - Cell array of length n_pillars, containing arrays of doubles of length(y)
             % sets numeric input of depth-dependent Panther input parameters
-            if ~iscell(values)
+            if ~iscell(parameter_values)
                 error('Input depth dependent variable in a cell array of length n_pillars');
             end
-            if self.is_valid_input_parameter_name(parameter_name) && (length(values) == length(self.pillars))
+            if self.is_valid_input_parameter_name(parameter_name) && (length(parameter_values) == length(self.pillars))
                 for i = 1 : length(self.pillars)
-                    if length(values{i}) == length(self.pillars{i}.y)
+                    if length(parameter_values{i}) == length(self.pillars{i}.y)
                         self.pillars{i}.input_parameters.(parameter_name).uniform_with_depth = 0;
-                        self.pillars{i}.input_parameters.(parameter_name).value_with_depth = values{i};
+                        self.pillars{i}.input_parameters.(parameter_name).value_with_depth = parameter_values{i};
                     else
-                        disp(['Depth dependent variable could not be set, size not equal to y, length is ', num2str(self.pillars{i}.y)]);
+                        disp(['Depth dependent variable could not be set, size not equal to y, length of y is ', num2str(self.pillars{i}.y)]);
                     end
-                end
+                end 
             else
                 if ~self.is_valid_input_parameter_name(parameter_name)
                 disp(['Depth dependent variable ', parameter_name,' was not assigned, ',...
                     ' wrong input name given']);
-                elseif ~(length(values) == length(self.pillars))
+                elseif ~(length(parameter_values) == length(self.pillars))
                     disp(['Depth dependent variable ', parameter_name,' was not assigned, ',...
                     ' length of input array does not equals number of pillars']);
                 end
             end
         end
 
-        function self = set_input_parameter(self, parameter_name, values, parameter_type)
+
+        function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
             % set_input_parameter Sets numeric input parameters.
             % Input:
             %   parameter_name - Name of the parameter
-            %   values - Array of doubles
+            %   parameter_values - Array of doubles length(pillars), or
+            %   single value
             %   parameter_type - Property type ('value', 'a', or 'b')
             % sets numeric input Panther input parameters
             if nargin < 4
                 parameter_type = 'value';
             end
             valid_name = self.is_valid_input_parameter_name(parameter_name);
-            if  valid_name && (length(values) == length(self.pillars))
+            if  valid_name && ((length(parameter_values) == length(self.pillars))| isscalar(parameter_values))
                 for i = 1 : length(self.pillars)
-                    self.pillars{i}.input_parameters.(parameter_name).(parameter_type) = values(i);
+                    if isscalar(parameter_values)
+                        % same value assigned to all pillars
+                        self.pillars{i}.input_parameters.(parameter_name).(parameter_type) = parameter_values;
+                    else
+                        self.pillars{i}.input_parameters.(parameter_name).(parameter_type) = parameter_values(i);
+                    end
                 end
             else
                 if ~valid_name
                     disp(['Variable ', parameter_name,' was not assigned, ',...
                     ' wrong input name given']);
-                elseif ~(length(values) == length(self.pillars))
+                elseif ~(length(parameter_values) == length(self.pillars))
                     disp(['Variable ', parameter_name,' was not assigned, ',...
                     ' length of input array does not equals number of pillars']);
                 end
             end
         end
+        
 
         function self = update_input_parameter_from_table(self, input_table, parameter_type)
             % update_input_parameter_from_table Updates input parameters from a table.
