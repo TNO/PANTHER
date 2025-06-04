@@ -18,7 +18,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_default_single_run_T (testCase)
             % test with default input, with dT and T diffusion    
-            run_instance = PantherInput;
+            run_instance = PantherAnalysis;
             run_instance.load_case = 'T';
             run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
@@ -35,7 +35,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_single_with_depth_dependent_shsv(testCase)
              % test depth-variable initial stress ratio shsv
-            run_instance = PantherInput;
+            run_instance = PantherAnalysis;
             % set shsv varying with depth
             shsv_default = run_instance.input_parameters.shsv.value;
             run_instance.input_parameters.shsv.value_with_depth = ones(size(run_instance.y))*shsv_default;
@@ -55,7 +55,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_single_with_depth_varying_friction(testCase)
              % test depth-variable friction
-            run_instance = PantherInput;
+            run_instance = PantherAnalysis;
             run_instance = panther(run_instance);
             nuc_dp_uniform = run_instance.summary.nucleation_dP;
             % make an array of f_s of size (y)
@@ -101,7 +101,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
         function test_stochastic(testCase)
              % test depth-variable initial stress ratio shsv
-            stochastic_run = PantherInput();
+            stochastic_run = PantherAnalysis();
             % set shsv as a stochastic parameter
             stochastic_run.input_parameters.shsv.stochastic = 1;  % make shsv a stochastic parameter
             stochastic_run.input_parameters.shsv.a = 0.69;        % lower value of uniform distribution
@@ -119,7 +119,7 @@ classdef TestPanther < matlab.unittest.TestCase
         function test_sH_dir(testCase)
             % test to check whether sH_dir is handled correctly
             % initialize run and simplify pressure steps
-            run_instance = PantherInput();
+            run_instance = PantherAnalysis();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;

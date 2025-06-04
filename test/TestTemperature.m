@@ -8,7 +8,7 @@ classdef TestTemperature < matlab.unittest.TestCase
 
         function test_default_T (testCase)
             % test with default input, with dT and T diffusion    
-            trun = PantherInput;
+            trun = PantherAnalysis;
             trun.load_case = 'T';
             trun.diffusion_T = 0;
             trun.generate_ensemble();

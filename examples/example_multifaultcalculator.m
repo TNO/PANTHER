@@ -5,7 +5,7 @@
 fault_segments = readtable(fullfile(fileparts(matlab.desktop.editor.getActiveFilename), 'example_files\example_fault_input_for_multifaultcalculator'));
 
 % create MultiFaultCalculator object
-fault = MultiFaultCalculator(height(fault_segments));
+fault = FaultSurfaceCalculator(height(fault_segments));
 
 % save the metadata of interest, which will be added to the fault info in
 % the fault instance of MultiFaultCalculator
@@ -28,7 +28,7 @@ depth_dependent_shsv = cell(size(fault.pillars));
 depth_dependent_shsv(:) = {ones(size(y))*0.8};
 % set the reservoir interval shsv to a different value
 for i = 1 : length(fault.pillars)
-    fault.pillars{i}.generate_ensemble()
+    fault.pillars{i}.generate_ensemble();
     top_HW_i = fault.pillars{i}.ensemble_members{1}.top_HW_i(y);
     top_FW_i = fault.pillars{i}.ensemble_members{1}.top_FW_i(y);
     base_HW_i = fault.pillars{i}.ensemble_members{1}.base_HW_i(y);

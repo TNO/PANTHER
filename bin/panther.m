@@ -12,7 +12,7 @@ function [analysis] = panther(analysis)
 
     % load default input parameters if no input provided
     if nargin == 0
-        analysis = PantherInput();      
+        analysis = PantherAnalysis();      
     end
 
     % (re)generate ensemble member objects
