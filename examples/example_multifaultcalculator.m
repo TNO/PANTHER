@@ -22,10 +22,27 @@ fault = fault.add_info_from_closest_point(X_grid, Y_grid, ntg_grid, 'NTG');
 friction_from_ntg = 0.6 - 0.2*(1-fault.pillar_info.NTG);  % arbitrary example relation NTG and friction
 clear x_vector y_vector X_grid Y_grid ntg_grid
 
+% generate example of a depth dependent property
+y = fault.pillars{1}.y;
+depth_dependent_shsv = cell(size(fault.pillars));
+depth_dependent_shsv(:) = {ones(size(y))*0.8};
+% set the reservoir interval shsv to a different value
+for i = 1 : length(fault.pillars)
+    fault.pillars{i}.generate_ensemble()
+    top_HW_i = fault.pillars{i}.ensemble_members{1}.top_HW_i(y);
+    top_FW_i = fault.pillars{i}.ensemble_members{1}.top_FW_i(y);
+    base_HW_i = fault.pillars{i}.ensemble_members{1}.base_HW_i(y);
+    base_FW_i = fault.pillars{i}.ensemble_members{1}.base_FW_i(y);
+    top_reservoir_interval = min(top_FW_i, top_HW_i);
+    base_reservoir_interval = max(base_FW_i, base_HW_i);
+    depth_dependent_shsv{i}(top_reservoir_interval:base_reservoir_interval) = 0.75;
+end
+
 % change the input for the different fault pillars
 fault.set_input_parameter('dip', fault_segments.dip);
 fault.set_input_parameter('dip_azi', fault_segments.azimuth);
 fault.set_input_parameter('f_s', friction_from_ntg);
+fault.set_depth_dependent_input_parameter('shsv', depth_dependent_shsv);
 
 % change the run settings (pillar settings like diffusion_P, save_stress,
 % aseismic_slip, nucleation_criterion, etc. )
@@ -70,13 +87,14 @@ xlabel('Distance along Y');
 ylabel('Dip azimuth (deg)');
 
 %% example plot of an input parameter along the fault surface
-[along_fault_length_grid, depth_grid, grid_values, ~] = fault.get_fault_grid_for_input_parameter('dip');
+[along_fault_length_grid, depth_grid, grid_dip, ~] = fault.get_fault_grid_for_input_parameter('dip');
+[along_fault_length_grid, depth_grid, grid_shsv, ~] = fault.get_fault_grid_for_input_parameter('shsv');
 [~, ~, tau_on_fault, ~] = fault.get_fault_grid_for_output('tau', 7);
 [~, ~, sne_on_fault, ~] = fault.get_fault_grid_for_output('sne', 7);
 h2 = figure(2); clf(h2);
 
-subplot(2,1,1)
-hs = surf(along_fault_length_grid, depth_grid, grid_values);
+subplot(3,1,1)
+hs = surf(along_fault_length_grid, depth_grid, grid_dip);
 view([0,90]);
 set(hs, 'EdgeColor','none');
 xlabel('Along fault length (m)');
@@ -87,7 +105,19 @@ xlim([min(fault.L), max(fault.L)]);
 [ymin, ymax]  = fault.get_min_max_depth;
 ylim([ymin, ymax]);
 
-subplot(2,1,2)
+subplot(3,1,2)
+hs = surf(along_fault_length_grid, depth_grid, grid_shsv);
+view([0,90]);
+set(hs, 'EdgeColor','none');
+xlabel('Along fault length (m)');
+ylabel('Depth (m)');
+cb = colorbar();
+ylabel(cb, '\sigma_h / \sigma_v');
+xlim([min(fault.L), max(fault.L)]);
+[ymin, ymax]  = fault.get_min_max_depth;
+ylim([ymin, ymax]);
+
+subplot(3,1,3)
 
 hs = surf(along_fault_length_grid, depth_grid, tau_on_fault./sne_on_fault);
 view([0,90]);
