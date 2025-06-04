@@ -412,26 +412,30 @@ classdef MultiFaultCalculator
                 depth_spacing = self.pillars{1}.dy;
             end
             % check whether the parsed input parameter name is valid
-            self.is_valid_input_parameter_name(parameter_name);
-            x_vector = self.L;
-            [min_depth, max_depth] = self.get_min_max_depth();
-            z_vector = (min_depth : depth_spacing : max_depth)';
-            [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
-            absolute_depths = self.get_absolute_depths();
-            grid_value = zeros(size(L_grid));
-            for i = 1 : length(self.pillars)
-                parameter = self.pillars{i}.input_parameters.(parameter_name);
-                if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
-                    grid_value(:,i) = parameter.value;
-                    grid_attributes.z_line(i,1) = parameter.value;
-                    grid_attributes.uniform_value = true; 
-                else
-                    value_with_depth = parameter.value_with_depth;
-                    depth = absolute_depths{i};
-                    grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
-                    grid_attributes.z_line(i,1) = nan;
-                    grid_attributes.uniform_value = false; 
+            [valid_input] = self.is_valid_input_parameter_name(parameter_name);
+            if valid_input
+                x_vector = self.L;
+                [min_depth, max_depth] = self.get_min_max_depth();
+                z_vector = (min_depth : depth_spacing : max_depth)';
+                [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+                absolute_depths = self.get_absolute_depths();
+                grid_value = zeros(size(L_grid));
+                for i = 1 : length(self.pillars)
+                    parameter = self.pillars{i}.input_parameters.(parameter_name);
+                    if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
+                        grid_value(:,i) = parameter.value;
+                        grid_attributes.z_line(i,1) = parameter.value;
+                        grid_attributes.uniform_value = true; 
+                    else
+                        value_with_depth = parameter.value_with_depth;
+                        depth = absolute_depths{i};
+                        grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                        grid_attributes.z_line(i,1) = nan;
+                        grid_attributes.uniform_value = false; 
+                    end
                 end
+            else
+                error([parameter_name, ' is not a valid input parameter name']);
             end
         end
 
@@ -444,19 +448,27 @@ classdef MultiFaultCalculator
                     end
                 end
                 % check whether the parsed output name is valid
-                [~, output_type] = self.is_valid_output_name(output_name);
-                x_vector = self.L;
-                [min_depth, max_depth] = self.get_min_max_depth();
-                z_vector = (min_depth : depth_spacing : max_depth)';
-                [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
-                absolute_depths = self.get_absolute_depths();
-                grid_value = zeros(size(L_grid));
-                for i = 1 : length(self.pillars)
-                    value_with_depth = self.pillars{i}.(output_type){1}.(output_name)(:,time_step);
-                    depth = absolute_depths{i};
-                    grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
-                    grid_attributes.z_line(i,1) = nan;
-                    grid_attributes.uniform_value = false; 
+                [valid_output, output_type] = self.is_valid_output_name(output_name);
+                if valid_output
+                    % check whether submitted time step index is valide
+                    self.is_valid_time_step(time_step);
+                    % set up the grids
+                    x_vector = self.L;
+                    [min_depth, max_depth] = self.get_min_max_depth();
+                    z_vector = (min_depth : depth_spacing : max_depth)';
+                    [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+                    absolute_depths = self.get_absolute_depths();
+                    grid_value = zeros(size(L_grid));
+                    % get the output values at the grid points
+                    for i = 1 : length(self.pillars)
+                        value_with_depth = self.pillars{i}.(output_type){1}.(output_name)(:,time_step);
+                        depth = absolute_depths{i};
+                        grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                        grid_attributes.z_line(i,1) = nan;
+                        grid_attributes.uniform_value = false; 
+                    end
+                else
+                    error([output_name, ' is not a valid output name']);
                 end
             else
                 warning('Calculation has not yet been performed, no output available');
@@ -518,50 +530,61 @@ classdef MultiFaultCalculator
             [i_min, i_dist] = min(distance_to_query_point);
         end
 
-        function [valid_name] = is_valid_input_parameter_name(self, submitted_name)
+        function [valid_name] = is_valid_input_parameter_name(self, submitted_name, warning_on)
             % is_valid_input_parameter_name Validates input parameter name.
             % Input:
             %   submitted_name - Name of the parameter to validate
             % validate whether specified input parameter name is valid
             % Output:
             % valid_name: true or false
+            if nargin < 3
+                warning_on = true;
+            end
             valid_field_names = fields(self.pillars{1}.input_parameters);
             if ismember(submitted_name, valid_field_names)
                 valid_name = true;
             else
                 valid_name = false;
-                fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
-                error(['Given input parameter name ', submitted_name,...
-                    ' should be one of the following: ',...
-                     [fields_cellstring{:}]]);
+                if warning_on
+                    fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
+                    warning(['Submitted parameter name was ''', submitted_name,...
+                        '''. Valid input parameter names are: ',...
+                         [fields_cellstring{:}]]);
+                end
             end
         end
 
-        function [valid_name, output_category] = is_valid_output_name(~, submitted_name)
+        function [valid_name, output_category] = is_valid_output_name(self, submitted_name, warning_on)
             % is_valid_output_name Validates output parameter name.
             % Input:
             %   submitted_name - Name of the parameter to validate
             % validate whether specified output name is valid
             % Output:
             % valid_name: true or false
-            valid_field_names = {'P','P0','dP','T','T0','dT','sne','tau','slip'};
+            if nargin < 3
+                warning_on = true;
+            end
+            valid_field_names = {'P','dP','T','dT','sne','tau','slip'}';
             if ismember(submitted_name, valid_field_names)
                 valid_name = true;
+                if ismember(submitted_name, {'P','dP'})
+                    output_category = 'pressure';
+                elseif ismember(submitted_name, {'T','dT'})
+                    output_category = 'temperature';
+                elseif ismember(submitted_name, {'sne', 'tau'})
+                    output_category = 'stress';
+                elseif ismember(submitted_name, {'slip'})
+                    output_category = 'slip';
+                end
             else
                 valid_name = false;
-                fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
-                error(['Given output name ', submitted_name,...
-                    ' should be one of the following: ',...
-                     [fields_cellstring{:}]]);
-            end
-            if ismember(submitted_name, {'P','P0','dP'})
-                output_category = 'pressure';
-            elseif ismember(submitted_name, {'T','T0','dT'})
-                output_category = 'temperature';
-            elseif ismember(submitted_name, {'sne', 'tau'})
-                output_category = 'stress';
-            elseif ismember(submitted_name, {'slip'})
-                output_category = 'slip';
+                if warning_on
+                    fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
+                    warning(['Submitted parameter name was ''', submitted_name,...
+                        '''. Valid output names are: ',...
+                         [fields_cellstring{:}]]);
+                end
+                output_category = '';
             end
         end
 
@@ -583,8 +606,25 @@ classdef MultiFaultCalculator
                 valid_name = false;
                 value_type = 'double';
                 fields_cellstring = [append(valid_setting_names, repmat({', '},length(valid_setting_names),1))];
-                disp(['Run setting name ', submitted_name', ' not valid, should be one of the following: ',...
+                disp(['Run setting name ''', submitted_name', ''' not valid, should be one of the following: ',...
                      [fields_cellstring{:}]]);
+            end
+        end
+
+        function [valid_time_step] = is_valid_time_step(self, time_step)
+            valid_time_step = false;
+            if ~(time_step == floor(time_step))
+                error(['Time step must be an integer between 1 and ',...
+                    num2str(height(self.pillars{1}.load_table))]);
+            elseif (time_step) > height(self.pillars{1}.load_table)
+                error(['Specified time step ', num2str(time_step),...
+                    ' exceeds number of time steps in the load table (', ...
+                    num2str(height(self.pillars{1}.load_table)),')']);
+            elseif (time_step) < 1
+                error(['Time step must be an integer between 1 and ',...
+                    num2str(height(self.pillars{1}.load_table))]);
+            else 
+                valid_time_step = true;
             end
         end
 
