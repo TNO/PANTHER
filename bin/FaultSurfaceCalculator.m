@@ -59,7 +59,7 @@ classdef FaultSurfaceCalculator
             % initialize the default PANTHER model for each pillar
             self.pillars = cell(n_pillars, 1);
             for i = 1 : length(self.pillars)
-                self.pillars{i} = PantherInput();
+                self.pillars{i} = PantherAnalysis();
             end
             % add default information to the pillar_info table
             default_X_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate X

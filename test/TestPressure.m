@@ -8,7 +8,7 @@ classdef TestPressure < matlab.unittest.TestCase
 
         function test_default_P (testCase)
             % default case
-            tc = PantherInput;
+            tc = PantherAnalysis;
             tc.load_table = tc.load_table(1:2,:);
             tc.load_table.time_steps(2) = 1;
             tc.load_table.P_steps(2) = -1;
@@ -70,7 +70,7 @@ classdef TestPressure < matlab.unittest.TestCase
 
         function test_pressure_diffusion(testCase)
             % default case
-            tc = PantherInput;
+            tc = PantherAnalysis;
             tc.load_table = tc.load_table(1:2,:);
             tc.load_table.time_steps(2) = 10;
             tc.load_table.P_steps(2) = -10;
@@ -91,7 +91,7 @@ classdef TestPressure < matlab.unittest.TestCase
 
         function test_initial_pressures(testCase)
             % default case
-            tc = PantherInput;
+            tc = PantherAnalysis;
             tc.load_table = tc.load_table(1:2,:);
             tc.load_table.time_steps(2) = 1;
             tc.load_table.P_steps(2) = -1;
@@ -119,7 +119,7 @@ classdef TestPressure < matlab.unittest.TestCase
         
         function test_pressure_setting_for_different_p_grad(testCase)
              % default case
-            tc = PantherInput;
+            tc = PantherAnalysis;
             tc.load_table = tc.load_table(1:2,:);
             tc.load_table.time_steps(2) = 1;
             tc.load_table.P_steps(2) = -1;

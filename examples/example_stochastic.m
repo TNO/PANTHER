@@ -1,6 +1,6 @@
 % example stochastic run
 
-analysis = PantherInput;
+analysis = PantherAnalysis;
 analysis.input_parameters.dip.stochastic = 1;   % make dip a stochastic parameter
 analysis.input_parameters.shsv.stochastic = 1;  % make shsv a stochastic parameter
 analysis.input_parameters.shsv.a = 0.69;        % lower value of uniform distribution

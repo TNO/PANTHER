@@ -4,7 +4,7 @@
 % In this example a figure is generated with FW HW and fault pressure
 % Loes Buijze 05 - 01 - 2024
 
-analysis = PantherInput();                          % intialize model run
+analysis = PantherAnalysis();                          % intialize model run
 analysis.input_parameters.throw.value = 50;
 analysis.input_parameters.P_grad_res.value = 0.2;   % assign gas pressure gradient in the reservoir
 analysis.input_parameters.P_over.value = 2;         % overpressure of 2 MPa at the top of the reservoir

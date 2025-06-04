@@ -1,7 +1,7 @@
 % example file for a single model run
 
 % initialize input 
-run_instance = PantherInput;
+run_instance = PantherAnalysis();
 % change some input properties
 run_instance.input_parameters.width_HW.value = 500;
 run_instance.input_parameters.throw.value = 50;

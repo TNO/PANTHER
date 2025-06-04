@@ -2,7 +2,7 @@
 % parameter
 
 % initialize input Scenario 1: variable friction
-sc1_variable_friction = PantherInput;
+sc1_variable_friction = PantherAnalysis;
 % change some input properties
 sc1_variable_friction.input_parameters.width_HW.value = 500;
 sc1_variable_friction.input_parameters.throw.value = 50;
@@ -72,7 +72,7 @@ legend(hs, {'Initial', 'Final'});
 %%
 
 % initialize input Scenario 2: variable dip
-sc2_variable_dip = PantherInput;
+sc2_variable_dip = PantherAnalysis;
 
 % set depth varying dip
 sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
