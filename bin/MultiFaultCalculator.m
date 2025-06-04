@@ -1,6 +1,8 @@
 classdef MultiFaultCalculator
-    % MultiFaultCalculator Class to perform calculations on multiple faults (pillars).
-    % This class allows for different input and run settings for each pillar.
+    % MultiFaultCalculator Class to perform calculations on multiple 2D cross-sections (pillars)
+    % along the same fault
+    % This class allows for different input settings and run settings for each fault pillar.
+    % In addition, this class allows to specify additional metadata for the pillars
     %
     % Properties:
     %   pillars - Cell array of PANTHER input and results objects (1 ensemble per entry)
@@ -8,6 +10,8 @@ classdef MultiFaultCalculator
     %   result_summary - Table to summarize results
     %   run_done - Logical flag indicating if the run is completed
     %   parallel - Flag to enable parallel processing (default is 1)
+    %   suppress_pillar_run_status_output - 1: do not display status update
+    %   on number of pillars that were processed
     %
     % Dependent Properties:
     %   n_pillars - Number of pillars
@@ -42,6 +46,7 @@ classdef MultiFaultCalculator
 
     properties (Dependent)
         n_pillars double
+        L double
     end
 
     methods
@@ -51,12 +56,16 @@ classdef MultiFaultCalculator
             %   n_pillars - Number of pillars
             % construct the class with n_pillars, assign ID in the
             % information table
+            % initialize the default PANTHER model for each pillar
             self.pillars = cell(n_pillars, 1);
-            self.pillar_info = table([1:n_pillars]','VariableNames',{'ID'});
-            % initialize the default PANTHER input for each pillar
             for i = 1 : length(self.pillars)
                 self.pillars{i} = PantherInput();
             end
+            % add default information to the pillar_info table
+            default_X_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate X
+            default_Y_coordinates = linspace(0, n_pillars - 1, n_pillars)';     % horizontal coordinate Y
+            self.pillar_info = table((1:n_pillars)', default_X_coordinates, ...
+                default_Y_coordinates,'VariableNames',{'ID','X','Y'});
             % suppresses output of every single pillar
             % instead, during the running of MultiFaultCalculator output
             % status will be given per fault
@@ -68,11 +77,11 @@ classdef MultiFaultCalculator
             all_pillars = self.pillars;   % contains input objects for each pillar
             n = self.n_pillars;
             pillars_updated_with_results = cell(n, 1);  % generate a separate output array to be able to use in parfor loop
-            suppress_pillar_run_status_output = self.suppress_pillar_run_status_output;
+            suppress_run_status_output = self.suppress_pillar_run_status_output;
             if self.parallel
                 parfor i = 1 : n
                     pillars_updated_with_results{i,1} = panther(all_pillars{i});
-                    if ~suppress_pillar_run_status_output
+                    if ~suppress_run_status_output
                         disp(['Pillar ', num2str(i),' of ', num2str(n)]);
                     end
                 end
@@ -98,7 +107,14 @@ classdef MultiFaultCalculator
             if height(info_table_to_be_added) ~= height(self.pillar_info)
                 disp(['Cant append fault info, table size does not match. Height should be ',num2str(height(self.pillar_info)) ]);
             else
-                self.pillar_info = [self.pillar_info, info_table_to_be_added];
+                new_table_headers = info_table_to_be_added.Properties.VariableNames;
+                [overlapping_headers, columns_in_pillar_info] = ismember(new_table_headers, self.pillar_info.Properties.VariableNames);
+                if ~isempty(columns_in_pillar_info)
+                    self.pillar_info(:, find(columns_in_pillar_info))  = info_table_to_be_added(:, overlapping_headers);
+                    self.pillar_info = [self.pillar_info, info_table_to_be_added(:, ~overlapping_headers)];
+                else
+                    self.pillar_info = [self.pillar_info, info_table_to_be_added];
+                end
             end
         end
 
@@ -168,7 +184,7 @@ classdef MultiFaultCalculator
                 error(['Input table height should match number of pillars on the fault',...
                     ' # of pillars = ', num2str(length(self.pillars)), ' but # of table rows is ', num2str(height(input_table))]);
             end
-            
+ 
             if nargin < 3
                 parameter_type = 'value';
             end
@@ -331,44 +347,157 @@ classdef MultiFaultCalculator
                 end
         end
 
-        function self = add_info_from_closest_point(self, X, Y, Z_value, X_column, Y_column, new_column)
+        function self = add_info_from_closest_point(self, X_input, Y_input, Z_value, new_column_name, cutoff_distance, cutoff_value)
             % add_info_from_closest_point Adds meta data info based on nearest point.
             % Input:
-            %   X - x-coordinates
-            %   Y - y-coordinates
-            %   Z_value - Spatial value
-            %   X_column - Column name of the X_coordinate in pillar_info
-            %   Y_column - Column name of the Y_coordinate in pillar_info
-            %   new_column - Column name of Z_value
-            % add meta data info based on nearest point 
-            % INPUT
-            % X             x-coordinates
-            % Y             y-coordinates
-            % Z_value       spatial value
-            % X_column      string, column name of the X_coordinate in pillar_info
-            % Y_column      string, column name of the X_coordinate in pillar_info
-            % new_column    string, column name of Z_value
+            %   X_input - x-coordinates of data to append to the fault
+            %   info. Can be a grid or a coordinate vector
+            %   Y_input - y-coordinates of data to append to the fault info
+            %   Can be a grid or a coordinate vector
+            %   Z_value - Spatial value Can be a grid or a coordinate vector
+            %   new_column_name - Column name of added Z_value in pillar_info
+            %   cutoff distance - distance from fault pillar beyond which
+            %   no value should be added
+            %   cutoff_value - value to be specified for points too far
+            %   away from the input coordinates
+            if nargin < 7
+                cutoff_value = NaN;
+                if nargin < 6
+                    cutoff_distance = 200;
+                end
+            end
+
+            % Validation of input
+            if ~isnumeric(cutoff_distance) || ~isnumeric(cutoff_value)
+                error('Cutoff distance and value should be double');
+                if max(size(cutoff_value)) > 1 || max(size(cutoff_distance)) > 1
+                    error('Cutoff distance and value should be single numbers');
+                end
+            end
+            if ~( (size(X_input, 1) == size(Y_input, 1)) & (size(Y_input, 1) == size(Z_value,1)) ) | ...
+                ~( (size(X_input, 2) == size(Y_input, 2)) & (size(Y_input, 2) == size(Z_value,2)) )
+                warning('Dimensions of X, Y input coordinates and input value are not equal, please check input');
+                return
+            end
+
+            % parameters for status display
             i5 = floor(self.n_pillars/10);
             reverseStr = '';
             for i = 1 : length(self.pillars)
-                xq = self.pillar_info.(X_column)(i);
-                yq = self.pillar_info.(Y_column)(i);
-                [closest_index] = self.nearest_rectangular_grid_coordinate(X,Y,xq, yq);
-                if isempty(closest_index)
-                    self.pillar_info.(new_column)(i) = Z_value(closest_index(1));
-                    %self.display_progress(i, self.n_pillars, 20, ...
-                    %    ['Progress assigning spatial data ', new_column,' : ']);
-                    if rem(i, i5) == 0
-                        percentDone = 100*i / self.n_pillars;
-                        msg = sprintf('Progress assigning spatial data : %3.1f', percentDone);
-                        fprintf([reverseStr, msg]);
-                        reverseStr = repmat(sprintf('\b'), 1, length(msg));
-                    end
+                if ~isvector(X_input)
+                    X_input = X_input(:);
+                    Y_input = Y_input(:);
+                    Z_value = Z_value(:);
+                end
+                xq = self.pillar_info.X(i);
+                yq = self.pillar_info.Y(i);
+                [distance_to_query_point, closest_index] = self.index_of_nearest_coordinate(X_input,Y_input, xq, yq);
+                if distance_to_query_point <= cutoff_distance
+                    self.pillar_info.(new_column_name)(i) = Z_value(closest_index);
                 else
-                    self.pillar_info.(new_column)(i) = Z_value(closest_index(1));
+                    self.pillar_info.(new_column_name)(i) = cutoff_value;
+                end
+                if rem(i, i5) == 0
+                    percentDone = 100*i / self.n_pillars;
+                    msg = sprintf('Progress assigning spatial data: %3.1f', percentDone);
+                    fprintf([reverseStr, msg]);
+                    reverseStr = repmat(sprintf('\b'), 1, length(msg));
                 end
             end
             sprintf(newline);
+        end
+
+        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_input_parameter(self, parameter_name, depth_spacing)
+            if nargin < 3
+                depth_spacing = self.pillars{1}.dy;
+            end
+            % check whether the parsed input parameter name is valid
+            [valid_input] = self.is_valid_input_parameter_name(parameter_name);
+            if valid_input
+                x_vector = self.L;
+                [min_depth, max_depth] = self.get_min_max_depth();
+                z_vector = (min_depth : depth_spacing : max_depth)';
+                [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+                absolute_depths = self.get_absolute_depths();
+                grid_value = zeros(size(L_grid));
+                for i = 1 : length(self.pillars)
+                    parameter = self.pillars{i}.input_parameters.(parameter_name);
+                    if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
+                        grid_value(:,i) = parameter.value;
+                        grid_attributes.z_line(i,1) = parameter.value;
+                        grid_attributes.uniform_value = true; 
+                    else
+                        value_with_depth = parameter.value_with_depth;
+                        depth = absolute_depths{i};
+                        grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                        grid_attributes.z_line(i,1) = nan;
+                        grid_attributes.uniform_value = false; 
+                    end
+                end
+            else
+                error([parameter_name, ' is not a valid input parameter name']);
+            end
+        end
+
+        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_output(self, output_name, time_step, depth_spacing)
+            if self.run_done
+                if nargin < 4
+                    depth_spacing = self.pillars{1}.dy;
+                    if nargin < 3
+                        time_step = height(self.pillars{1}.load_table);
+                    end
+                end
+                % check whether the parsed output name is valid
+                [valid_output, output_type] = self.is_valid_output_name(output_name);
+                if valid_output
+                    % check whether submitted time step index is valide
+                    self.is_valid_time_step(time_step);
+                    % set up the grids
+                    x_vector = self.L;
+                    [min_depth, max_depth] = self.get_min_max_depth();
+                    z_vector = (min_depth : depth_spacing : max_depth)';
+                    [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
+                    absolute_depths = self.get_absolute_depths();
+                    grid_value = zeros(size(L_grid));
+                    % get the output values at the grid points
+                    for i = 1 : length(self.pillars)
+                        value_with_depth = self.pillars{i}.(output_type){1}.(output_name)(:,time_step);
+                        depth = absolute_depths{i};
+                        grid_value(:,i) = interp1(depth, value_with_depth, Z_grid(:,i));
+                        grid_attributes.z_line(i,1) = nan;
+                        grid_attributes.uniform_value = false; 
+                    end
+                else
+                    error([output_name, ' is not a valid output name']);
+                end
+            else
+                warning('Calculation has not yet been performed, no output available');
+            end      
+        end
+
+        function [min_depth, max_depth] = get_min_max_depth(self)
+            % get_min_max_depth Gets the shallowest and deepest point on the fault surface 
+            absolute_depths = self.get_absolute_depths();
+            for i = 1 : length(self.pillars)
+                depth = absolute_depths{i};
+                if i == 1
+                    min_depth = min(depth);
+                    max_depth = max(depth);
+                else
+                    min_depth = min(min_depth, min(depth));
+                    max_depth = max(max_depth, max(depth));
+                end
+            end
+        end
+
+        function [absolute_depths] = get_absolute_depths(self)
+            % get_absolute depths Gets the absolute depth range at each
+            % pillar of the fault. 
+            absolute_depths = cell(self.n_pillars, 1);
+            for i = 1 : length(self.pillars)
+                depth_mid = self.pillars{i}.input_parameters.depth_mid.value;
+                absolute_depths{i} = self.pillars{i}.y + depth_mid;
+            end
         end
 
         function [summary] = get_results_summary(self)
@@ -386,45 +515,76 @@ classdef MultiFaultCalculator
             end
         end
 
-        function [i_min] = nearest_rectangular_grid_coordinate(~, X_grid, Y_grid, X_query, Y_query)
-            % nearest_rectangular_grid_coordinate Finds the nearest rectangular grid coordinate.
+        function [i_min, i_dist] = index_of_nearest_coordinate(~, X_vector, Y_vector, X_query, Y_query)
+            % index_of_nearest_coordinate Finds the index of the nearest coordinate 
+            % to x_query and y_query in the X and Y vectors.
             % Input:
-            %   X_grid - x-coordinates of the grid
-            %   Y_grid - y-coordinates of the grid
+            %   X_vector - x-coordinates
+            %   Y_vector - y-coordinates 
             %   X_query - x-coordinate of the query point
             %   Y_query - y-coordinate of the query point
             % Output:
-            %   i_min - Index of the nearest grid coordinate
-            % only works for rectangular grids
-            [~, i_min_x] = min(abs(X_query - X_grid));
-            [~, i_min_y] = min(abs(Y_query - Y_grid));
-            i_min = find((X_grid == X_grid(i_min_x)) & (Y_grid == Y_grid(i_min_y)));
-            if isempty(i_min)
-                distance = nan(size(X_grid));
-                for i = 1 : length(X_grid)
-                    distance(i) = pdist([X_query, Y_query; X_grid(i), Y_grid(i)]);
-                    [~, i_min] = min(distance);
-                end
-                disp('The query point seems to be outside the grid, closest value was assinged');
-            end
+            %   i_min - Index of the nearest coordinate in X and Y vector
+            %   i_dist - Distance of the nearest coordinate to query point
+            distance_to_query_point = ((X_vector - X_query).^2 + (Y_vector - Y_query).^2).^0.5;
+            [i_min, i_dist] = min(distance_to_query_point);
         end
 
-        function [valid_name] = is_valid_input_parameter_name(self, submitted_name)
+        function [valid_name] = is_valid_input_parameter_name(self, submitted_name, warning_on)
             % is_valid_input_parameter_name Validates input parameter name.
             % Input:
             %   submitted_name - Name of the parameter to validate
             % validate whether specified input parameter name is valid
             % Output:
             % valid_name: true or false
+            if nargin < 3
+                warning_on = true;
+            end
             valid_field_names = fields(self.pillars{1}.input_parameters);
             if ismember(submitted_name, valid_field_names)
                 valid_name = true;
             else
                 valid_name = false;
-                fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
-                disp(['Given input parameter name ', submitted_name,...
-                    ' should be one of the following: ',...
-                     [fields_cellstring{:}]]);
+                if warning_on
+                    fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
+                    warning(['Submitted parameter name was ''', submitted_name,...
+                        '''. Valid input parameter names are: ',...
+                         [fields_cellstring{:}]]);
+                end
+            end
+        end
+
+        function [valid_name, output_category] = is_valid_output_name(self, submitted_name, warning_on)
+            % is_valid_output_name Validates output parameter name.
+            % Input:
+            %   submitted_name - Name of the parameter to validate
+            % validate whether specified output name is valid
+            % Output:
+            % valid_name: true or false
+            if nargin < 3
+                warning_on = true;
+            end
+            valid_field_names = {'P','dP','T','dT','sne','tau','slip'}';
+            if ismember(submitted_name, valid_field_names)
+                valid_name = true;
+                if ismember(submitted_name, {'P','dP'})
+                    output_category = 'pressure';
+                elseif ismember(submitted_name, {'T','dT'})
+                    output_category = 'temperature';
+                elseif ismember(submitted_name, {'sne', 'tau'})
+                    output_category = 'stress';
+                elseif ismember(submitted_name, {'slip'})
+                    output_category = 'slip';
+                end
+            else
+                valid_name = false;
+                if warning_on
+                    fields_cellstring = [append(valid_field_names, repmat({', '},length(valid_field_names),1))];
+                    warning(['Submitted parameter name was ''', submitted_name,...
+                        '''. Valid output names are: ',...
+                         [fields_cellstring{:}]]);
+                end
+                output_category = '';
             end
         end
 
@@ -446,8 +606,25 @@ classdef MultiFaultCalculator
                 valid_name = false;
                 value_type = 'double';
                 fields_cellstring = [append(valid_setting_names, repmat({', '},length(valid_setting_names),1))];
-                disp(['Run setting name ', submitted_name', ' not valid, should be one of the following: ',...
+                disp(['Run setting name ''', submitted_name', ''' not valid, should be one of the following: ',...
                      [fields_cellstring{:}]]);
+            end
+        end
+
+        function [valid_time_step] = is_valid_time_step(self, time_step)
+            valid_time_step = false;
+            if ~(time_step == floor(time_step))
+                error(['Time step must be an integer between 1 and ',...
+                    num2str(height(self.pillars{1}.load_table))]);
+            elseif (time_step) > height(self.pillars{1}.load_table)
+                error(['Specified time step ', num2str(time_step),...
+                    ' exceeds number of time steps in the load table (', ...
+                    num2str(height(self.pillars{1}.load_table)),')']);
+            elseif (time_step) < 1
+                error(['Time step must be an integer between 1 and ',...
+                    num2str(height(self.pillars{1}.load_table))]);
+            else 
+                valid_time_step = true;
             end
         end
 
@@ -458,5 +635,21 @@ classdef MultiFaultCalculator
             % number of faults in the object
             num = length(self.pillars);
         end
+
+        function L = get.L(self)
+            % get.L Gets the along-fault length based on the X and Y
+            % coordinates of the pillars. Assumes the coordinates are in
+            % the right order. 
+            X = self.pillar_info.X;
+            Y = self.pillar_info.Y;
+            L = zeros(size(X));
+            for i = 1 : length(X) - 1
+                dx = X(i+1) - X(i);
+                dy = Y(i+1) - Y(i);
+                L(i+1) = (dx^2 + dy^2)^0.5;
+            end
+            L = cumsum(L);
+        end
+
     end
 end
