@@ -46,7 +46,7 @@ classdef FaultSurfaceCalculator
 
     properties (Dependent)
         n_pillars double
-        L double
+        L_strike double
     end
 
     methods
@@ -414,15 +414,20 @@ classdef FaultSurfaceCalculator
             end
             sprintf(newline);
         end
+        
+        function [line_value] = get_input_parameter_along_depth_mid(self, parameter_name)
+            % check whether the parsed input parameter name is valid
+            [valid_input] = self.is_valid_input_parameter_name(parameter_name);
+        end
 
-        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_input_parameter(self, parameter_name, depth_spacing)
+        function [grid_value, L_grid, Z_grid, grid_attributes] = get_fault_grid_for_input_parameter(self, parameter_name, depth_spacing)
             if nargin < 3
                 depth_spacing = self.pillars{1}.dy;
             end
             % check whether the parsed input parameter name is valid
             [valid_input] = self.is_valid_input_parameter_name(parameter_name);
             if valid_input
-                x_vector = self.L;
+                x_vector = self.L_strike;
                 [min_depth, max_depth] = self.get_min_max_depth();
                 z_vector = (min_depth : depth_spacing : max_depth)';
                 [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
@@ -447,7 +452,7 @@ classdef FaultSurfaceCalculator
             end
         end
 
-        function [L_grid, Z_grid, grid_value, grid_attributes] = get_fault_grid_for_output(self, output_name, time_step, depth_spacing)
+        function [grid_value, L_grid, Z_grid, grid_attributes] = get_fault_grid_for_output(self, output_name, time_step, depth_spacing)
             if self.run_done
                 if nargin < 4
                     depth_spacing = self.pillars{1}.dy;
@@ -461,7 +466,7 @@ classdef FaultSurfaceCalculator
                     % check whether submitted time step index is valide
                     self.is_valid_time_step(time_step);
                     % set up the grids
-                    x_vector = self.L;
+                    x_vector = self.L_strike;
                     [min_depth, max_depth] = self.get_min_max_depth();
                     z_vector = (min_depth : depth_spacing : max_depth)';
                     [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
@@ -481,6 +486,27 @@ classdef FaultSurfaceCalculator
             else
                 warning('Calculation has not yet been performed, no output available');
             end      
+        end
+
+        function [reservoir_boundaries] = get_top_base_reservoir(self)
+            % get_top_base_reservoir  Gets the top and base of the footwall
+            % and hanging wall reservoir compartments along the fault
+            % strike
+            % Ouput
+            % reservoir_boundaries  (table) table of n_pillarsx4, with
+            % columns top_FW, base_FW, top_HW, base_HW
+            vars = {'top_FW','base_FW','top_HW', 'base_HW'};
+            reservoir_boundaries = array2table(zeros((self.n_pillars),4),...
+                'VariableNames', vars);
+            for i = 1 : self.n_pillars
+                y = self.pillars{i}.y;
+                for j = 1 : length(vars)
+                    if isempty(self.pillars{i}.ensemble_members{1})
+                        self.pillars{i}.generate_ensemble();
+                    end
+                    reservoir_boundaries.(vars{j})(i) = self.pillars{i}.ensemble_members{1}.([vars{j},'_y']) + self.pillars{i}.ensemble_members{1}.depth_mid;
+                end
+            end
         end
 
         function [min_depth, max_depth] = get_min_max_depth(self)
@@ -644,7 +670,7 @@ classdef FaultSurfaceCalculator
             num = length(self.pillars);
         end
 
-        function L = get.L(self)
+        function L = get.L_strike(self)
             % get.L Gets the along-fault length based on the X and Y
             % coordinates of the pillars. Assumes the coordinates are in
             % the right order. 

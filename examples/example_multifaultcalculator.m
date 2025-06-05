@@ -87,13 +87,17 @@ xlabel('Distance along Y');
 ylabel('Dip azimuth (deg)');
 
 %% example plot of an input parameter along the fault surface
-[along_fault_length_grid, depth_grid, grid_dip, ~] = fault.get_fault_grid_for_input_parameter('dip');
-[along_fault_length_grid, depth_grid, grid_shsv, ~] = fault.get_fault_grid_for_input_parameter('shsv');
-[~, ~, tau_on_fault, ~] = fault.get_fault_grid_for_output('tau', 7);
-[~, ~, sne_on_fault, ~] = fault.get_fault_grid_for_output('sne', 7);
+[grid_dip, along_fault_length_grid, depth_grid, ~] = fault.get_fault_grid_for_input_parameter('dip');
+[grid_shsv] = fault.get_fault_grid_for_input_parameter('shsv');
+[tau_on_fault] = fault.get_fault_grid_for_output('tau', 7);
+[sne_on_fault] = fault.get_fault_grid_for_output('sne', 7);
+
+tops = fault.get_top_base_reservoir();
+
 h2 = figure(2); clf(h2);
 
 subplot(3,1,1)
+hold on
 hs = surf(along_fault_length_grid, depth_grid, grid_dip);
 view([0,90]);
 set(hs, 'EdgeColor','none');
@@ -101,11 +105,16 @@ xlabel('Along fault length (m)');
 ylabel('Depth (m)');
 cb = colorbar();
 ylabel(cb, 'Dip');
-xlim([min(fault.L), max(fault.L)]);
+xlim([min(fault.L_strike), max(fault.L_strike)]);
 [ymin, ymax]  = fault.get_min_max_depth;
 ylim([ymin, ymax]);
+plot3(fault.L_strike, tops.top_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.base_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.top_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
+plot3(fault.L_strike, tops.base_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
 
 subplot(3,1,2)
+hold on
 hs = surf(along_fault_length_grid, depth_grid, grid_shsv);
 view([0,90]);
 set(hs, 'EdgeColor','none');
@@ -113,12 +122,16 @@ xlabel('Along fault length (m)');
 ylabel('Depth (m)');
 cb = colorbar();
 ylabel(cb, '\sigma_h / \sigma_v');
-xlim([min(fault.L), max(fault.L)]);
+xlim([min(fault.L_strike), max(fault.L_strike)]);
 [ymin, ymax]  = fault.get_min_max_depth;
 ylim([ymin, ymax]);
+plot3(fault.L_strike, tops.top_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.base_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.top_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
+plot3(fault.L_strike, tops.base_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
 
 subplot(3,1,3)
-
+hold on
 hs = surf(along_fault_length_grid, depth_grid, tau_on_fault./sne_on_fault);
 view([0,90]);
 set(hs, 'EdgeColor','none');
@@ -126,8 +139,12 @@ xlabel('Along fault length (m)');
 ylabel('Depth (m)');
 cb = colorbar();
 ylabel(cb, '\tau/\sigma_n''');
-xlim([min(fault.L), max(fault.L)]);
+xlim([min(fault.L_strike), max(fault.L_strike)]);
 [ymin, ymax]  = fault.get_min_max_depth;
 ylim([ymin, ymax]);
+plot3(fault.L_strike, tops.top_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.base_FW, ones(size(fault.L_strike))*1e8, 'LineStyle','-','Color','k'); 
+plot3(fault.L_strike, tops.top_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
+plot3(fault.L_strike, tops.base_HW, ones(size(fault.L_strike))*1e8, 'LineStyle','--','Color','k'); 
 
 
