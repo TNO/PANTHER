@@ -1,19 +1,20 @@
-% example for using Multifaultcalculator
-% Multifaultcalculator handles multiple 2D fault cross-sections (pillars)
+% example for using FaultSurfaceCalculator
+% FaultSurfaceCalculator handles multiple 2D fault cross-sections (pillars)
+% that form a single fault plane
 
 % read example fault input
-fault_segments = readtable(fullfile(fileparts(matlab.desktop.editor.getActiveFilename), 'example_files\example_fault_input_for_multifaultcalculator'));
+fault_segments = readtable(fullfile(fileparts(matlab.desktop.editor.getActiveFilename), 'example_files\example_fault_input_for_faultsurfacecalculator'));
 
-% create MultiFaultCalculator object
+% create FaultSurfaceCalculator object
 fault = FaultSurfaceCalculator(height(fault_segments));
 
 % save the metadata of interest, which will be added to the fault info in
-% the fault instance of MultiFaultCalculator
+% the fault instance of FaultSurfaceCalculator
 metadata_to_add = fault_segments(:,2:end);
 fault = fault.add_pillar_info_as_table(metadata_to_add);
 
 % specify an example net-to-gross grid and add to pillar metadata
-x_vector = linspace(min(fault.pillar_info.X), max(fault.pillar_info.Y), 12);
+x_vector = linspace(min(fault.pillar_info.X), max(fault.pillar_info.X), 12);
 y_vector = linspace(min(fault.pillar_info.Y), max(fault.pillar_info.Y), 12);
 [X_grid, Y_grid] = meshgrid(x_vector, y_vector);
 ntg_grid = ones(size(X_grid))*0.8;
@@ -48,7 +49,7 @@ fault.set_depth_dependent_input_parameter('shsv', depth_dependent_shsv);
 % aseismic_slip, nucleation_criterion, etc. )
 fault.set_run_setting('diffusion_P', 1);
 
-% change MultiFaultCalculator settings
+% change FaultSurfaceCalculator settings
 fault.parallel = 0;
 fault.suppress_pillar_run_status_output  = 0;
 
