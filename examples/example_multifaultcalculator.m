@@ -13,7 +13,7 @@ metadata_to_add = fault_segments(:,2:end);
 fault = fault.add_pillar_info_as_table(metadata_to_add);
 
 % specify an example net-to-gross grid and add to pillar metadata
-x_vector = linspace(min(fault.pillar_info.X), max(fault.pillar_info.Y), 12);
+x_vector = linspace(min(fault.pillar_info.X), max(fault.pillar_info.X), 12);
 y_vector = linspace(min(fault.pillar_info.Y), max(fault.pillar_info.Y), 12);
 [X_grid, Y_grid] = meshgrid(x_vector, y_vector);
 ntg_grid = ones(size(X_grid))*0.8;
