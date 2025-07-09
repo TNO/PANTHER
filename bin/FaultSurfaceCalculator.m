@@ -418,6 +418,23 @@ classdef FaultSurfaceCalculator
         function [line_value] = get_input_parameter_along_depth_mid(self, parameter_name)
             % check whether the parsed input parameter name is valid
             [valid_input] = self.is_valid_input_parameter_name(parameter_name);
+            line_value = nan(1, length(self.n_pillars));
+            absolute_depths = self.get_absolute_depths();
+            if valid_input
+                for i = 1 : length(self.pillars)
+                    parameter = self.pillars{i}.input_parameters.(parameter_name);
+                    if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
+                        line_value(i) = parameter.value;
+                    else
+                        value_with_depth = parameter.value_with_depth;
+                        depth = absolute_depths;
+                        depth_mid = self.pillars{i}.input_parameters.depth_mid.value;
+                        line_value(i) = interp1(depth, value_with_depth, depth_mid);    % should be the same as taking the middle element
+                    end
+                end
+            else
+                error([parameter_name, ' is not a valid input parameter name']);
+            end
         end
 
         function [grid_value, L_grid, Z_grid, grid_attributes] = get_fault_grid_for_input_parameter(self, parameter_name, depth_spacing)
