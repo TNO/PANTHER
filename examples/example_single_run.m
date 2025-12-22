@@ -6,7 +6,7 @@ run_instance = PantherAnalysis();
 run_instance.input_parameters.width_HW.value = 500;
 run_instance.input_parameters.throw.value = 50;
 % turn off diffusion
-run_instance.diffusion_P = 0;
+run_instance.diffusion_P = 1;
 % generate model ensemble to check input
 run_instance.generate_ensemble();
 % run panther with current input instance

@@ -36,9 +36,10 @@ classdef FaultSurfaceCalculator
     %   get.n_pillars - Gets the number of pillars
 
     properties
-        pillars cell        % cell array of PANTHER input & result objects (1 ensemble meber per entry, no stochastic analysis) 
-        pillar_info table   % table with pillar custom meta_data (e.g. name, coordinates)
-        result_summary table
+        pillars cell            % cell array of PANTHER input & result objects (1 ensemble meber per entry, no stochastic analysis) 
+        pillar_info table       % table with pillar custom meta_data (e.g. name, coordinates)
+        result_summary table    % summary of pillar results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
+        fault_info struct       % structure to add custom information about the fault            
         run_done logical
         parallel = 1        % overrides parallel setting of individual pillars
         suppress_pillar_run_status_output = 0
@@ -445,6 +446,9 @@ classdef FaultSurfaceCalculator
             [valid_input] = self.is_valid_input_parameter_name(parameter_name);
             if valid_input
                 x_vector = self.L_strike;
+                % obtain the min and max depth along the entire fault to
+                % ensure the grid covers the fault. interpolate to the new
+                % depth ranges
                 [min_depth, max_depth] = self.get_min_max_depth();
                 z_vector = (min_depth : depth_spacing : max_depth)';
                 [L_grid, Z_grid] = meshgrid(x_vector, z_vector);
