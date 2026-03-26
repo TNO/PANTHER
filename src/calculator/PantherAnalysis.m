@@ -1,4 +1,4 @@
-classdef (HandleCompatible) PantherAnalysis < FaultMesh
+classdef (HandleCompatible) PantherAnalysis < FaultMesh 
     % Object that initializes input, sets run and save settings for Panther, and
     % contains the results
 

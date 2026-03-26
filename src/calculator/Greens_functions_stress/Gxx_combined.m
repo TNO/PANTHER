@@ -31,7 +31,7 @@ function Gxx = Gxx_combined(a,b,c,d,theta,x,y)
     % c = 0 --> right side only
     % d = 0 --> left side only
     
-    num_offset = 1e-9; % small number to add to x and y to avoid singularities and division by 0) [-]  
+    num_offset = 1e-9; % small number to add to x and y to avoid singularities and division by 0) [-] 
     if x == 0 || x == d
         x = x + num_offset*abs(d);
         x = x + num_offset;
