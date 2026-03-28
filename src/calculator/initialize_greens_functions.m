@@ -15,19 +15,31 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
     % numerical_correction Corrects x and y in case these coincide
     % with any of the boundaries of the reservoir shapes. this
     % results in singularities and division by 0
-    correction_value = 1e-9;
+    correction_value = 1e-3;
+    % correction_value = 1e-3*mode(diff(y));
     if dx == 0 || dx == params.width_FW || dx == -params.width_HW
         dx = dx + correction_value;
     end
+    % correct values in y that are at the reservoir boundary. the
+    % correction is made such that the corrected y value falls within the
+    % reservoir compartment. Hence, the 2pi subtraction in 
     reservoir_boundaries = [params.top_FW_y, params.top_HW_y, params.base_HW_y, params.base_FW_y];
-    if any(ismember(y, reservoir_boundaries))
-        i_boundary = find(ismember(y, reservoir_boundaries));
-        y(i_boundary) = y(i_boundary) + correction_value;
+    y_correction = zeros(size(y));
+    for i = 1 : length(reservoir_boundaries)
+        if ismember(y, reservoir_boundaries(i))
+            if i == 1 || i == 2
+                y_correction(ismember(y, reservoir_boundaries(i))) = -correction_value;
+            else 
+                y_correction(ismember(y, reservoir_boundaries(i))) = correction_value;
+            end
+        end
     end
+    y = y + y_correction;
     % xcoordinates
     xeval = y./(tan(params.dip*pi/180)) + dx;
         if and(~variable_PT, ~variable_dip)
             GF{1} = GreensFunctions(y);
+            %GF{1}.y_correction = y_correction;
             if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
                 GF{1} = GF{1}.green_FW(xeval, y, params.dip, params.thick, params.throw, params.width_FW, 0, 0 );
             end
@@ -43,7 +55,9 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
             slice_y = y2(i_mid);                                % depth slice mid y on fault
             slice_x = slice_y/(tan(params.dip*pi/180));         % depth slice mid x on fault
             slice_throw = 0;                                    % depth slice throw, set to 0. 
-            greens_f = GreensFunctions(y2);                % initialize Green's functions
+            greens_f = GreensFunctions(y2);                     % initialize Green's functions
+            % no need to use y_correction because evaluation points at the
+            % cell centers
             if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
                 greens_f = greens_f.green_FW(xeval2, y2, params.dip, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
             end
@@ -75,9 +89,11 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
                 slice_y = y(j); % - 0.5*slice_thick;        % depth slice mid y on fault
                 slice_x = slice_y/(tan(dip*pi/180)); % depth slice mid x on fault
                 GF{j} = GreensFunctions(y);              % initialize Green's functions
+                % no need to use y_correction because evaluation points at the
+                % cell centers
                 GF{j} = GF{j}.green_FW(xeval, y, dip, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
                 GF{j} = GF{j}.green_HW(xeval, y, dip,  slice_thick, slice_throw, params.width_HW, slice_x, slice_y );
             end
         end            
-
+        
     end

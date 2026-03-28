@@ -57,7 +57,7 @@ classdef FaultStress
 
         function [sne_f, tau_f] = get_stress_at_load_step(self, load_step)
             % obtain the fault stresses at arbitrary value between 1 and
-            % length(timesteps)
+            % length(timesteps). 
             sne_f = zeros(size(self.sne, 1), 1);
             tau_f = zeros(size(self.sne, 1), 1);
             if load_step < 1 || load_step > size(self.sne, 2)
