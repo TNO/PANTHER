@@ -88,7 +88,6 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % nucleation occurred
             % nucleation_dT: [deg] corresponding temperature change at
             % which nucleation occurred
-            
             column_names = {'reactivation', 'reactivation_load_step','reactivation_dP',...
                 'reactivation_dT', 'nucleation', 'nucleation_load_step', 'nucleation_dP',...
                 'nucleation_dT','nucleation_length','nucleation_zone_ymid',...
@@ -152,7 +151,79 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
             warning('on'); 
         end
+        
+        
+        function [input] = get_member_input(self, input_parameter_name, run_nr)
+            if nargin < 3
+                run_nr = 1;
+            end
+            valid_input_parameter_names = properties(self.input_parameters);
+            if ~ismember(input_parameter_name, valid_input_parameter_names)
+                valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
+                error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
+                     valid_input_parameter_names_cellstring{:}]);
+            end
+            input = self.ensemble_members{run_nr}.(input_parameter_name);
+        end
 
+        function [output] = get_member_output(self, result_name, run_nr)
+            % getter function to conveniently retrieve output
+            if nargin < 3
+                run_nr = 1;
+            end
+            allowable_result_names = {'P0','P','dP' 'sne', 'tau', 'sne_reac',...
+                'tau_reac','sne_nuc','tau_nuc','T0', 'T','dT','slip','scu', ...
+                'dcfs','cfs','dcfs_dt','tau_s','tau_d'}';
+            if ~ismember(result_name, allowable_result_names)
+                resultnames_cellstring = [append(allowable_result_names, repmat({', '},length(allowable_result_names),1))];
+                error(['result name ', result_name, ' not valid, should be one of ', ...
+                     resultnames_cellstring{:}]);
+            end
+            if contains(result_name,'P')
+                output = self.pressure{run_nr}.(result_name);
+            elseif contains(result_name, 'T')
+                output = self.temperature{run_nr}.(result_name);
+            elseif strcmp(result_name, 'slip')
+                output = self.slip{run_nr}.(result_name);
+            elseif strcmp(result_name, 'scu')
+                sne = self.stress{run_nr}.sne;
+                tau = self.stress{run_nr}.tau;
+                f_s = self.get_member_input('f_s');
+                cohesion = self.get_member_input('cohesion');
+                output = tau ./ (sne.*f_s + cohesion);
+            elseif strcmp(result_name, 'tau_s')
+                sne = self.stress{run_nr}.sne;
+                f_s = self.get_member_input('f_s');
+                cohesion = self.get_member_input('cohesion');
+                output = sne.*f_s + cohesion;
+            elseif strcmp(result_name, 'tau_d')
+                sne = self.stress{run_nr}.sne;
+                f_d = self.get_member_input('f_d');
+                cohesion = self.get_member_input('cohesion');
+                output = sne.*f_d + cohesion;
+            elseif strcmp(result_name, 'cfs')
+                sne = self.stress{run_nr}.sne;
+                tau = self.stress{run_nr}.tau;
+                f_s = self.get_member_input('f_s');
+                output = tau - sne.*f_s;
+            elseif strcmp(result_name, 'dcfs')
+                sne = self.stress{run_nr}.sne;
+                tau = self.stress{run_nr}.tau;
+                f_s = self.get_member_input('f_s');
+                output = (tau - tau(:,1)) - sne(sne - sne(:,1)).*f_s;
+            elseif strcmp(result_name, 'dcfs_dt')
+                sne = self.stress{run_nr}.sne;
+                tau = self.stress{run_nr}.tau;
+                f_s = self.get_member_input('f_s');
+                dcfs = (tau - tau(:,1)) - (sne - sne(:,1)).*f_s;
+                cfs = tau - sne.*f_s;
+                time = self.load_table.time_steps;
+                % compute the time derivative (MPa/yr)
+                output = gradient(cfs, time, 2); 
+            else
+                output = self.stress{run_nr}.(result_name);
+            end
+        end
 
         function ensemble = get.ensemble(self)
             ensemble = self.ensemble_to_table();

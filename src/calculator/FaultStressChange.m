@@ -76,7 +76,7 @@ classdef FaultStressChange
             if and(~vary_dip, ~vary_PT)
                 dsigma = self.get_stress_change_uniform(params, GF{1}, y, temperature, gamma_T, 'T');
             else
-                dsigma = self.get_stress_change_nonuniform(GF, y, size(temperature.dT_fault, 2), temperature, gamma_T, 'T');
+                dsigma = self.get_stress_change_nonuniform(GF, y, size(temperature.dT, 2), temperature, gamma_T, 'T');
             end
         end
 

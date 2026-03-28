@@ -177,8 +177,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % Input:
             % p_side - 'HW' or 'FW'
             % Output:
-            % p0_on_side 
-
+            % P0_on_side 
             if strcmp(P_side, 'FW')
                 P0_on_side = self.get_P0_FW();
             elseif strcmp(P_side, 'HW')
