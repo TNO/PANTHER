@@ -21,8 +21,7 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
         dx = dx + correction_value;
     end
     % correct values in y that are at the reservoir boundary. the
-    % correction is made such that the corrected y value falls within the
-    % reservoir compartment. Hence, the 2pi subtraction in 
+    % correction is made in the direction towards the compartment
     reservoir_boundaries = [params.top_FW_y, params.top_HW_y, params.base_HW_y, params.base_FW_y];
     y_correction = zeros(size(y));
     for i = 1 : length(reservoir_boundaries)
@@ -39,7 +38,7 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
     xeval = y./(tan(params.dip*pi/180)) + dx;
         if and(~variable_PT, ~variable_dip)
             GF{1} = GreensFunctions(y);
-            %GF{1}.y_correction = y_correction;
+            GF{1}.y_correction = y_correction;
             if params.width_FW > 0  % and add a criterium to check if the FW dP and dT are not 0
                 GF{1} = GF{1}.green_FW(xeval, y, params.dip, params.thick, params.throw, params.width_FW, 0, 0 );
             end

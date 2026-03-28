@@ -12,7 +12,7 @@ classdef GreensFunctions
         Gshear_FW
         Gnorm_HW
         Gshear_HW
-        % y_correction = 0    % (length(y) x 1) correction applied to points coinciding with a reservoir boundary
+        y_correction = 0    % (length(y) x 1) correction applied to points coinciding with a reservoir boundary
     end
 
     methods
@@ -119,7 +119,7 @@ classdef GreensFunctions
             Gnorm_FW = self.Gnorm_FW;
             % use the uncorrected y to identify whether a calculation point
             % lies within the reservoir or at the reservoir boundary
-            yeval_uncorrected = yeval; % - self.y_correction;
+            yeval_uncorrected = yeval - self.y_correction;
             for i = 1 : length(dx)
                if dx(i) >= 0 && and((yeval_uncorrected(i) - ycf) <= b, (yeval_uncorrected(i) - ycf) >= -a)
                    Gnorm_FW(i) = Gnorm_FW(i) - 2 *pi;
@@ -135,7 +135,7 @@ classdef GreensFunctions
             Gnorm_HW = self.Gnorm_HW;
             % use the uncorrected y to identify whether a calculation point
             % lies within the reservoir or at the reservoir boundary
-            yeval_uncorrected = yeval; % - self.y_correction;
+            yeval_uncorrected = yeval - self.y_correction;
             for i = 1 : length(dx)
                if dx(i) <= 0 && and(yeval_uncorrected(i) <= a, yeval_uncorrected(i) >= -b)
                    Gnorm_HW(i) = Gnorm_HW(i) - 2 *pi;
