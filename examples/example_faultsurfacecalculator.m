@@ -30,12 +30,12 @@ depth_dependent_shsv(:) = {ones(size(y))*0.8};
 % set the reservoir interval shsv to a different value
 for i = 1 : length(fault.pillars)
     fault.pillars{i}.generate_ensemble();
-    top_HW_i = fault.pillars{i}.ensemble_members{1}.top_HW_i(y);
-    top_FW_i = fault.pillars{i}.ensemble_members{1}.top_FW_i(y);
-    base_HW_i = fault.pillars{i}.ensemble_members{1}.base_HW_i(y);
-    base_FW_i = fault.pillars{i}.ensemble_members{1}.base_FW_i(y);
-    top_reservoir_interval = min(top_FW_i, top_HW_i);
-    base_reservoir_interval = max(base_FW_i, base_HW_i);
+    i_HW_top = fault.pillars{i}.ensemble_members{1}.i_HW_top(y);
+    i_FW_top = fault.pillars{i}.ensemble_members{1}.i_FW_top(y);
+    i_HW_base = fault.pillars{i}.ensemble_members{1}.i_HW_base(y);
+    i_FW_base = fault.pillars{i}.ensemble_members{1}.i_FW_base(y);
+    top_reservoir_interval = min(i_FW_top, i_HW_top);
+    base_reservoir_interval = max(i_FW_base, i_HW_base);
     depth_dependent_shsv{i}(top_reservoir_interval:base_reservoir_interval) = 0.75;
 end
 

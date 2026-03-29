@@ -15,11 +15,11 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.generate_ensemble();
             
             % 
-            i_mid.seal_seal = floor(find(tc.y > max(tc.ensemble_members{1}.top_HW_y, tc.ensemble_members{1}.top_FW_y),1,'last')/2);
+            i_mid.seal_seal = floor(find(tc.y > max(tc.ensemble_members{1}.y_HW_top, tc.ensemble_members{1}.y_FW_top),1,'last')/2);
             i_mid.res_res = floor(length(tc.y)/2) ;
-            i_mid.res_base = floor((tc.ensemble_members{1}.base_FW_i(tc.y) + tc.ensemble_members{1}.base_HW_i(tc.y)) /2);
-            i_mid.res_seal = floor((tc.ensemble_members{1}.top_FW_i(tc.y) + tc.ensemble_members{1}.top_HW_i(tc.y)) /2);
-            i_mid.base_base = floor(find(tc.y < min(tc.ensemble_members{1}.base_HW_y, tc.ensemble_members{1}.base_FW_y),1,'first'));
+            i_mid.res_base = floor((tc.ensemble_members{1}.i_FW_base(tc.y) + tc.ensemble_members{1}.i_HW_base(tc.y)) /2);
+            i_mid.res_seal = floor((tc.ensemble_members{1}.i_FW_top(tc.y) + tc.ensemble_members{1}.i_HW_top(tc.y)) /2);
+            i_mid.base_base = floor(find(tc.y < min(tc.ensemble_members{1}.y_HW_base, tc.ensemble_members{1}.y_FW_base),1,'first'));
             
             % case t < h, P_res_mode = 'same', P_fault_mode = 'min', diffusion=0
             p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
@@ -132,7 +132,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.generate_ensemble();
             p = Pressure(tc.ensemble_members{1}, tc.load_table, tc);
             % seal reservoir juxtaposition
-            i_seal_res = floor((p.top_FW_i(p.y) + p.top_HW_i(p.y))/2);
+            i_seal_res = floor((p.i_FW_top(p.y) + p.i_HW_top(p.y))/2);
             % expected pressure equal to p gradient without p_grad_res and
             % p_over because P_fault_mode = 'min' 
             expected = -(1/1000)*(p.y(i_seal_res) + tc.input_parameters.depth_mid.value)...,

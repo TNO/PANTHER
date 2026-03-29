@@ -87,17 +87,17 @@ classdef FaultStressChange
                 dP_FW = PT_change.get_dP_FW();
                 dP_HW = PT_change.get_dP_HW();
                 for i = 1 : size(dP_FW,2)
-                    i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
+                    i_mid = floor((params.i_FW_top(y) + params.i_FW_base(y))/2);    
                     dP_FW_mid = dP_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
-                    i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
+                    i_mid = floor((params.i_HW_top(y) + params.i_HW_base(y))/2);    
                     dP_HW_mid = dP_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
                     [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dP_FW_mid, dP_HW_mid, gamma);   
                 end
             else 
                 for i = 1 : size(PT_change.dT_FW,2)
-                    i_mid = floor((params.top_FW_i(y) + params.base_FW_i(y))/2);    
+                    i_mid = floor((params.i_FW_top(y) + params.i_FW_base(y))/2);    
                     dT_FW = PT_change.dT_FW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
-                    i_mid = floor((params.top_HW_i(y) + params.base_HW_i(y))/2);    
+                    i_mid = floor((params.i_HW_top(y) + params.i_HW_base(y))/2);    
                     dT_HW = PT_change.dT_HW(i_mid, i);      % [MPa] take the pressure at the reservoir compartment center (it will be uniform)
                     [self.dsn(:,i), self.dtau(:,i)] = self.get_stress_change_component(GF, dT_FW, dT_HW, gamma);   
                 end

@@ -22,7 +22,7 @@ function [GF] = initialize_greens_functions(params, y, dx, variable_PT, variable
     end
     % correct values in y that are at the reservoir boundary. the
     % correction is made in the direction towards the compartment
-    reservoir_boundaries = [params.top_FW_y, params.top_HW_y, params.base_HW_y, params.base_FW_y];
+    reservoir_boundaries = [params.y_FW_top, params.y_HW_top, params.y_HW_base, params.y_FW_base];
     y_correction = zeros(size(y));
     for i = 1 : length(reservoir_boundaries)
         if ismember(y, reservoir_boundaries(i))

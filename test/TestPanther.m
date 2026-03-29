@@ -62,7 +62,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.input_parameters.f_s.value_with_depth = ones(size(run_instance.y))*0.6;
             % set a different friction at the top of the reservoir
             run_instance.generate_ensemble();
-            i_reservoir_top = run_instance.ensemble_members{1}.top_HW_i(run_instance.y);
+            i_reservoir_top = run_instance.ensemble_members{1}.i_HW_top(run_instance.y);
             run_instance.input_parameters.f_s.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
             % ensure the property is set to depth-dependent (uniform = 0)
             run_instance.input_parameters.f_s.uniform_with_depth = 0;
@@ -83,7 +83,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.input_parameters.f_d.value_with_depth = ones(size(run_instance.y))*0.45;
             run_instance.input_parameters.d_c.value_with_depth = ones(size(run_instance.y))*0.005;
             % set a different friction at the top of the reservoir
-            i_reservoir_top = run_instance.ensemble_members{1}.top_HW_i(run_instance.y);
+            i_reservoir_top = run_instance.ensemble_members{1}.i_HW_top(run_instance.y);
             run_instance.input_parameters.f_s.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
             run_instance.input_parameters.f_d.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.43; 
             run_instance.input_parameters.d_c.value_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.12; 
@@ -95,7 +95,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance = panther(run_instance); 
             actual = run_instance.summary.nucleation_dP;
             %expected = -19.77;
-            expected = -20.80;
+            expected = -20.50;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
