@@ -166,17 +166,17 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             for i = 1 : length(self.ensemble_members)
                 geom_table.y_abs{i} = y + geom_table.depth_mid(i);
                 geom_table.L{i} = self.ensemble_members{i}.get_along_fault_length(y);
-                geom_table.top_FW_y(i) = self.ensemble_members{i}.top_FW_y();
-                geom_table.base_FW_y(i) = self.ensemble_members{i}.base_FW_y();
-                geom_table.top_HW_y(i) = self.ensemble_members{i}.top_HW_y();
-                geom_table.base_HW_y(i) = self.ensemble_members{i}.base_HW_y();
-                geom_table.top_FW_i(i) = self.ensemble_members{i}.top_FW_i(y);
-                geom_table.base_FW_i(i) = self.ensemble_members{i}.base_FW_i(y);
-                geom_table.top_HW_i(i) = self.ensemble_members{i}.top_HW_i(y);
-                geom_table.base_HW_i(i) = self.ensemble_members{i}.base_HW_i(y);
-                geom_table.FW_i{i} = self.ensemble_members{i}.FW_i(y);
-                geom_table.HW_i{i} = self.ensemble_members{i}.HW_i(y);
-                geom_table.reservoir_i{i} = self.ensemble_members{i}.reservoir_i(y);
+                geom_table.y_FW_top(i) = self.ensemble_members{i}.y_FW_top();
+                geom_table.y_FW_base(i) = self.ensemble_members{i}.y_FW_base();
+                geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_top();
+                geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_base();
+                geom_table.i_FW_top(i) = self.ensemble_members{i}.i_FW_top(y);
+                geom_table.i_FW_base(i) = self.ensemble_members{i}.i_FW_base(y);
+                geom_table.i_HW_top(i) = self.ensemble_members{i}.i_HW_top(y);
+                geom_table.i_HW_base(i) = self.ensemble_members{i}.i_HW_base(y);
+                geom_table.i_FW{i} = self.ensemble_members{i}.i_FW(y);
+                geom_table.i_HW{i} = self.ensemble_members{i}.i_HW(y);
+                geom_table.i_reservoir{i} = self.ensemble_members{i}.i_reservoir(y);
             end
         end
         

@@ -96,7 +96,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             params = run_instance.ensemble_members{1};
             pressure = Pressure(params, run_instance.load_table, run_instance);
             temperature = Temperature(params, y, run_instance.load_table, 1, 'min');
-            stress_change = FaultStressChange(length(y), size(temperature.dT_fault,2));
+            stress_change = FaultStressChange(length(y), size(temperature.dT, 2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
             
          end

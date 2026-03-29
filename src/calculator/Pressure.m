@@ -195,12 +195,12 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             [next_to_FW, ~, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
             yy = self.y + self.depth_mid;    
             P0_FW = -(yy/1000).*self.P_grad + self.P_offset;       % [MPa] hydrostatic pressure
-            top_FW_i = self.top_FW_i(self.y);                      % index where FW compartment starts (top)
-            base_FW_i = self.base_FW_i(self.y);
-            base_HW_i =  self.base_HW_i(self.y);
+            i_FW_top = self.i_FW_top(self.y);                      % index where FW compartment starts (top)
+            i_FW_base = self.i_FW_base(self.y);
+            i_HW_base =  self.i_HW_base(self.y);
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
             % and base
-            P0_FW(top_FW_i:end) = P0_FW(top_FW_i:end) + self.P_over;  
+            P0_FW(i_FW_top:end) = P0_FW(i_FW_top:end) + self.P_over;  
             % assign the ambient pressure gradient if FW width = 0
             if self.width_FW == 0
                 P_grad_res_FW = self.P_grad;
@@ -211,10 +211,10 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             if strcmp(self.P_res_mode, 'same')
                 % if same, pressure is equal at the base of the deepest
                 % compartment
-                base_res_i = max(base_FW_i, base_HW_i );
-                P0_FW(top_FW_i:base_res_i) = P0_FW(base_res_i) - (yy(top_FW_i:base_res_i) - yy(base_res_i))*P_grad_res_FW/1000;
+                base_res_i = max(i_FW_base, i_HW_base );
+                P0_FW(i_FW_top:base_res_i) = P0_FW(base_res_i) - (yy(i_FW_top:base_res_i) - yy(base_res_i))*P_grad_res_FW/1000;
             else
-                P0_FW(next_to_FW) = P0_FW(base_FW_i) - (yy(next_to_FW) - yy(base_FW_i))*P_grad_res_FW/1000;
+                P0_FW(next_to_FW) = P0_FW(i_FW_base) - (yy(next_to_FW) - yy(i_FW_base))*P_grad_res_FW/1000;
             end
 
         end
@@ -226,13 +226,13 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             [~, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
             yy = self.y + self.depth_mid;    
             P0_HW = -(yy/1000).*self.P_grad + self.P_offset;       % [MPa] hydrostatic pressure
-            top_HW_i = self.top_HW_i(self.y);                      % index where HW compartment starts (top)
-            base_HW_i = self.base_HW_i(self.y);
-            base_FW_i = self.base_FW_i(self.y);
+            i_HW_top = self.i_HW_top(self.y);                      % index where HW compartment starts (top)
+            i_HW_base = self.i_HW_base(self.y);
+            i_FW_base = self.i_FW_base(self.y);
             % set overpressure w.r.t. hydrostatic gradient, in reservoir
             % and base. Overpressure is defined at top reservoir
             % compartment
-            P0_HW(top_HW_i:end) = P0_HW(top_HW_i:end) + self.P_over;
+            P0_HW(i_HW_top:end) = P0_HW(i_HW_top:end) + self.P_over;
             % assign the ambient pressure gradient if HW width = 0
             if self.width_FW == 0
                 P_grad_res_HW = self.P_grad;
@@ -241,10 +241,10 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             end
             % set reservoir pressure gradient within the reservoir compartments
             if strcmp(self.P_res_mode, 'same')
-                base_res_i = max(base_FW_i, base_HW_i );
-                P0_HW(top_HW_i:base_res_i) = P0_HW(base_res_i) - (yy(top_HW_i:base_res_i) - yy(base_res_i))*P_grad_res_HW/1000;
+                base_res_i = max(i_FW_base, i_HW_base );
+                P0_HW(i_HW_top:base_res_i) = P0_HW(base_res_i) - (yy(i_HW_top:base_res_i) - yy(base_res_i))*P_grad_res_HW/1000;
             else
-                P0_HW(next_to_HW) = P0_HW(base_HW_i) - (yy(next_to_HW) - yy(base_HW_i))*P_grad_res_HW/1000; 
+                P0_HW(next_to_HW) = P0_HW(i_HW_base) - (yy(next_to_HW) - yy(i_HW_base))*P_grad_res_HW/1000; 
             end
         end
        
@@ -319,8 +319,8 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             P0_on_side = self.get_P0_on_side(P_side);
 
             % Get top and base y-coordinates for the reservoir compartment
-            y_top = self.get_top_y(P_side);
-            y_base = self.get_base_y(P_side);
+            y_top = self.get_y_top(P_side);
+            y_base = self.get_y_base(P_side);
 
             % Ensure dp_unit is a column vector
             dP_unit = double(next_to_p_side);       

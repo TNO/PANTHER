@@ -16,19 +16,19 @@ classdef (HandleCompatible) ModelGeometry
     %
     % Methods:
     %   ModelGeometry - Constructor to initialize the model geometry
-    %   top_HW_y - Returns depth of the top hanging wall, relative to mid depth
-    %   top_FW_y - Returns depth of the top footwall, relative to mid depth
-    %   base_HW_y - Returns depth of the base hanging wall, relative to mid depth
-    %   base_FW_y - Returns depth of the base footwall, relative to mid depth
-    %   top_HW_i - Returns index of the first element in the top hanging wall
-    %   base_HW_i - Returns index of the last element in the base hanging wall
-    %   top_FW_i - Returns index of the first element in the top footwall
-    %   base_FW_i - Returns index of the last element in the base footwall
-    %   get_base_y - Computes the base depth of the FW or HW compartment
-    %   get_top_y - Computes the top depth of the FW or HW compartment
-    %   FW_i - Returns indices of all elements in the footwall
-    %   HW_i - Returns indices of all elements in the hanging wall
-    %   reservoir_i - Returns indices of all elements in FW or HW
+    %   y_HW_top - Returns depth of the top hanging wall, relative to mid depth
+    %   y_FW_top - Returns depth of the top footwall, relative to mid depth
+    %   y_HW_base - Returns depth of the base hanging wall, relative to mid depth
+    %   y_FW_base - Returns depth of the base footwall, relative to mid depth
+    %   i_HW_top - Returns index of the first element in the top hanging wall
+    %   i_HW_base - Returns index of the last element in the base hanging wall
+    %   i_FW_top - Returns index of the first element in the top footwall
+    %   i_FW_base - Returns index of the last element in the base footwall
+    %   get_y_base - Computes the base depth of the FW or HW compartment
+    %   get_y_top - Computes the top depth of the FW or HW compartment
+    %   i_FW - Returns indices of all elements in the footwall
+    %   i_HW - Returns indices of all elements in the hanging wall
+    %   i_reservoir - Returns indices of all elements in FW or HW
 
     properties
         depth_mid (1,1) double {mustBeNegative} = -3000
@@ -46,104 +46,104 @@ classdef (HandleCompatible) ModelGeometry
             % ModelGeometry Constructor to initialize the model geometry.
         end
 
-        function [top_HW_y] = top_HW_y(self)
-            % top_HW_y Returns depth of the top hanging wall, relative to mid depth.
+        function [y_HW_top] = y_HW_top(self)
+            % y_HW_top Returns depth of the top hanging wall, relative to mid depth.
             % Output:
-            %   top_HW_y - Depth of the top hanging wall
-            top_HW_y = self.get_top_y('HW');
+            %   y_HW_top - Depth of the top hanging wall
+            y_HW_top = self.get_y_top('HW');
         end
 
-        function [top_FW_y] = top_FW_y(self)
-            % top_FW_y Returns depth of the top footwall, relative to mid depth.
+        function [y_FW_top] = y_FW_top(self)
+            % y_FW_top Returns depth of the top footwall, relative to mid depth.
             % Output:
-            %   top_FW_y - Depth of the top footwall
-            top_FW_y = self.get_top_y('FW');
+            %   y_FW_top - Depth of the top footwall
+            y_FW_top = self.get_y_top('FW');
         end
  
-        function [base_HW_y] = base_HW_y(self)
-            % base_HW_y Returns depth of the base hanging wall, relative to mid depth.
+        function [y_HW_base] = y_HW_base(self)
+            % y_HW_base Returns depth of the base hanging wall, relative to mid depth.
             % Output:
-            %   base_HW_y - Depth of the base hanging wall
-             base_HW_y = self.get_base_y('HW');
+            %   y_HW_base - Depth of the base hanging wall
+             y_HW_base = self.get_y_base('HW');
         end
 
-        function [base_FW_y] = base_FW_y(self)
-            % base_FW_y Returns depth of the base footwall, relative to mid depth.
+        function [y_FW_base] = y_FW_base(self)
+            % y_FW_base Returns depth of the base footwall, relative to mid depth.
             % Output:
-            %   base_FW_y - Depth of the base footwall
-            base_FW_y = self.get_base_y('FW');
+            %   y_FW_base - Depth of the base footwall
+            y_FW_base = self.get_y_base('FW');
         end
 
 
-        function [top_HW_i] = top_HW_i(self, y)
-            % top_HW_i Returns index of the first element in the top hanging wall.
+        function [i_HW_top] = i_HW_top(self, y)
+            % i_HW_top Returns index of the first element in the top hanging wall.
             % Input:
             %   y - Array of depths. Should be relative to depth_mid
             % Output:
-            %   top_HW_i - Index of the first element in the top hanging wall
-            top_HW_i = find(y <= self.top_HW_y, 1, 'first');
+            %   i_HW_top - Index of the first element in the top hanging wall
+            i_HW_top = find(y <= self.y_HW_top, 1, 'first');
         end
 
-        function [base_HW_i] = base_HW_i(self, y)
-            % base_HW_i Returns index of the last element in the base hanging wall.
+        function [i_HW_base] = i_HW_base(self, y)
+            % i_HW_base Returns index of the last element in the base hanging wall.
             % Input:
             %   y - Array of depths
             % Output:
-            %   base_HW_i - Index of the last element in the base hanging wall
-            base_HW_i = find(y >= self.base_HW_y, 1, 'last');
+            %   i_HW_base - Index of the last element in the base hanging wall
+            i_HW_base = find(y >= self.y_HW_base, 1, 'last');
         end
 
-        function [top_FW_i] = top_FW_i(self, y)
-            % top_FW_i Returns index of the first element in the top footwall.
+        function [i_FW_top] = i_FW_top(self, y)
+            % i_FW_top Returns index of the first element in the top footwall.
             % Input:
             %   y - Array of depths. Should be relative to depth_mid
             % Output:
-            %   top_FW_i - Index of the first element in the top footwall
-            top_FW_i = find(y <= self.top_FW_y, 1, 'first');
+            %   i_FW_top - Index of the first element in the top footwall
+            i_FW_top = find(y <= self.y_FW_top, 1, 'first');
         end
 
-        function [base_FW_i] = base_FW_i(self, y)
-            % base_FW_i Returns index of the last element in the base footwall.
+        function [i_FW_base] = i_FW_base(self, y)
+            % i_FW_base Returns index of the last element in the base footwall.
             % Input:
             %   y - Array of depths. Should be relative to depth_mid
             % Output:
-            %   base_FW_i - Index of the last element in the base footwall
-            base_FW_i = find(y >= self.base_FW_y, 1, 'last');
+            %   i_FW_base - Index of the last element in the base footwall
+            i_FW_base = find(y >= self.y_FW_base, 1, 'last');
         end        
        
-        function [FW_i] = FW_i(self, y)
-            % FW_i Returns all indices that are wihtin the footwall interval.
+        function [i_FW] = i_FW(self, y)
+            % i_FW Returns all indices that are wihtin the footwall interval.
             % Input:
             %   y - Array of depths. should be normalized to depth_mid
             % Output:
-            %   FW_i - Indices of elements in the footwall
-            FW_i = (y <= self.top_FW_y & y >= self.base_FW_y);
+            %   i_FW - Indices of elements in the footwall
+            i_FW = (y <= self.y_FW_top & y >= self.y_FW_base);
         end
 
-        function [HW_i] = HW_i(self, y)
-            % HW_i Returns all indices that are wihtin the hanging wall interval.
+        function [i_HW] = i_HW(self, y)
+            % i_HW Returns all indices that are wihtin the hanging wall interval.
             % Input:
             %   y - Array of depths. should be normalized to depth_mid
             % Output:
-            %   HW_i - Indices of elements in the hangin wall, given a
+            %   i_HW - Indices of elements in the hangin wall, given a
             %   certain y
-            HW_i = (y <= self.top_HW_y & y >= self.base_HW_y);
+            i_HW = (y <= self.y_HW_top & y >= self.y_HW_base);
         end   
 
-        function [reservoir_i] = reservoir_i(self, y)
-            % reservoir_i Returns all indices that are wihtin the hanging wall or the footwall .
+        function [i_reservoir] = i_reservoir(self, y)
+            % i_reservoir Returns all indices that are wihtin the hanging wall or the footwall .
             % Input:
             %   y - Array of depths. should be relative to depth_mid
             % Output:
-            %   reservoir_i - Indices of elements in the hangin wall, given a
+            %   i_reservoir - Indices of elements in the hangin wall, given a
             %   certain y
-            HW_i = self.HW_i(y);
-            FW_i = self.FW_i(y);
-            reservoir_i = HW_i | FW_i;
+            i_HW = self.i_HW(y);
+            i_FW = self.i_FW(y);
+            i_reservoir = i_HW | i_FW;
         end
 
-        function [y_base] = get_base_y(self, side)
-            % get_base_y Computes the base depth of the FW or HW compartment.
+        function [y_base] = get_y_base(self, side)
+            % get_y_base Computes the base depth of the FW or HW compartment.
             % Input:
             %   side - String indicating the side ('FW' for footwall, 'HW' for hanging wall)
             % Output:
@@ -157,8 +157,8 @@ classdef (HandleCompatible) ModelGeometry
             end
         end
 
-        function [y_top] = get_top_y(self, side)
-            % get_top_y Computes the top depth of the FW or HW compartment.
+        function [y_top] = get_y_top(self, side)
+            % get_y_top Computes the top depth of the FW or HW compartment.
             % Input:
             %   side - String indicating the side ('FW' for footwall, 'HW' for hanging wall)
             % Output:
