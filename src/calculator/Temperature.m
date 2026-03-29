@@ -4,14 +4,14 @@ classdef Temperature
     % T0:       initial temperature
     % dT_HW     temperature change hanging wall (len(y) x len(time))
     % dT_FW     temperature change footwall (len(y) x len(time))
-    % dT_fault  temperature at fault (irrelevant for stress change)
+    % dT        temperature at fault (irrelevant for stress change, relevant for visualization)
     % Loes Buijze 13 - 04 - 2023
     
     properties
         T0
         dT_HW
         dT_FW
-        dT_fault
+        dT
     end
 
     properties (Dependent)
@@ -52,15 +52,15 @@ classdef Temperature
             % set the fault temperature w.r.t. HW and FW temperature
             % irrelevant for stress changes. for plotting purposes. 
             if strcmp(T_fault_mode, 'max')
-                self.dT_fault = max(self.dT_FW, self.dT_HW);
+                self.dT = max(self.dT_FW, self.dT_HW);
             elseif strcmp(T_fault_mode, 'min')
-                self.dT_fault = min(self.dT_FW, self.dT_HW);
+                self.dT = min(self.dT_FW, self.dT_HW);
             elseif strcmp(T_fault_mode, 'mean')
-                self.dT_fault = mean([self.dT_FW, self.dT_HW],2);
+                self.dT = mean([self.dT_FW, self.dT_HW],2);
             elseif strcmp(T_fault_mode, 'FW')
-                self.dT_fault = self.dT_FW;
+                self.dT = self.dT_FW;
             elseif strcmp(T_fault_mode, 'HW')
-                self.dT_fault = self.dT_HW;
+                self.dT = self.dT_HW;
             end
 
         end
@@ -100,7 +100,7 @@ classdef Temperature
         end
 
        function T = get.T(self)
-            T = self.T0 + self.dT_fault;
+            T = self.T0 + self.dT;
         end
 
 

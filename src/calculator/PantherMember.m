@@ -1,7 +1,7 @@
 classdef PantherMember < ModelGeometry
     % intializes an ensemble member - i.e. a single model realization
     % for properties that can be depth-dependent, the data type can be a
-    % singel number or an array of length(y)
+    % single number or an array of length(y)
 
     properties
         young double {mustBePositive} = 15e3                    % [MPa] Young's modulus
@@ -92,7 +92,6 @@ classdef PantherMember < ModelGeometry
             % gamma_T   [MPa/deg] thermo-elastic stress path parameter 
             gamma_T = (self.young * self.therm_exp)./(1 - self.poisson);
         end
-
 
         function [mu_II] = get_mu_II(self)
             % shear modulus mode II

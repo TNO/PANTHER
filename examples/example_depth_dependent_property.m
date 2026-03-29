@@ -120,7 +120,7 @@ ylabel('Depth (m)');
 ylim([sc2_result.ensemble.depth_mid - 300, sc2_result.ensemble.depth_mid + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
-title('Example: Dip changes from 90 to 60 below mid reservoir');
+title('Example: Dip changes from 80 to 60 below mid reservoir');
 
 subplot(1,3,3); hold on;
 
