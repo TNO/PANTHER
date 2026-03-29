@@ -123,10 +123,14 @@ classdef FaultSlip
                         L_start = L(slip_zone_indices{j,i}(1));
                         L_end = L(slip_zone_indices{j,i}(end));
                         if L_start ~= L(1)
-                            L_start = L_start - 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); % add half element 
+                            % add half element, except when slip starts at
+                            % index 1 (top of the fault)
+                            L_start = L_start - 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); 
                         end
                         if L_end ~= L(end)
-                            L_end = L_end + 0.5 * (L_start - L(slip_zone_indices{j,i}(1) - 1)); % add half element 
+                            % add half element, except when slip starts at
+                            % the last index (base of the fault)
+                            L_end = L_end + 0.5 * (L_end - L(slip_zone_indices{j,i}(end) - 1)); % add half element 
                         end
                         slip_zone_length(j,i) = L_start - L_end;
                         sne_slip = (sne(slip_zone_indices{j,i}, i));    % normal stresses at all slipping indices within a slip zone j
