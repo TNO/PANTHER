@@ -152,6 +152,33 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             warning('on'); 
         end
         
+        function [geom_table] = get_ensemble_geometries(self)
+            % geo_geometries Returns useful geometrical indicators for all
+            % ensemble members
+            % Input:
+            % Output:
+            %   geom_table - table (height ensemble)
+            self.generate_ensemble();
+            input_geometries = {'depth_mid','thick','throw','width_FW', 'width_HW', 'dip'};
+            input_table = self.ensemble;
+            geom_table = input_table(:, input_geometries);
+            y = self.y;
+            for i = 1 : length(self.ensemble_members)
+                geom_table.y_abs{i} = y + geom_table.depth_mid(i);
+                geom_table.L{i} = self.ensemble_members{i}.get_along_fault_length(y);
+                geom_table.top_FW_y(i) = self.ensemble_members{i}.top_FW_y();
+                geom_table.base_FW_y(i) = self.ensemble_members{i}.base_FW_y();
+                geom_table.top_HW_y(i) = self.ensemble_members{i}.top_HW_y();
+                geom_table.base_HW_y(i) = self.ensemble_members{i}.base_HW_y();
+                geom_table.top_FW_i(i) = self.ensemble_members{i}.top_FW_i(y);
+                geom_table.base_FW_i(i) = self.ensemble_members{i}.base_FW_i(y);
+                geom_table.top_HW_i(i) = self.ensemble_members{i}.top_HW_i(y);
+                geom_table.base_HW_i(i) = self.ensemble_members{i}.base_HW_i(y);
+                geom_table.FW_i{i} = self.ensemble_members{i}.FW_i(y);
+                geom_table.HW_i{i} = self.ensemble_members{i}.HW_i(y);
+                geom_table.reservoir_i{i} = self.ensemble_members{i}.reservoir_i(y);
+            end
+        end
         
         function [input] = get_member_input(self, input_parameter_name, run_nr)
             if nargin < 3
@@ -200,7 +227,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 sne = self.stress{run_nr}.sne;
                 f_d = self.get_member_input('f_d');
                 cohesion = self.get_member_input('cohesion');
-                output = sne.*f_d + cohesion;
+                output = sne.*f_ + cohesion;
             elseif strcmp(result_name, 'cfs')
                 sne = self.stress{run_nr}.sne;
                 tau = self.stress{run_nr}.tau;
