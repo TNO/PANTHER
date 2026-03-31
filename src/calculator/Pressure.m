@@ -340,10 +340,10 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             dP_on_side = dP_unit * self.P_steps' .* P_factor;
             P_on_side = dP_on_side + P0_on_side;
             if self.diffusion_P
-               dP_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, dP_on_side, self.hyd_diffusivity);
-               %P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
+               %dP_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, dP_on_side, self.hyd_diffusivity);
+               P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
             end
-            P_on_side = P0_on_side + dP_on_side;
+            %P_on_side = P0_on_side + dP_on_side;
 
         end
 

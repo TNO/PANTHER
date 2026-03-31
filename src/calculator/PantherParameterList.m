@@ -50,6 +50,33 @@ classdef PantherParameterList
             end
         end
 
+        function [stochastic_properties, indices] = get_stochastic_properties(self)
+            props = properties(self);
+            stochastic_properties = {};
+            k = 0;
+            for i = 1 : length(props)
+                if self.(props{i}).stochastic
+                    k = k + 1;
+                    indices(k) = i;
+                    stochastic_properties{k} = props{i};
+                end
+            end
+        end
+
+        function [property_list] = get_parameter_property(self, property_name)
+            valid_property_names = properties(self.depth_mid);
+            if ~ismember(property_name, valid_property_names)
+                valid_property_names_cellstring = [append(valid_property_names , repmat({', '},length(valid_property_names ),1))]; 
+                error(['input parameter name ', property_name, ' not valid, should be one of ', ...
+                     valid_property_names_cellstring{:}]);
+            end
+            parameter_list = properties(self);
+            property_list = cell(length(parameter_list), 1);
+            for i = 1 : length(parameter_list)
+                property_list{i} = self.(parameter_list{i}).(property_name);
+            end
+        end
+
     end
 
 end

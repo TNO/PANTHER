@@ -158,25 +158,28 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % Input:
             % Output:
             %   geom_table - table (height ensemble)
-            self.generate_ensemble();
-            input_geometries = {'depth_mid','thick','throw','width_FW', 'width_HW', 'dip'};
-            input_table = self.ensemble;
-            geom_table = input_table(:, input_geometries);
-            y = self.y;
-            for i = 1 : length(self.ensemble_members)
-                geom_table.y_abs{i} = y + geom_table.depth_mid(i);
-                geom_table.L{i} = self.ensemble_members{i}.get_along_fault_length(y);
-                geom_table.y_FW_top(i) = self.ensemble_members{i}.y_FW_top();
-                geom_table.y_FW_base(i) = self.ensemble_members{i}.y_FW_base();
-                geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_top();
-                geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_base();
-                geom_table.i_FW_top(i) = self.ensemble_members{i}.i_FW_top(y);
-                geom_table.i_FW_base(i) = self.ensemble_members{i}.i_FW_base(y);
-                geom_table.i_HW_top(i) = self.ensemble_members{i}.i_HW_top(y);
-                geom_table.i_HW_base(i) = self.ensemble_members{i}.i_HW_base(y);
-                geom_table.i_FW{i} = self.ensemble_members{i}.i_FW(y);
-                geom_table.i_HW{i} = self.ensemble_members{i}.i_HW(y);
-                geom_table.i_reservoir{i} = self.ensemble_members{i}.i_reservoir(y);
+            if ~isempty(self.ensemble)
+                input_geometries = {'depth_mid','thick','throw','width_FW', 'width_HW', 'dip'};
+                input_table = self.ensemble;
+                geom_table = input_table(:, input_geometries);
+                y = self.y;
+                for i = 1 : length(self.ensemble_members)
+                    geom_table.y_abs{i} = y + geom_table.depth_mid(i);
+                    geom_table.L{i} = self.ensemble_members{i}.get_along_fault_length(y);
+                    geom_table.y_FW_top(i) = self.ensemble_members{i}.y_FW_top();
+                    geom_table.y_FW_base(i) = self.ensemble_members{i}.y_FW_base();
+                    geom_table.y_HW_top(i) = self.ensemble_members{i}.y_HW_top();
+                    geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_base();
+                    geom_table.i_FW_top(i) = self.ensemble_members{i}.i_FW_top(y);
+                    geom_table.i_FW_base(i) = self.ensemble_members{i}.i_FW_base(y);
+                    geom_table.i_HW_top(i) = self.ensemble_members{i}.i_HW_top(y);
+                    geom_table.i_HW_base(i) = self.ensemble_members{i}.i_HW_base(y);
+                    geom_table.i_FW{i} = self.ensemble_members{i}.i_FW(y);
+                    geom_table.i_HW{i} = self.ensemble_members{i}.i_HW(y);
+                    geom_table.i_reservoir{i} = self.ensemble_members{i}.i_reservoir(y);
+                end
+            else
+                warning('Ensemble not yet initialized, run generate_ensemble first');
             end
         end
         
