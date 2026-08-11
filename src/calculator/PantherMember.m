@@ -69,6 +69,25 @@ classdef PantherMember < ModelGeometry
 
         end
 
+        function val = get_parameter(self, name)
+            if ~isprop(self, name)
+                error('Unknown parameter %s', name);
+            end
+            val = self.(name); % either scalar or vector already set by constructor
+        end
+
+        function val = get_parameter_at_index(self, name, i_y)
+            v = self.get_parameter(name);
+            if isscalar(v)
+                val = v;
+            else
+                if i_y < 1 || i_y > numel(v)
+                    error('Index i_y out of range for parameter %s', name);
+                end
+                val = v(i_y);
+            end
+        end
+
         function [member_table] = to_table(self)
             % Get all property names
             propNames = properties(self);

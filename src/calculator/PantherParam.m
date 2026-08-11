@@ -1,9 +1,9 @@
-classdef PantherParam
+classdef PantherParam < handle
     % PantherParam create Panther input parameter object
 
     properties
         value double                            % parameter default value
-        name string {mustBeText} = 'undefined'  % parameter name e.g. 'Young's modulus'
+        name string {mustBeText} = 'undefined'  % parameter name e.g. 'Young''s modulus'
         name_short string {mustBeText}          % parameter short name e.g. 'E'
         unit string {mustBeText} = 'undefined'  % parameter unit e.g. 'Pa'       
         uniform_with_depth logical = 1;         % uniform with depth
@@ -18,7 +18,6 @@ classdef PantherParam
         function self = PantherParam(varargin)
             % constructor for Parameter object
             props = properties(self);
-            disp(length(varargin))
             if length(varargin) < 1
                 error('Specify at least the value of the input parameter');
             end

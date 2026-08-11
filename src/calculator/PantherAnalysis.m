@@ -17,6 +17,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
         ensemble_members cell                       % cell array of ensemble member objects (can be generated per request, but will also be regenerated when running PANTHER)
+        ensemble_dirty logical = true              % indicate whether ensemble must be regenerated
         parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
@@ -37,10 +38,52 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     methods
         
-        function self = PantherAnalysis()
+        function self = PantherAnalysis(create_ensemble)
             % PantherInput Load default input parameters
+            if nargin < 1
+                create_ensemble = true;
+            end
             self.input_parameters = PantherParameterList();
             self.load_table = initialize_load_table();
+            % create initial ensemble only when requested
+            if create_ensemble
+                try
+                    self.generate_ensemble();
+                catch
+                end
+            end
+        end
+
+        function self = mark_ensemble_dirty(self)
+            self.ensemble_dirty = true;
+        end
+
+        function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
+            if nargin < 4
+                parameter_type = 'value';
+            end
+            valid_property_names = properties(self.input_parameters);
+            if ~ismember(parameter_name, valid_property_names)
+                error(['input parameter name ', parameter_name, ' not valid']);
+            end
+            self.input_parameters.(parameter_name).(parameter_type) = parameter_values;
+            self.ensemble_dirty = true;
+        end
+
+        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
+            if ~ischar(parameter_name) && ~isstring(parameter_name)
+                error('parameter_name must be a string');
+            end
+            if ~isvector(parameter_values)
+                error('parameter_values must be a vector');
+            end
+            valid_property_names = properties(self.input_parameters);
+            if ~ismember(parameter_name, valid_property_names)
+                error(['input parameter name ', parameter_name, ' not valid']);
+            end
+            self.input_parameters.(parameter_name).uniform_with_depth = 0;
+            self.input_parameters.(parameter_name).value_with_depth = parameter_values;
+            self.ensemble_dirty = true;
         end
 
         function self = generate_ensemble(self)
@@ -56,11 +99,14 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 self.ensemble_members = cell(1, 1);
                 self.ensemble_members{1,1} = PantherMember(self.input_parameters, 0);
             end
+            self.ensemble_dirty = false;
         end
 
         function ensemble_table = ensemble_to_table(self)
             % create table of input parameter values for easy inspection
-            props = properties(self.input_parameters);
+            if isempty(self.ensemble_members) || self.ensemble_dirty
+                self.generate_ensemble();
+            end
             ensemble_table = table;
             for j = 1 : length(self.ensemble_members)
                 if j == 1 
@@ -183,18 +229,35 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
         end
         
-        function [input] = get_member_input(self, input_parameter_name, run_nr)
-            if nargin < 3
-                run_nr = 1;
-            end
+        function [input_parameter_value] = get_input_parameter(self, input_parameter_name)
             valid_input_parameter_names = properties(self.input_parameters);
             if ~ismember(input_parameter_name, valid_input_parameter_names)
                 valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
                 error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
                      valid_input_parameter_names_cellstring{:}]);
             end
-            input = self.ensemble_members{run_nr}.(input_parameter_name);
+            input_parameter_value = self.input_parameters.(input_parameter_name).value;
         end
+        
+
+        
+        % function [input_value] = getInputParameter(self, input_parameter_name, run_nr)
+        %     if nargin < 3
+        %         run_nr = 1;
+        %     end
+        %     self.checkInputParameterNameValidity(input_parameter_name)
+        %     % input_value = self.input_parameters.(input_parameter_name).value;
+        % end
+        % 
+        % function checkInputParameterNameValidity(self)
+        %     valid_input_parameter_names = properties(self.input_parameters);
+        %     if ~ismember(input_parameter_name, valid_input_parameter_names)
+        %         valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
+        %         error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
+        %              valid_input_parameter_names_cellstring{:}]);
+        %     end
+        % end
+        % 
 
         function [output] = get_member_output(self, result_name, run_nr)
             % getter function to conveniently retrieve output
@@ -230,7 +293,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 sne = self.stress{run_nr}.sne;
                 f_d = self.get_member_input('f_d');
                 cohesion = self.get_member_input('cohesion');
-                output = sne.*f_ + cohesion;
+                output = sne.*f_d + cohesion;
             elseif strcmp(result_name, 'cfs')
                 sne = self.stress{run_nr}.sne;
                 tau = self.stress{run_nr}.tau;
