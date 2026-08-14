@@ -37,7 +37,7 @@ classdef MultiFault
 
     properties
         faults PantherAnalysis  % cell array of PANTHER input & result objects (1 ensemble meber per entry, no stochastic analysis) 
-        fault_info table        % table with custom meta_data per fault (e.g. name, coordinates)
+        fault_metadata table        % table with custom meta_data per fault (e.g. name, coordinates)
         fault_summary table     % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         run_done logical
         parallel = 1        % overrides parallel setting of individual faults
@@ -53,26 +53,25 @@ classdef MultiFault
             % MultiFaultCalculator Constructor to initialize the class with n_faults.
         end
         
-        function self = initialize(self, n_faults, create_ensembles)
+        function self = initialize(self, n_faults)
         % Input:
             %   n_faults - Number of faults
             %   create_ensembles - optional logical flag to create initial ensembles on construction
             % construct the class with n_faults, assign ID in the
             % information table
             % initialize the default PANTHER model for each fault
-            if nargin < 3
-                create_ensembles = true;
-            end
             self.faults = PantherAnalysis.empty(0, 1);
+            % Preallocate fault_info table
+            self.fault_metadata = table((1:n_faults)', 'VariableNames', {'ID'});
             for i = 1 : n_faults
-                self.faults(i, 1) = PantherAnalysis();
-                if create_ensembles
-                    self.faults(i, 1).generate_ensemble();
-                end
-                self.fault_info.ID(i) = i;
+                % Construct PantherAnalysis without creating the ensemble (costly)
+                self.faults(i, 1) = PantherAnalysis(false);
+                % if create_ensembles
+                %     % Generate ensembles only when explicitly requested
+                %     self.faults(i, 1).generate_ensemble();
+                % end
             end
             self.run_done = zeros(n_faults, 1);
-            self = self.set_run_setting('suppress_status_output', 1);
         end
 
         function self = run(self)
@@ -83,7 +82,7 @@ classdef MultiFault
             suppress_run_status_output = self.suppress_fault_run_status_output;
             if self.parallel
                 parfor i = 1 : n
-                    faults_updated_with_results(i,1) = panther(all_faults(i));
+                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
                     if ~suppress_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
@@ -91,7 +90,7 @@ classdef MultiFault
             else
                 faults_updated_with_results = empty(n,1);
                 for i = 1 : n
-                    faults_updated_with_results(i,1) = panther(all_faults(i));
+                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
                     if ~self.suppress_fault_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
@@ -102,45 +101,70 @@ classdef MultiFault
             self.fault_summary = self.get_results_summary();  
         end
 
-        function self = add_fault_info_as_table(self, info_table_to_be_added)
+        function self = add_fault_metadata_as_table(self, info_table_to_be_added)
             % add_fault_info_as_table Adds meta data into the fault_info table.
             % Input:
             %   info_table_to_be_added - Table of height n_faults
             % adds meta data into the fault_info table
-            if height(info_table_to_be_added) ~= height(self.fault_info)
-                disp(['Cant append fault info, table size does not match. Height should be ',num2str(height(self.fault_info)) ]);
+            if height(info_table_to_be_added) ~= height(self.fault_metadata)
+                disp(['Cant append fault info, table size does not match. Height should be ',num2str(height(self.fault_metadata)) ]);
             else
                 new_table_headers = info_table_to_be_added.Properties.VariableNames;
-                [overlapping_headers, columns_in_fault_info] = ismember(new_table_headers, self.fault_info.Properties.VariableNames);
+                [overlapping_headers, columns_in_fault_info] = ismember(new_table_headers, self.fault_metadata.Properties.VariableNames);
                 if ~isempty(columns_in_fault_info)
-                    self.fault_info(:, find(columns_in_fault_info))  = info_table_to_be_added(:, overlapping_headers);
-                    self.fault_info = [self.fault_info, info_table_to_be_added(:, ~overlapping_headers)];
+                    self.fault_metadata(:, find(columns_in_fault_info))  = info_table_to_be_added(:, overlapping_headers);
+                    self.fault_metadata = [self.fault_metadata, info_table_to_be_added(:, ~overlapping_headers)];
                 else
-                    self.fault_info = [self.fault_info, info_table_to_be_added];
+                    self.fault_metadata = [self.fault_metadata, info_table_to_be_added];
                 end
             end
         end
 
-        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
+        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values, indices)
             % set_depth_dependent_input_parameter Sets depth-dependent input parameters.
             % Input:
             %   parameter_name - Name of the parameter
-            %   values - Cell array of length n_faults, containing arrays of doubles of length(y)
+            %   parameter_values - Cell array with one depth vector per selected fault,
+            %                      or a single numeric vector when one fault index is selected.
+            %   indices - Optional fault indices to update. If omitted,
+            %             all faults are updated.
             % sets numeric input of depth-dependent Panther input parameters
-            if ~iscell(parameter_values)
-                error('Input depth dependent variable in a cell array of length n_faults');
+            n_faults = length(self.faults);
+            if nargin < 4 || isempty(indices)
+                indices = 1:n_faults;
             end
-            if length(parameter_values) == length(self.faults)
-                for i = 1 : length(self.faults)
-                    if length(parameter_values{i}) == length(self.faults(i).y)
-                        self.faults(i) = self.faults(i).set_depth_dependent_input_parameter(parameter_name, parameter_values{i});
-                    else
-                        disp(['Depth dependent variable ', parameter_name,' could not be set, size not equal to y, length of y is ', num2str(self.faults(i).y)]);
-                    end
-                end 
-            else
-                disp(['Depth dependent variable ', parameter_name,' was not assigned, ',...
-                ' length of input cell array does not equals number of faults']);
+
+            if ~isnumeric(indices) || any(indices < 1) || any(indices > n_faults) || any(mod(indices,1) ~= 0)
+                error('indices must contain valid integer fault indices between 1 and n_faults');
+            end
+            indices = indices(:);
+
+            % Convenience: for a single selected fault, allow passing the
+            % depth profile directly as a numeric vector.
+            if ~iscell(parameter_values)
+                if numel(indices) == 1 && isnumeric(parameter_values) && isvector(parameter_values)
+                    parameter_values = {parameter_values};
+                else
+                    error('Input depth dependent variable as a cell array (or numeric vector when assigning a single fault)');
+                end
+            end
+
+            if isscalar(parameter_values)
+                parameter_values = repmat(parameter_values, numel(indices), 1);
+            elseif length(parameter_values) ~= numel(indices)
+                error(['Depth dependent variable ', parameter_name, ' was not assigned, ', ...
+                    'length of input cell array must equal number of selected faults']);
+            end
+
+            for k = 1 : numel(indices)
+                i = indices(k);
+                values_i = parameter_values{k};
+                if length(values_i) == length(self.faults(i).y)
+                    self.faults(i) = self.faults(i).set_depth_dependent_input_parameter(parameter_name, values_i);
+                else
+                    error(['Depth dependent variable ', parameter_name, ' could not be set for fault ', num2str(i), ...
+                        ', size not equal to y, length of y is ', num2str(length(self.faults(i).y))]);
+                end
             end
         end
 
@@ -157,9 +181,9 @@ classdef MultiFault
                 for i = 1 : length(self.faults)
                     if isscalar(parameter_values)
                         % same value assigned to all faults
-                        self.faults(i) = self.faults(i).set_input_parameter(parameter_name, parameter_values, parameter_type);
+                        self.faults(i).set_input_parameter(parameter_name, parameter_values);
                     else
-                        self.faults(i) = self.faults(i).set_input_parameter(parameter_name, parameter_values(i), parameter_type);
+                        self.faults(i).set_input_parameter(parameter_name, parameter_values(i));
                     end
                 end
             else
@@ -234,6 +258,32 @@ classdef MultiFault
    %         end
         end
 
+        function [parameter_values] = get_depth_dependent_input_parameter(self, parameter_name)
+            % get_depth_dependent_input_parameter Retrieves depth-dependent
+            % input parameter arrays from the fault faults.
+            % Input:
+            %   parameter_name - Name of the parameter
+            % Output:
+            %   parameter_values - cell array (n_faults x 1) with one
+            %   depth-profile vector per fault
+
+            n = self.n_faults;
+            parameter_values = cell(n, 1);
+            if n == 0
+                return;
+            end
+
+            valid_input_parameter_names = properties(self.faults(1).input_parameters);
+            if ~ismember(parameter_name, valid_input_parameter_names)
+                valid_names = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
+                error(['input parameter name ', parameter_name, ' not valid, should be one of ', valid_names{:}]);
+            end
+
+            for i = 1 : n
+                parameter_values{i} = self.faults(i).get_depth_dependent_input_parameter(parameter_name);
+            end
+        end
+
         function self = set_run_setting(self, setting_name, setting_value)
             % set_run_setting Specifies run settings per fault.
             % Input:
@@ -245,53 +295,40 @@ classdef MultiFault
             % setting_value  - Cell array, array of floats, single cell, single float, or string
         
             [is_valid, value_type] = self.is_valid_setting_name(setting_name);
-            
             if ~is_valid
                 error('Invalid setting name: %s', setting_name);
-            else
-                valid_value = 1; % Initialize as valid
             end
-            
-            for i = 1 : length(self.faults)
-                if iscell(setting_value)
-                    % Case 1: Cell array with the same length as faults
-                    if length(setting_value) == length(self.faults)
-                        assign_value = setting_value{i};
-                    % Case 2: Single cell element (could be string, char array, or numeric)
-                    elseif isscalar(setting_value)
-                        assign_value = setting_value{1};
-                    else
-                        valid_value = 0; % Invalid case: cell array with incorrect length
-                    end
-                
-                elseif isnumeric(setting_value)
-                    % Case 3: Single numeric value
-                    if isscalar(setting_value)
-                        assign_value = setting_value(1);
-                    % Case 4: Numeric array with the same length as faults
-                    elseif length(setting_value) == self.n_faults
-                        assign_value = setting_value(i);
-                    else
-                        valid_value = 0; % Invalid case: numeric array with incorrect length
-                    end
-                
-                elseif ischar(setting_value) || isstring(setting_value)
-                    % Case 5: String or character array
-                    assign_value = setting_value;
-                    
+
+            n = length(self.faults);
+            % Fast path: if a scalar value is supplied, broadcast and assign
+            % with minimal per-fault checks. For non-scalar inputs, convert
+            % to a cell array of per-fault values and assign.
+            if iscell(setting_value)
+                if isscalar(setting_value)
+                    assign_cells = repmat(setting_value(1), n, 1);
+                elseif length(setting_value) == n
+                    assign_cells = setting_value(:);
                 else
-                    valid_value = 0; % Invalid case: unsupported type
+                    error('Cell input must be scalar or length equal to number of faults');
                 end
-                
-                % Assign value if valid and type matches the expected type
-                if valid_value && strcmp(value_type, class(assign_value))
-                    self.faults(i).(setting_name) = assign_value;
+            elseif isnumeric(setting_value)
+                if isscalar(setting_value)
+                    assign_cells = repmat({setting_value}, n, 1);
+                elseif length(setting_value) == n
+                    assign_cells = num2cell(setting_value(:));
+                else
+                    error('Numeric input must be scalar or length equal to number of faults');
                 end
+            elseif ischar(setting_value) || isstring(setting_value)
+                % broadcast string/char across faults
+                assign_cells = repmat({char(setting_value)}, n, 1);
+            else
+                error('Unsupported setting_value type');
             end
-            
-            % Display a message if the value was not valid or the type didn't match
-            if ~valid_value || ~strcmp(value_type, class(assign_value))
-                disp('Specified setting type does not seem the right type or dimension, check');
+
+            % Minimal assignment loop: no type checks inside the loop
+            for i = 1 : n
+                self.faults(i).(setting_name) = assign_cells{i};
             end
             
         end

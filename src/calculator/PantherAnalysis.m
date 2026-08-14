@@ -17,7 +17,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
         ensemble_members cell                       % cell array of ensemble member objects (can be generated per request, but will also be regenerated when running PANTHER)
-        ensemble_dirty logical = true              % indicate whether ensemble must be regenerated
+        ensemble_dirty logical = true               % indicate whether ensemble must be regenerated
         parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
@@ -38,25 +38,19 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     methods
         
-        function self = PantherAnalysis(create_ensemble)
+        function self = PantherAnalysis(~)
             % PantherInput Load default input parameters
-            if nargin < 1
-                create_ensemble = true;
-            end
-            self.input_parameters = PantherParameterList();
+            self.input_parameters = PantherParameterList(); 
+            % delay heavy load_table initialization when performing bulk creation
+            % if create_ensemble
             self.load_table = initialize_load_table();
-            % create initial ensemble only when requested
-            if create_ensemble
-                try
-                    self.generate_ensemble();
-                catch
-                end
-            end
+            % self.generate_ensemble();
         end
 
         function self = mark_ensemble_dirty(self)
             self.ensemble_dirty = true;
         end
+       
 
         function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
             if nargin < 4
@@ -66,7 +60,15 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if ~ismember(parameter_name, valid_property_names)
                 error(['input parameter name ', parameter_name, ' not valid']);
             end
-            self.input_parameters.(parameter_name).(parameter_type) = parameter_values;
+            % defensive: when assigning to 'value' ensure a scalar is provided
+            if strcmp(parameter_type, 'value')
+                if ~(isnumeric(parameter_values) && isscalar(parameter_values))
+                    error('Assigning to input parameter ''%s'' value must be a numeric scalar', parameter_name);
+                end
+            end
+            p = self.input_parameters.(parameter_name);
+            p.(parameter_type) = parameter_values;
+            self.input_parameters.(parameter_name) = p;
             self.ensemble_dirty = true;
         end
 
@@ -81,8 +83,10 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if ~ismember(parameter_name, valid_property_names)
                 error(['input parameter name ', parameter_name, ' not valid']);
             end
-            self.input_parameters.(parameter_name).uniform_with_depth = 0;
-            self.input_parameters.(parameter_name).value_with_depth = parameter_values;
+            p = self.input_parameters.(parameter_name);
+            p.uniform_with_depth = 0;
+            p.value_with_depth = parameter_values;
+            self.input_parameters.(parameter_name) = p;
             self.ensemble_dirty = true;
         end
 
@@ -238,26 +242,27 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
             input_parameter_value = self.input_parameters.(input_parameter_name).value;
         end
-        
 
+        function [depth_parameter_values] = get_depth_dependent_input_parameter(self, input_parameter_name)
+            valid_input_parameter_names = properties(self.input_parameters);
+            if ~ismember(input_parameter_name, valid_input_parameter_names)
+                valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))];
+                error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
+                     valid_input_parameter_names_cellstring{:}]);
+            end
+            p = self.input_parameters.(input_parameter_name);
+            if p.uniform_with_depth
+                depth_parameter_values = ones(size(self.y)) * p.value;
+            else
+                depth_parameter_values = p.value_with_depth;
+            end
+        end
+
+        function [depth_parameter_values] = get_depth_dependent_input(self, input_parameter_name)
+            % Convenience alias for get_depth_dependent_input_parameter
+            depth_parameter_values = self.get_depth_dependent_input_parameter(input_parameter_name);
+        end
         
-        % function [input_value] = getInputParameter(self, input_parameter_name, run_nr)
-        %     if nargin < 3
-        %         run_nr = 1;
-        %     end
-        %     self.checkInputParameterNameValidity(input_parameter_name)
-        %     % input_value = self.input_parameters.(input_parameter_name).value;
-        % end
-        % 
-        % function checkInputParameterNameValidity(self)
-        %     valid_input_parameter_names = properties(self.input_parameters);
-        %     if ~ismember(input_parameter_name, valid_input_parameter_names)
-        %         valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
-        %         error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
-        %              valid_input_parameter_names_cellstring{:}]);
-        %     end
-        % end
-        % 
 
         function [output] = get_member_output(self, result_name, run_nr)
             % getter function to conveniently retrieve output
@@ -321,6 +326,10 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         function ensemble = get.ensemble(self)
             ensemble = self.ensemble_to_table();
         end
+
+        
+
+        
 
     end
 end

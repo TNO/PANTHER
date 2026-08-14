@@ -1,6 +1,6 @@
 classdef PantherMember < ModelGeometry
     % intializes an ensemble member - i.e. a single model realization
-    % for properties that can be depth-dependent, the data type can be a
+    % with properties that can be depth-dependent, i.e. the data type can be a
     % single number or an array of length(y)
 
     properties

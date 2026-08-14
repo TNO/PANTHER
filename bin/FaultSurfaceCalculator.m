@@ -356,6 +356,8 @@ classdef FaultSurfaceCalculator
                 end
         end
 
+        % generateSurfaceMetadata was removed; use utility functions in src/utils
+
         function self = add_info_from_closest_point(self, X_input, Y_input, Z_value, new_column_name, cutoff_distance, cutoff_value)
             % add_info_from_closest_point Adds meta data info based on nearest point.
             % Input:
