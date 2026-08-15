@@ -119,7 +119,7 @@ classdef FaultSurfaceCalculator
             end
         end
 
-        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
+        function self = setDepthDependentInputParameter(self, parameter_name, parameter_values)
             % set_depth_dependent_input_parameter Sets depth-dependent input parameters.
             % Input:
             %   parameter_name - Name of the parameter
@@ -149,7 +149,7 @@ classdef FaultSurfaceCalculator
         end
 
 
-        function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
+        function self = setInputParameter(self, parameter_name, parameter_values, parameter_type)
             % set_input_parameter Sets numeric input parameters.
             % Input:
             %   parameter_name - Name of the parameter

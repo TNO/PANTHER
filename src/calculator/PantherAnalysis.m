@@ -52,41 +52,41 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
        
 
-        function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
+        function self = setInputParameter(self, parameterName, parameterValues, parameterType)
             if nargin < 4
-                parameter_type = 'value';
+                parameterType = 'value';
             end
             valid_property_names = properties(self.input_parameters);
-            if ~ismember(parameter_name, valid_property_names)
-                error(['input parameter name ', parameter_name, ' not valid']);
+            if ~ismember(parameterName, valid_property_names)
+                error(['input parameter name ', parameterName, ' not valid']);
             end
             % defensive: when assigning to 'value' ensure a scalar is provided
-            if strcmp(parameter_type, 'value')
-                if ~(isnumeric(parameter_values) && isscalar(parameter_values))
-                    error('Assigning to input parameter ''%s'' value must be a numeric scalar', parameter_name);
+            if strcmp(parameterType, 'value')
+                if ~(isnumeric(parameterValues) && isscalar(parameterValues))
+                    error('Assigning to input parameter ''%s'' value must be a numeric scalar', parameterName);
                 end
             end
-            p = self.input_parameters.(parameter_name);
-            p.(parameter_type) = parameter_values;
-            self.input_parameters.(parameter_name) = p;
+            p = self.input_parameters.(parameterName);
+            p.(parameterType) = parameterValues;
+            self.input_parameters.(parameterName) = p;
             self.ensemble_dirty = true;
         end
 
-        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
-            if ~ischar(parameter_name) && ~isstring(parameter_name)
-                error('parameter_name must be a string');
+        function self = setDepthDependentInputParameter(self, parameterName, parameterValues)
+            if ~ischar(parameterName) && ~isstring(parameterName)
+                error('parameterName must be a string');
             end
-            if ~isvector(parameter_values)
-                error('parameter_values must be a vector');
+            if ~isvector(parameterValues)
+                error('parameterValues must be a vector');
             end
             valid_property_names = properties(self.input_parameters);
-            if ~ismember(parameter_name, valid_property_names)
-                error(['input parameter name ', parameter_name, ' not valid']);
+            if ~ismember(parameterName, valid_property_names)
+                error(['input parameter name ', parameterName, ' not valid']);
             end
-            p = self.input_parameters.(parameter_name);
+            p = self.input_parameters.(parameterName);
             p.uniform_with_depth = 0;
-            p.value_with_depth = parameter_values;
-            self.input_parameters.(parameter_name) = p;
+            p.value_with_depth = parameterValues;
+            self.input_parameters.(parameterName) = p;
             self.ensemble_dirty = true;
         end
 
@@ -233,34 +233,34 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
         end
         
-        function [input_parameter_value] = get_input_parameter(self, input_parameter_name)
+        function [inputParameterValue] = getInputParameter(self, inputParameterName)
             valid_input_parameter_names = properties(self.input_parameters);
-            if ~ismember(input_parameter_name, valid_input_parameter_names)
+            if ~ismember(inputParameterName, valid_input_parameter_names)
                 valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
-                error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
+                error(['input parameter name ', inputParameterName, ' not valid, should be one of ', ...
                      valid_input_parameter_names_cellstring{:}]);
             end
-            input_parameter_value = self.input_parameters.(input_parameter_name).value;
+            inputParameterValue = self.input_parameters.(inputParameterName).value;
         end
 
-        function [depth_parameter_values] = get_depth_dependent_input_parameter(self, input_parameter_name)
+        function [depthParameterValues] = getDepthDependentInputParameter(self, inputParameterName)
             valid_input_parameter_names = properties(self.input_parameters);
-            if ~ismember(input_parameter_name, valid_input_parameter_names)
+            if ~ismember(inputParameterName, valid_input_parameter_names)
                 valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))];
-                error(['input parameter name ', input_parameter_name, ' not valid, should be one of ', ...
+                error(['input parameter name ', inputParameterName, ' not valid, should be one of ', ...
                      valid_input_parameter_names_cellstring{:}]);
             end
-            p = self.input_parameters.(input_parameter_name);
+            p = self.input_parameters.(inputParameterName);
             if p.uniform_with_depth
-                depth_parameter_values = ones(size(self.y)) * p.value;
+                depthParameterValues = ones(size(self.y)) * p.value;
             else
-                depth_parameter_values = p.value_with_depth;
+                depthParameterValues = p.value_with_depth;
             end
         end
 
-        function [depth_parameter_values] = get_depth_dependent_input(self, input_parameter_name)
-            % Convenience alias for get_depth_dependent_input_parameter
-            depth_parameter_values = self.get_depth_dependent_input_parameter(input_parameter_name);
+        function [depthParameterValues] = getDepthDependentInput(self, inputParameterName)
+            % Convenience alias for getDepthDependentInputParameter
+            depthParameterValues = self.getDepthDependentInputParameter(inputParameterName);
         end
         
 
@@ -286,7 +286,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             elseif strcmp(result_name, 'scu')
                 sne = self.stress{run_nr}.sne;
                 tau = self.stress{run_nr}.tau;
-                f_s = self.get_member_input('f_s');
+                f_s = self.getInputParameter('f_s');
                 cohesion = self.get_member_input('cohesion');
                 output = tau ./ (sne.*f_s + cohesion);
             elseif strcmp(result_name, 'tau_s')
@@ -307,12 +307,12 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             elseif strcmp(result_name, 'dcfs')
                 sne = self.stress{run_nr}.sne;
                 tau = self.stress{run_nr}.tau;
-                f_s = self.get_member_input('f_s');
+                f_s = self.getInputParameter('f_s');
                 output = (tau - tau(:,1)) - sne(sne - sne(:,1)).*f_s;
             elseif strcmp(result_name, 'dcfs_dt')
                 sne = self.stress{run_nr}.sne;
                 tau = self.stress{run_nr}.tau;
-                f_s = self.get_member_input('f_s');
+                f_s = self.getInputParameter('f_s');
                 dcfs = (tau - tau(:,1)) - (sne - sne(:,1)).*f_s;
                 cfs = tau - sne.*f_s;
                 time = self.load_table.time_steps;
