@@ -119,7 +119,7 @@ classdef FaultSurfaceCalculator
             end
         end
 
-        function self = set_depth_dependent_input_parameter(self, parameter_name, parameter_values)
+        function self = setDepthDependentInputParameter(self, parameter_name, parameter_values)
             % set_depth_dependent_input_parameter Sets depth-dependent input parameters.
             % Input:
             %   parameter_name - Name of the parameter
@@ -149,7 +149,7 @@ classdef FaultSurfaceCalculator
         end
 
 
-        function self = set_input_parameter(self, parameter_name, parameter_values, parameter_type)
+        function self = setInputParameter(self, parameter_name, parameter_values, parameter_type)
             % set_input_parameter Sets numeric input parameters.
             % Input:
             %   parameter_name - Name of the parameter
@@ -355,6 +355,8 @@ classdef FaultSurfaceCalculator
                     end
                 end
         end
+
+        % generateSurfaceMetadata was removed; use utility functions in src/utils
 
         function self = add_info_from_closest_point(self, X_input, Y_input, Z_value, new_column_name, cutoff_distance, cutoff_value)
             % add_info_from_closest_point Adds meta data info based on nearest point.

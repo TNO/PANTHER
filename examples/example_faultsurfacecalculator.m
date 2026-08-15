@@ -40,10 +40,10 @@ for i = 1 : length(fault.pillars)
 end
 
 % change the input for the different fault pillars
-fault.set_input_parameter('dip', fault_segments.dip);
-fault.set_input_parameter('dip_azi', fault_segments.azimuth);
-fault.set_input_parameter('f_s', friction_from_ntg);
-fault.set_depth_dependent_input_parameter('shsv', depth_dependent_shsv);
+fault.setInputParameter('dip', fault_segments.dip);
+fault.setInputParameter('dip_azi', fault_segments.azimuth);
+fault.setInputParameter('f_s', friction_from_ntg);
+fault.setDepthDependentInputParameter('shsv', depth_dependent_shsv);
 
 % change the run settings (pillar settings like diffusion_P, save_stress,
 % aseismic_slip, nucleation_criterion, etc. )

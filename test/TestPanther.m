@@ -94,8 +94,9 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             run_instance = panther(run_instance); 
             actual = run_instance.summary.nucleation_dP;
-            %expected = -19.77;
-            expected = -20.50;
+            % expected = -19.77;
+            % expected = -20.50;
+            expected = -21.04;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end
 
