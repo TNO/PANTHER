@@ -47,6 +47,61 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % self.generate_ensemble();
         end
 
+        function self = run(self)
+            % run a single PantherAnalysis member
+            % refresh the ensemble
+            self.generate_ensemble();
+            % run for one ensemble member (multiple members option will be
+            % removed in future release)
+            % unwrap some input parameters for convenience
+            y = self.y; 
+            dip = self.getInputParameter('dip');
+            f_s = self.getInputParameter('f_s');
+            f_d = self.getInputParameter('f_d');
+            d_c = self.getInputParameter('d_c');
+            cohesion = self.getInputParameter('cohesion');
+            L = y./sin(dip*pi/180);
+
+            % initial stress
+            initial_stress{1} = InitialStress(y, self.ensemble_members{1});
+            
+            % initialize pressure and temperature as function of time
+            self.pressure{1} = Pressure(self.ensemble_members{1}, self.load_table, self);
+            self.temperature{1} = Temperature(self.ensemble_members{1}, y, self.load_table, self.diffusion_T, 'min');
+            
+            % stress changes
+            stress_change{1} = FaultStressChange(length(y), size(self.pressure{1}.dP,2));        % initialize fault stresses for P
+            stress_change{1} = stress_change{1}.calc_stress_changes(self.ensemble_members{1}, y, self.dx, self.pressure{1}, self.temperature{1}, self.load_case);
+        
+            % stress (initial + change)
+            self.stress{1} = FaultStress(length(y), size(self.pressure{1}.dP,2));
+            self.stress{1} = self.stress{1}.compute_fault_stress(initial_stress{1}, stress_change{1}, self.pressure{1}.P);
+            
+            % fault slip, reactivation, nucleation
+            self.slip{1} = FaultSlip(size(self.stress{1}.sne, 1), size(self.stress{1}.sne, 2));
+            if self.aseismic_slip
+                fault_strength{1} = self.stress{1}.sne.*f_s + cohesion;
+                [self.slip{1}, self.stress{1}.tau] = self.slip{1}.calculate_fault_slip(L, self.stress{1}.sne, self.stress{1}.tau, ...
+                                                             fault_strength{1}, self.ensemble_members{1}.get_mu_II);
+            end
+            self.slip{1} = self.slip{1}.detect_nucleation(y, L, self.stress{1}.sne, self.stress{1}.tau, f_s, ...
+                                                        f_d, d_c, cohesion,self.ensemble_members{1}.get_mu_II, ...
+                                                        self.nucleation_criterion, self.nucleation_length_fixed);
+            % clear to save memory
+            stress_change{1} = [];
+            initial_stress{1}= [];
+
+            % get the fault stressses at onset of reactivation and nucleation 
+            self.stress{1} = self.stress{1}.get_reactivation_stress(self.slip{1}.reactivation_load_step);
+            self.stress{1} = self.stress{1}.get_nucleation_stress(self.slip{1}.nucleation_load_step);
+        
+            % % reduce output
+            % self.pressure{1} = self.pressure{1}.reduce_steps(indices_for_saving);
+            % stress{1} = stress{1}.reduce_steps(indices_for_saving);
+            % self.temperature{1} = self.temperature{1}.reduce_steps(indices_for_saving);
+            % self.slip{1} = self.slip{1}.reduce_steps(indices_for_saving);
+        end
+
         function self = mark_ensemble_dirty(self)
             self.ensemble_dirty = true;
         end
