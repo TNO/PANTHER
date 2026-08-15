@@ -1,5 +1,5 @@
-classdef MultiFault < handle
-    % MultiFault handles multiple 2D fault cross-sections.
+classdef MultiFaultAnalysis < handle
+    % MultiFaultAnalysis handles multiple 2D fault cross-sections.
     %
     % The class stores one PantherAnalysis object per fault and provides
     % convenience methods to:
@@ -17,7 +17,7 @@ classdef MultiFault < handle
     %   suppress_fault_run_status_output - Suppress per-fault progress output
     %
     % Dependent Properties:
-    %   n_faults - Number of faults
+    %   nFaults - Number of faults
     %
     % Methods:
     %   initialize - Create default faults and optional metadata table
@@ -40,15 +40,15 @@ classdef MultiFault < handle
     end
 
     properties (Dependent)
-        n_faults double
+        nFaults double
     end
 
     methods
-        function self = MultiFault()
+        function self = MultiFaultAnalysis()
             % MultiFaultCalculator Constructor to initialize the class with n_faults.
         end
         
-                 function self = initialize(self, nFaults, metadataTable)
+        function self = initialize(self, nFaults, metadataTable)
         % Input:
             %   n_faults - Number of faults
             % Optional:
@@ -80,20 +80,26 @@ classdef MultiFault < handle
         function self = run(self)
             % run Runs the simulation for all faults.
             all_faults = self.faults;   % contains input objects for each fault
-            n = self.n_faults;
-            faults_updated_with_results = empty(n, 1);  % generate a separate output array to be able to use in parfor loop
+            n = self.nFaults;
+            faults_updated_with_results = all_faults;  % preallocate typed output array for parfor
             suppress_run_status_output = self.suppress_fault_run_status_output;
             if self.parallel
                 parfor i = 1 : n
-                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
+                    fault_i = all_faults(i);
+                    fault_i = fault_i.run();
+                    fault_i = fault_i.make_result_summary();
+                    faults_updated_with_results(i,1) = fault_i;
                     if ~suppress_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
                 end
             else
-                faults_updated_with_results = empty(n,1);
+                faults_updated_with_results = all_faults;
                 for i = 1 : n
-                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
+                    fault_i = all_faults(i);
+                    fault_i = fault_i.run();
+                    fault_i = fault_i.make_result_summary();
+                    faults_updated_with_results(i,1) = fault_i;
                     if ~self.suppress_fault_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
@@ -132,7 +138,7 @@ classdef MultiFault < handle
             %   indices - Optional fault indices to update. If omitted,
             %             all faults are updated.
             % sets numeric input of depth-dependent Panther input parameters
-            nFaults = self.n_faults;
+            nFaults = self.nFaults;
             if nargin < 4 || isempty(indices)
                 indices = 1:nFaults;
             end
@@ -180,8 +186,8 @@ classdef MultiFault < handle
             %   single value
             % sets numeric input Panther input parameters
             % check the input parameter is the same length as n_faults
-            if  (length(parameterValues) == self.n_faults) || isscalar(parameterValues)
-                for i = 1 : self.n_faults
+            if  (length(parameterValues) == self.nFaults) || isscalar(parameterValues)
+                for i = 1 : self.nFaults
                     if isscalar(parameterValues)
                         % same value assigned to all faults
                         self.faults(i).setInputParameter(parameterName, parameterValues);
@@ -203,9 +209,9 @@ classdef MultiFault < handle
             %   parameter_type - Property type ('value', 'a', or 'b')
 
             % Check if height table matches number of fault
-                if ~(height(inputTable) == self.n_faults)
+                if ~(height(inputTable) == self.nFaults)
                 error(['Input table height should match number of faults on the fault',...
-                    ' # of faults = ', num2str(self.n_faults), ' but # of table rows is ', num2str(height(inputTable))]);
+                    ' # of faults = ', num2str(self.nFaults), ' but # of table rows is ', num2str(height(inputTable))]);
             end
             
             % Get the list of properties of the fault input parameters 
@@ -218,7 +224,7 @@ classdef MultiFault < handle
             for j = 1:length(tableColumns)
                 propName = tableColumns{j};
                 if ismember(propName, fault_input_props)
-                    for i = 1 : self.n_faults
+                    for i = 1 : self.nFaults
                         self.faults(i) = self.faults(i).setInputParameter(propName, inputTable.(propName)(i));
                     end
                 end
@@ -231,8 +237,8 @@ classdef MultiFault < handle
             fault_input_props = properties(self.faults(1).input_parameters);
             tableColumns = self.faultMetadata.Properties.VariableNames;
             valid_props = intersect(tableColumns, fault_input_props, 'stable');
-            n_faults = self.n_faults;
-            for i = 1 : n_faults
+            nFaults = self.nFaults;
+            for i = 1 : nFaults
                 for j = 1 : length(valid_props)
                     propName = valid_props{j};
                     value = self.faultMetadata.(propName)(i);
@@ -253,9 +259,9 @@ classdef MultiFault < handle
             % INPUT
             % parameter_name    string. parameter name, e.g. 'dip'
  
-            inputParameters = zeros(self.n_faults, 1);
+              inputParameters = zeros(self.nFaults, 1);
   %           if self.isValidInputParameterName(parameter_name)
-                 for i = 1 : self.n_faults
+                  for i = 1 : self.nFaults
                     inputParameters(i) = self.faults(i).getInputParameter(parameterName);
                 end
    %         end
@@ -270,7 +276,7 @@ classdef MultiFault < handle
             %   parameterValues - cell array (n_faults x 1) with one
             %   depth-profile vector per fault
 
-            n = self.n_faults;
+            n = self.nFaults;
             parameterValues = cell(n, 1);
             if n == 0
                 return;
@@ -302,7 +308,7 @@ classdef MultiFault < handle
                 error('Invalid setting name: %s', settingName);
             end
 
-            n = self.n_faults;
+            n = self.nFaults;
             % Fast path: if a scalar value is supplied, broadcast and assign
             % with minimal per-fault checks. For non-scalar inputs, convert
             % to a cell array of per-fault values and assign.
@@ -345,10 +351,10 @@ classdef MultiFault < handle
            if ~(size(loadTableArray,2) == 1)
                disp('ERROR: Input cell array of load tables must be n_faults x 1, or 1 x 1. Value not assigned');
            end
-           if ~(size(loadTableArray,1) == 1 | size(loadTableArray,1) == self.n_faults)
+           if ~(size(loadTableArray,1) == 1 | size(loadTableArray,1) == self.nFaults)
                disp('ERROR: Input cell array of load tables must be n_faults x 1, or 1 x 1. Value not assigned');
            else
-               for i = 1 : self.n_faults
+               for i = 1 : self.nFaults
                    self.faults(i).load_table = loadTableArray{i};
                end
            end
@@ -369,7 +375,7 @@ classdef MultiFault < handle
             % overwriteNucleationStress Overwrites nucleation stress.
             % Input:
             %   new_nucleation_load_step - New nucleation load step
-            for i = 1 : self.n_faults
+            for i = 1 : self.nFaults
                 nuc = newNucleationLoadStep;
                 self.faults(i).stress{1} = self.faults(i).stress{1}.get_nucleation_stress(nuc);
             end
@@ -382,7 +388,7 @@ classdef MultiFault < handle
             % return output only at give time step indices
             % provide nan if you don't want to store output (only reac and
             % nuc stresses are stored)
-                for i = 1 : self.n_faults
+                for i = 1 : self.nFaults
                     if max(timeStepIndices) < size(self.faults(i).stress{1}.sne, 2)  & ...
                         (min(timeStepIndices) >= 1)
                     self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(timeStepIndices);
@@ -400,10 +406,10 @@ classdef MultiFault < handle
         function [depthMidValues] = getInputParameterAlongDepthMid(self, parameterName)
             % check whether the parsed input parameter name is valid
             [valid_input] = self.isValidInputParameterName(parameterName);
-            depthMidValues = nan(1, length(self.n_faults));
+            depthMidValues = nan(1, self.nFaults);
             absolute_depths = self.getAbsoluteDepths();
             if valid_input
-                for i = 1 : self.n_faults
+                for i = 1 : self.nFaults
                     parameter = self.faults(i).input_parameters.(parameterName);
                     if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
                         depthMidValues(i) = parameter.value;
@@ -428,9 +434,9 @@ classdef MultiFault < handle
             % reservoirBoundaries  (table) table of n_faultsx4, with
             % columns top_FW, base_FW, top_HW, base_HW
             vars = {'FW_top','FW_base','HW_top', 'HW_base'};
-            reservoirBoundaries = array2table(zeros((self.n_faults),4),...
+            reservoirBoundaries = array2table(zeros((self.nFaults),4),...
                 'VariableNames', vars);
-            for i = 1 : self.n_faults
+            for i = 1 : self.nFaults
                 y = self.faults(i).y;
                 for j = 1 : length(vars)
                     if isempty(self.faults(i).ensemble_members{1})
@@ -444,7 +450,7 @@ classdef MultiFault < handle
         function [minDepth, maxDepth] = getMinMaxDepth(self)
             % getMinMaxDepth Gets the shallowest and deepest point on the fault surface 
             absolute_depths = self.getAbsoluteDepths();
-            for i = 1 : self.n_faults
+            for i = 1 : self.nFaults
                 depth = absolute_depths{i};
                 if i == 1
                     minDepth = min(depth);
@@ -459,8 +465,8 @@ classdef MultiFault < handle
         function [absoluteDepths] = getAbsoluteDepths(self)
             % getAbsoluteDepths Gets the absolute depth range for each
             % fault.
-            absoluteDepths = cell(self.n_faults, 1);
-            for i = 1 : self.n_faults
+            absoluteDepths = cell(self.nFaults, 1);
+            for i = 1 : self.nFaults
                 depth_mid = self.faults(i).input_parameters.depth_mid.value;
                 absoluteDepths{i} = self.faults(i).y + depth_mid;
             end
@@ -472,7 +478,7 @@ classdef MultiFault < handle
             if self.runDone
                 summary = self.faults(1).summary;
                 % Concatenate summary tables from individual faults.
-                for i = 1 : self.n_faults - 1
+                for i = 1 : self.nFaults - 1
                     summary = [summary; self.faults(i).summary];
                 end
             else
@@ -579,8 +585,8 @@ classdef MultiFault < handle
             end
         end
 
-        function num = get.n_faults(self)
-            % get.n_faults Gets the number of faults.
+        function num = get.nFaults(self)
+            % get.nFaults Gets the number of faults.
             % Output:
             %   num - Number of faults
             % number of faults in the object

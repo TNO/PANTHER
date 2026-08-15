@@ -1,5 +1,5 @@
 classdef TestMultiFault < matlab.unittest.TestCase
-    % TestMultiFault Functional test for MultiFault controller
+    % TestMultiFault Functional test for MultiFaultAnalysis controller
 
     properties
     end
@@ -7,7 +7,7 @@ classdef TestMultiFault < matlab.unittest.TestCase
     methods (Test)
         function test_input_parameter_getters_and_setters(testCase)
             n_faults = 100;
-            mf = MultiFault();
+            mf = MultiFaultAnalysis();
             mf = mf.initialize(n_faults);
             default_dips = mf.getInputParameter('dip');
             testCase.verifyEqual(length(default_dips), n_faults);
@@ -20,7 +20,7 @@ classdef TestMultiFault < matlab.unittest.TestCase
 
         function test_depth_dependent_input_parameter_getters_and_setters(testCase)
             n_faults = 100;
-            mf = MultiFault();
+            mf = MultiFaultAnalysis();
             mf = mf.initialize(n_faults);
             fault_length = length(mf.faults(1).y); 
             depth_dependent_friction = 0.6*ones(fault_length, 1) + rand(fault_length, 1)*0.1;
@@ -35,6 +35,16 @@ classdef TestMultiFault < matlab.unittest.TestCase
             mf.faults(2).setDepthDependentInputParameter('f_s', 0.55);
             f_s_for_check = mf.getDepthDependentInputParameter('f_s');
             testCase.verifyEqual(f_s_for_check{2}(1), 0.55);
+        end
+
+        function testBatchRun(testCase)
+            nFaults = 10;
+            dips = linspace(50, 90, nFaults);
+            mf = MultiFaultAnalysis();
+            mf.initialize(nFaults);
+            mf.setInputParameter('dip', dips);
+            mf.run();
+            %mf.faultSummary
         end
 
     end
