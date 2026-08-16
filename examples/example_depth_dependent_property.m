@@ -47,7 +47,7 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
     'Initial shear stress', 'Final shear stress'});
 
 subplot(1,3,2); hold on;
-scu = sc1_variable_result.stress{1}.get_scu(0.6,0);
+scu = sc1_variable_result.get_scu(1, 0.6, 0);
 hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
 hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
@@ -111,7 +111,7 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
     'Initial shear stress', 'Final shear stress'});
 
 subplot(1,3,2); hold on;
-scu = sc2_result.stress{1}.get_scu(0.6,0);
+scu = sc2_result.get_scu(1, 0.6, 0);
 hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
 hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);

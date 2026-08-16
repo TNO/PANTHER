@@ -340,43 +340,84 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             elseif strcmp(result_name, 'slip')
                 output = self.slip{run_nr}.(result_name);
             elseif strcmp(result_name, 'scu')
-                sne = self.stress{run_nr}.sne;
-                tau = self.stress{run_nr}.tau;
-                f_s = self.getInputParameter('f_s');
-                cohesion = self.get_member_input('cohesion');
-                output = tau ./ (sne.*f_s + cohesion);
+                output = self.get_scu(run_nr);
             elseif strcmp(result_name, 'tau_s')
                 sne = self.stress{run_nr}.sne;
-                f_s = self.get_member_input('f_s');
-                cohesion = self.get_member_input('cohesion');
+                f_s = self.getInputParameter('f_s');
+                cohesion = self.getInputParameter('cohesion');
                 output = sne.*f_s + cohesion;
             elseif strcmp(result_name, 'tau_d')
                 sne = self.stress{run_nr}.sne;
-                f_d = self.get_member_input('f_d');
-                cohesion = self.get_member_input('cohesion');
+                f_d = self.getInputParameter('f_d');
+                cohesion = self.getInputParameter('cohesion');
                 output = sne.*f_d + cohesion;
             elseif strcmp(result_name, 'cfs')
-                sne = self.stress{run_nr}.sne;
-                tau = self.stress{run_nr}.tau;
-                f_s = self.get_member_input('f_s');
-                output = tau - sne.*f_s;
+                output = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
             elseif strcmp(result_name, 'dcfs')
-                sne = self.stress{run_nr}.sne;
-                tau = self.stress{run_nr}.tau;
-                f_s = self.getInputParameter('f_s');
-                output = (tau - tau(:,1)) - sne(sne - sne(:,1)).*f_s;
+                cff = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
+                output = cff - cff(:,1);
             elseif strcmp(result_name, 'dcfs_dt')
-                sne = self.stress{run_nr}.sne;
-                tau = self.stress{run_nr}.tau;
-                f_s = self.getInputParameter('f_s');
-                dcfs = (tau - tau(:,1)) - (sne - sne(:,1)).*f_s;
-                cfs = tau - sne.*f_s;
+                cff = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
                 time = self.load_table.time_steps;
                 % compute the time derivative (MPa/yr)
-                output = gradient(cfs, time, 2); 
+                output = gradient(cff, time, 2); 
             else
                 output = self.stress{run_nr}.(result_name);
             end
+        end
+
+        function scu = get_scu(self, run_nr, f_s, cohesion)
+            if nargin < 2 || isempty(run_nr)
+                run_nr = 1;
+            end
+            if nargin < 3 || isempty(f_s)
+                f_s = self.getInputParameter('f_s');
+            end
+            if nargin < 4 || isempty(cohesion)
+                cohesion = self.getInputParameter('cohesion');
+            end
+            sne = self.stress{run_nr}.sne;
+            tau = self.stress{run_nr}.tau;
+            scu = tau ./ (sne .* f_s + cohesion);
+        end
+
+        function cff = get_cff(self, run_nr, mu, cohesion)
+            if nargin < 2 || isempty(run_nr)
+                run_nr = 1;
+            end
+            if nargin < 3 || isempty(mu)
+                mu = self.getInputParameter('f_s');
+            end
+            if nargin < 4 || isempty(cohesion)
+                cohesion = self.getInputParameter('cohesion');
+            end
+            sne = self.stress{run_nr}.sne;
+            tau = self.stress{run_nr}.tau;
+            cff = tau - (sne .* mu + cohesion);
+        end
+
+        function [cff_max, cff_ymid] = get_cff_rates(self, time_range, run_nr, mu, cohesion)
+            if nargin < 2 || isempty(time_range)
+                time_range = [1, self.nTimes];
+            end
+            if nargin < 3 || isempty(run_nr)
+                run_nr = 1;
+            end
+            if nargin < 4 || isempty(mu)
+                mu = self.getInputParameter('f_s');
+            end
+            if nargin < 5 || isempty(cohesion)
+                cohesion = self.getInputParameter('cohesion');
+            end
+            cff = self.get_cff(run_nr, mu, cohesion);
+            min_index = time_range(1);
+            max_index = time_range(2);
+            cff = cff(:, min_index:max_index);
+            time_yrs = self.load_table.time_steps(min_index:max_index);
+            cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
+            cff_max = max(max(cff_rate));
+            i_ymid = ceil(size(self.stress{run_nr}.sne, 1)/2);
+            cff_ymid = mean(cff_rate(i_ymid,:));
         end
 
         function ensemble = get.ensemble(self)
@@ -419,23 +460,6 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
     end
 
     methods (Access = private)
-        function [cff_max, cff_ymid] = computeCffRates(~, sne, tau, f_s, cohesion, time_yrs, time_range)
-            % computeCffRates Equivalent to FaultStress.get_cff_rates but
-            % operates on numeric arrays (works for lightweight structs).
-            min_index = time_range(1);
-            max_index = time_range(2);
-            if length(time_yrs) ~= size(sne, 2)
-                error('Time steps do not match number of stress output times');
-            end
-            cff = tau - (sne .* f_s + cohesion);
-            cff = cff(:, min_index:max_index);
-            time_yrs = time_yrs(min_index:max_index);
-            cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
-            cff_max = max(max(cff_rate));
-            i_ymid = ceil(size(sne, 1)/2);
-            cff_ymid = mean(cff_rate(i_ymid,:));
-        end
-
         function parameterName = validateInputParameterName(self, parameterName)
             % validateInputParameterName Ensures parameter name is text and
             % exists on input_parameters.

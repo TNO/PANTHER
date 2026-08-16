@@ -112,7 +112,7 @@ classdef Plot1DResult < LoadFigure
             elseif contains(parameter, 'scu' )
                 f_s = inputs.input_parameters.f_s.value;
                 coh = inputs.input_parameters.cohesion.value;
-                scu = result.stress{1}.get_scu(f_s, coh);
+                scu = result.get_scu(1, f_s, coh);
                 array_to_plot = scu(:, i_step);
             end
         end
