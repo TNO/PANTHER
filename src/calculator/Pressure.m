@@ -98,7 +98,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
        
         function [P0] = get_P0(self)
             % get_initial_pressure Returns the initial fault pressure
-            % Output:
+            % Output
             %   P0 - Initial pressure in the fault
             P0_FW = self.get_P0_FW();
             P0_HW = self.get_P0_HW();
