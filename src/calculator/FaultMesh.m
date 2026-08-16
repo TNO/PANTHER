@@ -5,8 +5,9 @@ classdef (HandleCompatible) FaultMesh < handle
         y_extent (1,1) double {mustBeNonnegative} = 500
     end
 
-    properties (Dependent, Hidden)
+    properties (Dependent)
         y (:,1) double
+        faultLen (1,1) double
     end
 
     methods
@@ -18,11 +19,18 @@ classdef (HandleCompatible) FaultMesh < handle
         end
 
         function self = updatePropertiesFromClass(self, inputClass)
-            % Get the list of properties of the class
-            props = properties(self);
+            % Get the list of writable stored properties of the class.
+            propertyList = metaclass(self).PropertyList;
+            props = {propertyList(~[propertyList.Dependent] & ~[propertyList.Constant]).Name};
             
-            % Get the list of column names from the input table
-            property_names_of_input_class = properties(inputClass);
+            % Get the list of column names from the input data.
+            if isstruct(inputClass)
+                property_names_of_input_class = fieldnames(inputClass);
+            elseif istable(inputClass)
+                property_names_of_input_class = inputClass.Properties.VariableNames;
+            else
+                property_names_of_input_class = properties(inputClass);
+            end
             
             % Loop through each property and update if there's a matching column in the table
             for i = 1:length(props)
@@ -35,21 +43,13 @@ classdef (HandleCompatible) FaultMesh < handle
 
         function a = get.y(self)
             % y initializes depth y relative to depth_mid
-            a = self.get_fault_y(self.dy, self.y_extent);
+            ny = 1 + 2*floor(self.y_extent/self.dy);
+            a = -linspace(-self.dy*fix(ny/2), self.dy*fix(ny/2), ny)';
         end
 
-        function y = get_fault_y(~, dy, y_extent)
-            % Computes the depth array y
-            % y will run to the nearest value specified by y_extent
-            % (dy will not be rescaled to precisely match y_extent)
-            % Input
-            %   dy:         depth spacing
-            %   y_extent:   depth extent +- with respect to zero
-            % Output
-            %   y:          depth array. runs from +ve (upwards) to -ve
-            %   (downwards) 
-            ny = 1 + 2*floor(y_extent/dy);
-            y = -linspace(-dy*fix(ny/2), dy*fix(ny/2), ny)';
+        function faultLen = get.faultLen(self)
+            % faultLen returns the number of sampled y values.
+            faultLen = numel(self.y);
         end
 
     end

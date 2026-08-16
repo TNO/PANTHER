@@ -267,6 +267,16 @@ classdef MultiFaultAnalysis < handle
    %         end
         end
 
+        function [depths] = getDepth(self)
+            % getDepth Returns the absolute depth vector for each fault.
+            % Output:
+            %   depths - Cell array with one absolute-depth vector per fault.
+            depths = cell(self.nFaults, 1);
+            for i = 1 : self.nFaults
+                depths{i} = self.faults(i).getDepth();
+            end
+        end
+
         function [parameterValues] = getDepthDependentInputParameter(self, parameterName)
             % getDepthDependentInputParameter Retrieves depth-dependent
             % input parameter arrays from all faults.
@@ -407,7 +417,7 @@ classdef MultiFaultAnalysis < handle
             % check whether the parsed input parameter name is valid
             [valid_input] = self.isValidInputParameterName(parameterName);
             depthMidValues = nan(1, self.nFaults);
-            absolute_depths = self.getAbsoluteDepths();
+            absolute_depths = self.getDepth();
             if valid_input
                 for i = 1 : self.nFaults
                     parameter = self.faults(i).input_parameters.(parameterName);
@@ -449,7 +459,7 @@ classdef MultiFaultAnalysis < handle
 
         function [minDepth, maxDepth] = getMinMaxDepth(self)
             % getMinMaxDepth Gets the shallowest and deepest point on the fault surface 
-            absolute_depths = self.getAbsoluteDepths();
+            absolute_depths = self.getDepth();
             for i = 1 : self.nFaults
                 depth = absolute_depths{i};
                 if i == 1
@@ -459,16 +469,6 @@ classdef MultiFaultAnalysis < handle
                     minDepth = min(minDepth, min(depth));
                     maxDepth = max(maxDepth, max(depth));
                 end
-            end
-        end
-
-        function [absoluteDepths] = getAbsoluteDepths(self)
-            % getAbsoluteDepths Gets the absolute depth range for each
-            % fault.
-            absoluteDepths = cell(self.nFaults, 1);
-            for i = 1 : self.nFaults
-                depth_mid = self.faults(i).input_parameters.depth_mid.value;
-                absoluteDepths{i} = self.faults(i).y + depth_mid;
             end
         end
 
