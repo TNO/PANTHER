@@ -36,6 +36,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     properties (Dependent) 
         ensemble table                              % ensemble member input translated to a table for convenient use
+        nTimes (1,1) double                         % number of modeled load steps
         summary table                               % deprecated alias for faultSummary
     end
 
@@ -63,6 +64,8 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             d_c = self.getInputParameter('d_c');
             cohesion = self.getInputParameter('cohesion');
             y = self.y; 
+            nFaultCells = self.faultLen;
+            nTimeSteps = self.nTimes;
             L = y./sin(dip*pi/180);
 
             % initial stress
@@ -73,11 +76,15 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             self.temperature{1} = Temperature(self, 'min');
             
             % stress changes
-            stress_change{1} = FaultStressChange(length(y), size(self.pressure{1}.dP,2));        % initialize fault stresses for P
-            stress_change{1} = stress_change{1}.calc_stress_changes(self.ensemble_members{1}, y, self.dx, self.pressure{1}, self.temperature{1}, self.load_case);
+            stress_change{1} = FaultStressChange(nFaultCells, nTimeSteps);        % initialize fault stresses for P
+            stress_change{1} = stress_change{1}.calc_stress_changes( ...
+                self.ensemble_members{1}, y, self.dx, ...
+                self.pressure{1}.get_dP_HW(), self.pressure{1}.get_dP_FW(), ...
+                self.temperature{1}.get_dT_HW(), self.temperature{1}.get_dT_FW(), ...
+                self.load_case);
         
             % stress (initial + change)
-            self.stress{1} = FaultStress(length(y), size(self.pressure{1}.dP,2));
+            self.stress{1} = FaultStress(nFaultCells, nTimeSteps);
             self.stress{1} = self.stress{1}.compute_fault_stress(initial_stress{1}, stress_change{1}, self.pressure{1}.P);
             
             % fault slip, reactivation, nucleation
@@ -374,6 +381,15 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
         function ensemble = get.ensemble(self)
             ensemble = self.ensemble_to_table();
+        end
+
+        function nTimes = get.nTimes(self)
+            % Single source of truth: number of rows in load_table.
+            if ~isempty(self.load_table) && any(strcmp('time_steps', self.load_table.Properties.VariableNames))
+                nTimes = height(self.load_table);
+            else
+                nTimes = 0;
+            end
         end
 
         function summary = get.summary(self)

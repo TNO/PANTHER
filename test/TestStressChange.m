@@ -27,7 +27,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
-            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'P');
+            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure.get_dP_HW(), pressure.get_dP_FW(), temperature.get_dT_HW(), temperature.get_dT_FW(), 'P');
             gamma_h_infinite = (1 - 2*params.poisson)/(1 - params.poisson);   % poroelastic stress path parameter
             testCase.verifyEqual(stress_change.dsn(2), -gamma_h_infinite, "RelTol", 0.0001);
         end
@@ -52,7 +52,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
-            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
+            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure.get_dP_HW(), pressure.get_dP_FW(), temperature.get_dT_HW(), temperature.get_dT_FW(), 'T');
             gamma_h_infinite = params.young * params.therm_exp / ( 1 - params.poisson);
             testCase.verifyEqual(stress_change.dsn(2), -gamma_h_infinite, "RelTol", 0.0001);
          end
@@ -78,7 +78,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
-            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'PT');
+            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure.get_dP_HW(), pressure.get_dP_FW(), temperature.get_dT_HW(), temperature.get_dT_FW(), 'PT');
               gamma_h_infinite_P = (1 - 2*params.poisson)/(1 - params.poisson);
             gamma_h_infinite_T = params.young * params.therm_exp / ( 1 - params.poisson);
             gamma_h_infinite = gamma_h_infinite_P + gamma_h_infinite_T;
@@ -101,7 +101,7 @@ classdef TestStressChange < matlab.unittest.TestCase
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT, 2));
-            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
+            stress_change = stress_change.calc_stress_changes(params, y, dx, pressure.get_dP_HW(), pressure.get_dP_FW(), temperature.get_dT_HW(), temperature.get_dT_FW(), 'T');
             
          end
 
