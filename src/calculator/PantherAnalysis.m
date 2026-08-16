@@ -111,10 +111,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if nargin < 4
                 parameterType = 'value';
             end
-            valid_property_names = properties(self.input_parameters);
-            if ~ismember(parameterName, valid_property_names)
-                error(['input parameter name ', parameterName, ' not valid']);
-            end
+            parameterName = self.validateInputParameterName(parameterName);
             % defensive: when assigning to 'value' ensure a scalar is provided
             if strcmp(parameterType, 'value')
                 if ~(isnumeric(parameterValues) && isscalar(parameterValues))
@@ -128,19 +125,24 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
 
         function self = setDepthDependentInputParameter(self, parameterName, parameterValues)
-            if ~ischar(parameterName) && ~isstring(parameterName)
-                error('parameterName must be a string');
-            end
+            parameterName = self.validateInputParameterName(parameterName);
             if ~isvector(parameterValues)
                 error('parameterValues must be a vector');
-            end
-            valid_property_names = properties(self.input_parameters);
-            if ~ismember(parameterName, valid_property_names)
-                error(['input parameter name ', parameterName, ' not valid']);
             end
             p = self.input_parameters.(parameterName);
             p.uniform_with_depth = 0;
             p.value_with_depth = parameterValues;
+            self.input_parameters.(parameterName) = p;
+            self.ensemble_dirty = true;
+        end
+
+        function self = deactivateDepthDependentInputParameter(self, parameterName)
+            % deactivateDepthDependentInputParameter Switches an input
+            % parameter back to uniform-with-depth mode.
+            parameterName = self.validateInputParameterName(parameterName);
+
+            p = self.input_parameters.(parameterName);
+            p.uniform_with_depth = 1;
             self.input_parameters.(parameterName) = p;
             self.ensemble_dirty = true;
         end
@@ -280,22 +282,12 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
         
         function [inputParameterValue] = getInputParameter(self, inputParameterName)
-            valid_input_parameter_names = properties(self.input_parameters);
-            if ~ismember(inputParameterName, valid_input_parameter_names)
-                valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))]; 
-                error(['input parameter name ', inputParameterName, ' not valid, should be one of ', ...
-                     valid_input_parameter_names_cellstring{:}]);
-            end
+            inputParameterName = self.validateInputParameterName(inputParameterName);
             inputParameterValue = self.input_parameters.(inputParameterName).value;
         end
 
         function [depthParameterValues] = getDepthDependentInputParameter(self, inputParameterName)
-            valid_input_parameter_names = properties(self.input_parameters);
-            if ~ismember(inputParameterName, valid_input_parameter_names)
-                valid_input_parameter_names_cellstring = [append(valid_input_parameter_names , repmat({', '},length(valid_input_parameter_names ),1))];
-                error(['input parameter name ', inputParameterName, ' not valid, should be one of ', ...
-                     valid_input_parameter_names_cellstring{:}]);
-            end
+            inputParameterName = self.validateInputParameterName(inputParameterName);
             p = self.input_parameters.(inputParameterName);
             if p.uniform_with_depth
                 depthParameterValues = ones(size(self.y)) * p.value;
@@ -380,9 +372,23 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             ensemble = self.ensemble_to_table();
         end
 
-        
+    end
 
-        
+    methods (Access = private)
+        function parameterName = validateInputParameterName(self, parameterName)
+            % validateInputParameterName Ensures parameter name is text and
+            % exists on input_parameters.
+            if ~(ischar(parameterName) || (isstring(parameterName) && isscalar(parameterName)))
+                error('parameterName must be a string');
+            end
+            parameterName = char(parameterName);
+
+            valid_input_parameter_names = properties(self.input_parameters);
+            if ~ismember(parameterName, valid_input_parameter_names)
+                validNames = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
+                error(['input parameter name ', parameterName, ' not valid, should be one of ', validNames{:}]);
+            end
+        end
 
     end
 end

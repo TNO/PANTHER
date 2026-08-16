@@ -177,6 +177,25 @@ classdef MultiFaultAnalysis < handle
             end
         end
 
+        function self = deactivateDepthDependentInputParameter(self, parameterName, indices)
+            % deactivateDepthDependentInputParameter Switches selected
+            % faults back to uniform-with-depth mode for one parameter.
+            nFaults = self.nFaults;
+            if nargin < 3 || isempty(indices)
+                indices = 1:nFaults;
+            end
+
+            if ~isnumeric(indices) || any(indices < 1) || any(indices > nFaults) || any(mod(indices,1) ~= 0)
+                error('indices must contain valid integer fault indices between 1 and n_faults');
+            end
+            indices = indices(:);
+
+            for k = 1 : numel(indices)
+                i = indices(k);
+                self.faults(i) = self.faults(i).deactivateDepthDependentInputParameter(parameterName);
+            end
+        end
+
 
         function self = setInputParameter(self, parameterName, parameterValues)
             % setInputParameter Sets numeric input parameters.
