@@ -43,6 +43,7 @@ classdef TestMultiFault < matlab.unittest.TestCase
             mf = MultiFaultAnalysis();
             mf.initialize(nFaults);
             mf.setInputParameter('dip', dips);
+            mf.parallel = false;
             mf.run();
             %mf.faultSummary
         end

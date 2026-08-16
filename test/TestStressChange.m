@@ -20,11 +20,12 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.biot.value = 1;
             run_instance.generate_ensemble();
             run_instance.y_extent = 0;
+            run_instance.diffusion_T = 0;
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble_members{1};
-            pressure = Pressure(params, run_instance.load_table, run_instance);
-            temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
+            pressure = Pressure(run_instance);
+            temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'P');
             gamma_h_infinite = (1 - 2*params.poisson)/(1 - params.poisson);   % poroelastic stress path parameter
@@ -43,12 +44,13 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
+            run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
             y = run_instance.y;     
             dx = 0;
             params = run_instance.ensemble_members{1};
-            pressure = Pressure(params, run_instance.load_table, run_instance);
-            temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
+            pressure = Pressure(run_instance);
+            temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
             gamma_h_infinite = params.young * params.therm_exp / ( 1 - params.poisson);
@@ -68,12 +70,13 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
+            run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
             y = run_instance.y;      
             dx = 0;
             params = run_instance.ensemble_members{1};
-            pressure = Pressure(params, run_instance.load_table, run_instance);
-            temperature = Temperature(params, y, run_instance.load_table, 0, 'min');
+            pressure = Pressure(run_instance);
+            temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'PT');
               gamma_h_infinite_P = (1 - 2*params.poisson)/(1 - params.poisson);
@@ -90,12 +93,13 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.input_parameters.dip.value = 90;
             run_instance.input_parameters.poisson.value = 0.2;
             run_instance.input_parameters.biot.value = 1;
+            run_instance.diffusion_T = 1;
             run_instance.generate_ensemble();
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
             params = run_instance.ensemble_members{1};
-            pressure = Pressure(params, run_instance.load_table, run_instance);
-            temperature = Temperature(params, y, run_instance.load_table, 1, 'min');
+            pressure = Pressure(run_instance);
+            temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT, 2));
             stress_change = stress_change.calc_stress_changes(params, y, dx, pressure, temperature, 'T');
             

@@ -26,8 +26,8 @@ classdef (HandleCompatible) ModelGeometry
     %   i_FW_base - Returns index of the last element in the base footwall
     %   get_y_base - Computes the base depth of the FW or HW compartment
     %   get_y_top - Computes the top depth of the FW or HW compartment
-    %   i_FW - Returns indices of all elements in the footwall
-    %   i_HW - Returns indices of all elements in the hanging wall
+    %   i_FW - Returns indices of all elements in the reservoir footwall
+    %   i_HW - Returns indices of all elements in the reservoir hanging wall
     %   i_reservoir - Returns indices of all elements in FW or HW
 
     properties

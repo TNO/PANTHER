@@ -78,21 +78,18 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
     end
 
     methods
-        function self = Pressure(input_params, load_table, pressure_settings)
+        function self = Pressure(analysis)
             % PantherPressure Constructor to initialize the pressure model.
             % Input:
-            %   input_params - Input parameters for the model
-            %   load_table - Load table for the model
-            %   pressure_settings - Pressure settings for the model
-            if nargin >= 1
-                self = self.update_properties(input_params);
+            %   analysis - PantherAnalysis instance containing the cached
+            %     member, load table, geometry grid, and pressure settings.
+            if isempty(analysis.ensemble_members) || analysis.ensemble_dirty
+                analysis = analysis.generate_ensemble();
             end
-            if nargin >= 2
-                self = self.update_properties(load_table);
-            end
-            if nargin >= 3
-                self = self.update_properties(pressure_settings);
-            end
+            member = analysis.ensemble_members{1};
+            self = self.update_properties(analysis);
+            self = self.update_properties(member);
+            self = self.update_properties(analysis.load_table);
         end  
 
        
@@ -192,7 +189,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % get_P0_FW return initial pressure in the footwall compartment
             % Output:
             %   P0_FW - Initial pressure in the footwall
-            [next_to_FW, ~, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
+            i_res_FW = self.i_HW(self.y);
             yy = self.y + self.depth_mid;    
             P0_FW = -(yy/1000).*self.P_grad + self.P_offset;       % [MPa] hydrostatic pressure
             i_FW_top = self.i_FW_top(self.y);                      % index where FW compartment starts (top)
@@ -214,7 +211,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
                 base_res_i = max(i_FW_base, i_HW_base );
                 P0_FW(i_FW_top:base_res_i) = P0_FW(base_res_i) - (yy(i_FW_top:base_res_i) - yy(base_res_i))*P_grad_res_FW/1000;
             else
-                P0_FW(next_to_FW) = P0_FW(i_FW_base) - (yy(next_to_FW) - yy(i_FW_base))*P_grad_res_FW/1000;
+                P0_FW(i_res_FW) = P0_FW(i_FW_base) - (yy(i_res_FW) - yy(i_FW_base))*P_grad_res_FW/1000;
             end
 
         end
@@ -223,7 +220,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % get_P0_HW return initial pressure in the footwall compartment
             % Output:
             %   P0_HW - Initial pressure in the footwall
-            [~, next_to_HW, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw); 
+            i_res_HW = self.i_HW(self.y);
             yy = self.y + self.depth_mid;    
             P0_HW = -(yy/1000).*self.P_grad + self.P_offset;       % [MPa] hydrostatic pressure
             i_HW_top = self.i_HW_top(self.y);                      % index where HW compartment starts (top)
@@ -244,7 +241,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
                 base_res_i = max(i_FW_base, i_HW_base );
                 P0_HW(i_HW_top:base_res_i) = P0_HW(base_res_i) - (yy(i_HW_top:base_res_i) - yy(base_res_i))*P_grad_res_HW/1000;
             else
-                P0_HW(next_to_HW) = P0_HW(i_HW_base) - (yy(next_to_HW) - yy(i_HW_base))*P_grad_res_HW/1000; 
+                P0_HW(i_res_HW) = P0_HW(i_HW_base) - (yy(i_res_HW) - yy(i_HW_base))*P_grad_res_HW/1000; 
             end
         end
        
@@ -310,9 +307,13 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
 
             % Validate side indicator
             if strcmp(P_side, 'FW')
-                [next_to_p_side, ~, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
+                base = self.get_y_base('FW');
+                top = self.get_y_top('FW');
+                i_next_to_p_side = (self.y >= base & self.y <= top);
             elseif strcmp(P_side, 'HW')
-                [~, next_to_p_side, ~] = is_adjacent_to_reservoir(self.y, self.thick, self.throw);
+                base = self.get_y_base('HW');
+                top = self.get_y_top('HW');
+                i_next_to_p_side = (self.y >= base & self.y <= top);
             else
                 error('Incorrect side indicator entered, should be FW or HW');
             end
@@ -323,7 +324,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             y_base = self.get_y_base(P_side);
 
             % Ensure dp_unit is a column vector
-            dP_unit = double(next_to_p_side);       
+            dP_unit = double(i_next_to_p_side);       
             if ~iscolumn(dP_unit)
                  dP_unit = dP_unit';
             end
@@ -341,7 +342,7 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             P_on_side = dP_on_side + P0_on_side;
             if self.diffusion_P
                %dP_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, dP_on_side, self.hyd_diffusivity);
-               P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
+                    P_on_side = calc_dp_diffusion(self.y, y_top, y_base, self.time_steps, P_on_side, self.hyd_diffusivity);
             end
             %P_on_side = P0_on_side + dP_on_side;
 
