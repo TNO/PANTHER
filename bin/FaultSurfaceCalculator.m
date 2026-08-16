@@ -561,10 +561,10 @@ classdef FaultSurfaceCalculator
             % get_results_summary Gets the summary of results of individual
             % pillars
             if self.run_done
-                summary = self.pillars{1}.summary;
+                summary = self.pillars{1}.faultSummary;
                 % concatenate summary tables of individual fault pillars
                 for i = 1 : self.n_pillars - 1
-                    summary = [summary; self.pillars{i}.summary];
+                    summary = [summary; self.pillars{i}.faultSummary];
                 end
             else
                 disp('Run not yet exectued, empty summary');

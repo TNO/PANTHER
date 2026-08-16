@@ -26,7 +26,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         stress cell
         slip cell
         faultResults struct
-        summary table
+        faultSummary table
     end
 
     properties (Constant)
@@ -36,6 +36,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     properties (Dependent) 
         ensemble table                              % ensemble member input translated to a table for convenient use
+        summary table                               % deprecated alias for faultSummary
     end
 
     methods
@@ -112,14 +113,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 'sne_nuc', self.stress{1}.sne_nuc, ...
                 'tau_nuc', self.stress{1}.tau_nuc, ...
                 'tau_nu', self.stress{1}.tau_nuc, ...
-                'slip', self.slip{1}.slip, ...
-                'reactivation', self.slip{1}.reactivation, ...
-                'reactivation_load_step', self.slip{1}.reactivation_load_step, ...
-                'nucleation', self.slip{1}.nucleation, ...
-                'nucleation_load_step', self.slip{1}.nucleation_load_step, ...
-                'nucleation_length', self.slip{1}.nucleation_length, ...
-                'nucleation_zone_ymid', self.slip{1}.nucleation_zone_ymid, ...
-                'max_slip_length', self.slip{1}.max_slip_length);
+                'slip', self.slip{1}.slip);
 
             if ~self.keepModelObjects
                 % Replace heavy result objects with lightweight compatibility
@@ -137,14 +131,18 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                     'tau_nu', self.faultResults.tau_nu);
                 self.slip{1} = struct( ...
                     'slip', self.faultResults.slip, ...
-                    'reactivation', self.faultResults.reactivation, ...
-                    'reactivation_load_step', self.faultResults.reactivation_load_step, ...
-                    'nucleation', self.faultResults.nucleation, ...
-                    'nucleation_load_step', self.faultResults.nucleation_load_step, ...
-                    'nucleation_length', self.faultResults.nucleation_length, ...
-                    'nucleation_zone_ymid', self.faultResults.nucleation_zone_ymid, ...
-                    'max_slip_length', self.faultResults.max_slip_length);
+                    'reactivation', self.slip{1}.reactivation, ...
+                    'reactivation_load_step', self.slip{1}.reactivation_load_step, ...
+                    'nucleation', self.slip{1}.nucleation, ...
+                    'nucleation_load_step', self.slip{1}.nucleation_load_step, ...
+                    'nucleation_length', self.slip{1}.nucleation_length, ...
+                    'nucleation_zone_ymid', self.slip{1}.nucleation_zone_ymid, ...
+                    'max_slip_length', self.slip{1}.max_slip_length);
             end
+
+                    % Keep run() behavior consistent with panther(): always
+                    % refresh faultSummary after computing outputs.
+                    self = self.make_result_summary();
         
             % % reduce output
             % self.pressure{1} = self.pressure{1}.reduce_steps(indices_for_saving);
@@ -237,68 +235,21 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % nucleation occurred
             % nucleation_dT: [deg] corresponding temperature change at
             % which nucleation occurred
-            column_names = {'reactivation', 'reactivation_load_step','reactivation_dP',...
-                'reactivation_dT', 'nucleation', 'nucleation_load_step', 'nucleation_dP',...
-                'nucleation_dT','nucleation_length','nucleation_zone_ymid',...
-                'slip_length','max_slip_length','cff_max', 'cff_ymid','ini_sne','ini_tau'};
+            column_names = {'reactivation', 'reactivation_load_step', 'nucleation', ...
+                'nucleation_load_step', 'nucleation_length', 'nucleation_zone_ymid', ...
+                'max_slip_length'};
             num_rows = length(self.ensemble_members);
-            self.summary = table(nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
-                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
-                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
-                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
+            self.faultSummary = table(nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
+                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 'VariableNames', column_names);
             for i = 1 : length(self.stress)
-                self.summary.reactivation(i) = self.slip{i}.reactivation;
-                self.summary.reactivation_load_step(i) = self.slip{i}.reactivation_load_step;
-                self.summary.nucleation(i) = self.slip{i}.nucleation;
-                self.summary.nucleation_load_step(i) = self.slip{i}.nucleation_load_step;
-                n_steps = linspace(1,length(self.load_table.time_steps),length(self.load_table.time_steps));
-                % get the reactivation pressure and temperatures
-                if ~isnan(self.slip{i}.reactivation_load_step)
-                    if strcmp(self.load_case,'P')
-                        self.summary.reactivation_dP(i) = interp1(n_steps, self.load_table.P_steps, self.slip{i}.reactivation_load_step);
-                        self.summary.reactivation_dT(i) = nan;
-                    elseif strcmp(self.load_case,'T') 
-                        self.summary.reactivation_dT(i) = interp1(n_steps, self.load_table.T_steps, self.slip{i}.reactivation_load_step);
-                        self.summary.reactivation_dP(i) = nan;
-                    elseif strcmp(self.load_case,'PT')
-                        self.summary.reactivation_dT(i) = interp1(n_steps, self.load_table.T_steps, self.slip{i}.reactivation_load_step);
-                        self.summary.reactivation_dP(i) = nan;
-                    end
-                else
-                        self.summary.reactivation_dP(i) = nan;
-                        self.summary.reactivation_dT(i) = nan;
-                end
-                % get the nucleation pressure and temperatures
-                if ~isnan(self.slip{i}.nucleation_load_step)
-                    if strcmp(self.load_case,'P') 
-                        self.summary.nucleation_dP(i) = interp1(n_steps, self.load_table.P_steps, self.slip{i}.nucleation_load_step);
-                        self.summary.nucleation_dT(i) = nan;
-                    elseif strcmp(self.load_case,'T') 
-                        self.summary.nucleation_dT(i) = interp1(n_steps, self.load_table.T_steps, self.slip{i}.nucleation_load_step);
-                        self.summary.nucleation_dP(i) = nan;
-                    elseif strcmp(self.load_case,'PT') 
-                        self.summary.nucleation_dT(i) = interp1(n_steps, self.load_table.T_steps, self.slip{i}.nucleation_load_step);
-                        self.summary.nucleation_dP(i) = nan;
-                    end
-                else
-                    self.summary.nucleation_dP(i) = nan;
-                    self.summary.nucleation_dT(i) = nan;
-                end
-                self.summary.nucleation_length(i) = self.slip{i}.nucleation_length;
-                self.summary.nucleation_zone_ymid(i) = self.slip{i}.nucleation_zone_ymid;
-                if self.slip{i}.nucleation
-                    self.summary.slip_length(i) = self.summary.nucleation_length(i);
-                else
-                    self.summary.slip_length(i) = self.slip{i}.max_slip_length;
-                end
-                self.summary.max_slip_length(i) = self.slip{i}.max_slip_length;
-                [self.summary.cff_max(i), self.summary.cff_ymid(i)] = self.computeCffRates( ...
-                    self.stress{i}.sne, self.stress{i}.tau, self.ensemble_members{i}.f_s, self.ensemble_members{i}.cohesion, ...
-                    self.load_table.time_steps, [1, height(self.load_table)]);
-                i_ymid = ceil(size(self.stress{i}.sne,1)/2);
-                self.summary.ini_sne(i) = self.stress{i}.sne(i_ymid, 1);
-                self.summary.ini_tau(i) = self.stress{i}.tau(i_ymid, 1);
+                self.faultSummary.reactivation(i) = self.slip{i}.reactivation;
+                self.faultSummary.reactivation_load_step(i) = self.slip{i}.reactivation_load_step;
+                self.faultSummary.nucleation(i) = self.slip{i}.nucleation;
+                self.faultSummary.nucleation_load_step(i) = self.slip{i}.nucleation_load_step;
+                self.faultSummary.nucleation_length(i) = self.slip{i}.nucleation_length;
+                self.faultSummary.nucleation_zone_ymid(i) = self.slip{i}.nucleation_zone_ymid;
+                self.faultSummary.max_slip_length(i) = self.slip{i}.max_slip_length;
             end
             warning('on'); 
         end
@@ -423,6 +374,30 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
         function ensemble = get.ensemble(self)
             ensemble = self.ensemble_to_table();
+        end
+
+        function summary = get.summary(self)
+            % get.summary Backward-compatible alias for faultSummary.
+            persistent warned_summary_get
+            if isempty(warned_summary_get)
+                warned_summary_get = true;
+                warning('PantherAnalysis:DeprecatedSummaryAlias', ...
+                    ['PantherAnalysis.summary is deprecated and will be removed in a future release. ', ...
+                    'Use PantherAnalysis.faultSummary instead.']);
+            end
+            summary = self.faultSummary;
+        end
+
+        function self = set.summary(self, summary)
+            % set.summary Backward-compatible alias for faultSummary.
+            persistent warned_summary_set
+            if isempty(warned_summary_set)
+                warned_summary_set = true;
+                warning('PantherAnalysis:DeprecatedSummaryAlias', ...
+                    ['Assigning PantherAnalysis.summary is deprecated and will be removed in a future release. ', ...
+                    'Assign PantherAnalysis.faultSummary instead.']);
+            end
+            self.faultSummary = summary;
         end
 
     end

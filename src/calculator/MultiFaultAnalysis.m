@@ -584,10 +584,10 @@ classdef MultiFaultAnalysis < handle
             % getResultsSummary Gets the summary of results of individual
             % faults
             if self.runDone
-                summary = self.faults(1).summary;
+                summary = self.faults(1).faultSummary;
                 % Concatenate summary tables from individual faults.
-                for i = 1 : self.nFaults - 1
-                    summary = [summary; self.faults(i).summary];
+                for i = 2 : self.nFaults
+                    summary = [summary; self.faults(i).faultSummary];
                 end
             else
                 disp('Run not yet exectued, empty summary');
