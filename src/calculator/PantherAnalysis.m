@@ -6,8 +6,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         input_parameters                            % object containing input parameter settings 
         load_case {mustBeMember(load_case, {'P','T','PT'})} = 'P';               % load case 'P': pressure changes, 'T': temperature changes
         load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
-        stochastic logical = 0;                     % activate stochastic analysis
-        n_stochastic {mustBeInteger} = 1;           % number of stochastic runs
+        stochastic logical = 0;                     % activate stochastic analysis for the single cached member
         diffusion_P logical = 0;                    % activate pressure diffusion
         P_res_mode {mustBeMember(P_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
         P0_fault_mode {mustBeMember(P0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault based on FW and HW pressure. max=max(p_HW, p_FW), etc. 
@@ -16,8 +15,8 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
-        ensemble_members cell                       % cell array of ensemble member objects (can be generated per request, but will also be regenerated when running PANTHER)
-        ensemble_dirty logical = true               % indicate whether ensemble must be regenerated
+        ensemble_members cell                       % single cached member object stored in a 1x1 cell array
+        ensemble_dirty logical = true               % indicate whether the cached member must be regenerated
         parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
@@ -30,6 +29,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     properties (Constant)
         dx double  = 0;                             % [m] distance from from (for now only on fault allowed)
+        n_stochastic {mustBeInteger} = 1;           % retained for compatibility; PantherAnalysis stores one member only
     end
 
     properties (Dependent) 
@@ -48,8 +48,8 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
 
         function self = run(self)
-            % run a single PantherAnalysis member
-            % refresh the ensemble
+            % run the single PantherAnalysis member
+            % refresh the cached member
             self.generate_ensemble();
             % run for one ensemble member (multiple members option will be
             % removed in future release)
@@ -146,18 +146,9 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
 
         function self = generate_ensemble(self)
-            % Generates ensemble of n_stochastic members
-            % Input parameters that are stochastic are randomly sampled
-            % for each ensemble member. 
-            if self.stochastic
-                self.ensemble_members = cell(self.n_stochastic, 1);
-                for i = 1 : self.n_stochastic
-                    self.ensemble_members{i,1} = PantherMember(self.input_parameters, 1);
-                end
-            else
-                self.ensemble_members = cell(1, 1);
-                self.ensemble_members{1,1} = PantherMember(self.input_parameters, 0);
-            end
+            % Generate the single cached PantherMember used by this analysis.
+            self.ensemble_members = cell(1, 1);
+            self.ensemble_members{1,1} = PantherMember(self.input_parameters, self.stochastic);
             self.ensemble_dirty = false;
         end
 
@@ -316,6 +307,13 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         function [depthParameterValues] = getDepthDependentInput(self, inputParameterName)
             % Convenience alias for getDepthDependentInputParameter
             depthParameterValues = self.getDepthDependentInputParameter(inputParameterName);
+        end
+
+        function absoluteDepth = getDepth(self)
+            % getDepth Returns absolute depth values using y and depth_mid.
+            % Output:
+            %   absoluteDepth - Column vector of absolute depth values.
+            absoluteDepth = self.y + self.getInputParameter('depth_mid');
         end
         
 
