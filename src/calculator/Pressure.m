@@ -491,13 +491,20 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
             % updatePropertiesFromClass Updates properties from another class.
             % Input:
             %   inputClass - Class containing property values
-            % Get the list of properties of the class
-            props = properties(self);
+            % Get the list of writable stored properties of the class.
+            propertyList = metaclass(self).PropertyList;
+            props = {propertyList(~[propertyList.Dependent] & ~[propertyList.Constant]).Name};
             
-            % Get the list of column names from the input table
-            property_names_of_input_class = properties(inputClass);
+            % Get the list of property names from the input data.
+            if isstruct(inputClass)
+                property_names_of_input_class = fieldnames(inputClass);
+            elseif istable(inputClass)
+                property_names_of_input_class = inputClass.Properties.VariableNames;
+            else
+                property_names_of_input_class = properties(inputClass);
+            end
             
-            % Loop through each property and update if there's a matching column in the table
+            % Loop through each property and update if there's a matching name in the input.
             for i = 1:length(props)
                 property_name = props{i};
                 if ismember(property_name, property_names_of_input_class)
