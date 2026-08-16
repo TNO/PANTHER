@@ -44,7 +44,7 @@ classdef Plot1DResult < LoadFigure
             else
                 i_step = n_stepts;
             end
-            y  = fault_data.y +  fault_data.input_parameters.depth_mid.value;
+            y_abs  = fault_data.getDepth();
             for i = 1 : length(self.plot_results)
                 x{i} = self.retrieve_result_plot_data(fault_data, fault_data, self.plot_results{i}, i_step);
                 if self.plot_initial
@@ -58,9 +58,9 @@ classdef Plot1DResult < LoadFigure
                 hold on
                 % plot results
                 if self.plot_initial
-                    self.plot_handles.axis_plots_ini(i) = plot(x_ini{i}, y);                
+                    self.plot_handles.axis_plots_ini(i) = plot(x_ini{i}, y_abs);                
                 end
-                self.plot_handles.axis_plots(i) = plot(x{i}, y); 
+                self.plot_handles.axis_plots(i) = plot(x{i}, y_abs); 
                 % set colors. black if default if no color specified
                 if length(self.plot_colors) >= i
                     set(self.plot_handles.axis_plots,'Color',self.plot_colors{i});
@@ -78,7 +78,7 @@ classdef Plot1DResult < LoadFigure
                 end
                 % set axes limits
                 if strcmp(self.ax_scale,'auto')
-                    set(gca, 'YLim', [min(y), max(y)]);
+                    set(gca, 'YLim', [min(y_abs), max(y_abs)]);
                 else
                 if ~isempty(self.ylim) & strcmp(self.ax_scale, 'explicit')
                     set(gca,'YLim', self.ylim);

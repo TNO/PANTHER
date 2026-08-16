@@ -31,12 +31,12 @@ h1 = figure(1); clf(h1);
 
 subplot(1,3,1)
 hold on
-y = sc1_variable_result.y + sc1_variable_result.ensemble.depth_mid;
-hp(1) = plot(sc1_variable_result.stress{1}.sne(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(2) = plot(sc1_variable_result.stress{1}.sne(:,end), y);
+y_abs = sc1_variable_result.getDepth();
+hp(1) = plot(sc1_variable_result.stress{1}.sne(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(2) = plot(sc1_variable_result.stress{1}.sne(:,end), y_abs);
 
-hp(3) = plot(sc1_variable_result.stress{1}.tau(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(4) = plot(sc1_variable_result.stress{1}.tau(:,end), y);
+hp(3) = plot(sc1_variable_result.stress{1}.tau(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(4) = plot(sc1_variable_result.stress{1}.tau(:,end), y_abs);
 
 set(hp, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
@@ -48,8 +48,8 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
 
 subplot(1,3,2); hold on;
 scu = sc1_variable_result.stress{1}.get_scu(0.6,0);
-hs(1) = plot(scu(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hs(2) = plot(scu(:,end), y);
+hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
 ylabel('Depth (m)');
@@ -60,8 +60,8 @@ legend(hs, {'Initial', 'Final'});
 
 subplot(1,3,3); hold on;
 
-hs(1) = plot(sc1_variable_result.slip{1}.slip(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hs(2) = plot(sc1_variable_result.slip{1}.slip(:,end), y);
+hs(1) = plot(sc1_variable_result.slip{1}.slip(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hs(2) = plot(sc1_variable_result.slip{1}.slip(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
 xlabel('Slip (m)');
 ylabel('Depth (m)');
@@ -95,12 +95,12 @@ h2 = figure(2); clf(h2);
 
 subplot(1,3,1)
 hold on
-y = sc2_result.y + sc2_result.ensemble.depth_mid;
-hp(1) = plot(sc2_result.stress{1}.sne(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(2) = plot(sc2_result.stress{1}.sne(:,end), y);
+y_abs = sc2_result.getDepth();
+hp(1) = plot(sc2_result.stress{1}.sne(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(2) = plot(sc2_result.stress{1}.sne(:,end), y_abs);
 
-hp(3) = plot(sc2_result.stress{1}.tau(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hp(4) = plot(sc2_result.stress{1}.tau(:,end), y);
+hp(3) = plot(sc2_result.stress{1}.tau(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hp(4) = plot(sc2_result.stress{1}.tau(:,end), y_abs);
 
 set(hp, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
@@ -112,8 +112,8 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
 
 subplot(1,3,2); hold on;
 scu = sc2_result.stress{1}.get_scu(0.6,0);
-hs(1) = plot(scu(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hs(2) = plot(scu(:,end), y);
+hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
 xlabel('Stress (MPa)');
 ylabel('Depth (m)');
@@ -124,8 +124,8 @@ title('Example: Dip changes from 80 to 60 below mid reservoir');
 
 subplot(1,3,3); hold on;
 
-hs(1) = plot(sc2_result.slip{1}.slip(:,1), y, 'LineStyle','--','Color',[0.5,0.5,0.5]);
-hs(2) = plot(sc2_result.slip{1}.slip(:,end), y);
+hs(1) = plot(sc2_result.slip{1}.slip(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
+hs(2) = plot(sc2_result.slip{1}.slip(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
 xlabel('Slip (m)');
 ylabel('Depth (m)');
