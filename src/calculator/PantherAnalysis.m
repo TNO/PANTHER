@@ -54,20 +54,20 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % run for one ensemble member (multiple members option will be
             % removed in future release)
             % unwrap some input parameters for convenience
-            y = self.y; 
             dip = self.getInputParameter('dip');
             f_s = self.getInputParameter('f_s');
             f_d = self.getInputParameter('f_d');
             d_c = self.getInputParameter('d_c');
             cohesion = self.getInputParameter('cohesion');
+            y = self.y; 
             L = y./sin(dip*pi/180);
 
             % initial stress
             initial_stress{1} = InitialStress(y, self.ensemble_members{1});
             
             % initialize pressure and temperature as function of time
-            self.pressure{1} = Pressure(self.ensemble_members{1}, self.load_table, self);
-            self.temperature{1} = Temperature(self.ensemble_members{1}, y, self.load_table, self.diffusion_T, 'min');
+            self.pressure{1} = Pressure(self);
+            self.temperature{1} = Temperature(self, 'min');
             
             % stress changes
             stress_change{1} = FaultStressChange(length(y), size(self.pressure{1}.dP,2));        % initialize fault stresses for P

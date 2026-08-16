@@ -1,4 +1,4 @@
-classdef Temperature
+classdef Temperature 
     % Sets the temperature changes in the hanging wall and footwall
     % compartments. 
     % T0:       initial temperature
@@ -19,21 +19,27 @@ classdef Temperature
     end
 
     methods
-        function self = Temperature(member, y, loads, diffusion, T_fault_mode)
-            % Initialize temperature loads
+        function self = Temperature(analysis, T_fault_mode)
+            % Initialize temperature loads from a PantherAnalysis instance.
+            if isempty(analysis.ensemble_members) || analysis.ensemble_dirty
+                analysis = analysis.generate_ensemble();
+            end
+            member = analysis.ensemble_members{1};
+            y = analysis.y;
+            loads = analysis.load_table;
+            diffusion = analysis.diffusion_T;
             self.T0 = -(y + member.depth_mid)*member.T_grad/1000 + member.T_offset;                           
-            T_steps = loads.T_steps;               % degrees
-            time_steps = loads.time_steps;         % years
-            [next_to_FW, next_to_HW, ~] = is_adjacent_to_reservoir(y, member.thick, member.throw);
-            dT_unit_FW = double(next_to_FW);       % unit dT in FW compartment 
-            dT_unit_HW = double(next_to_HW);       % unit dT in HW compartment
-            self.dT_FW = dT_unit_FW * T_steps' .* loads.T_factor_FW';    % (dp, time) array of pressures in the footwall
-            self.dT_HW = dT_unit_HW * T_steps' .* loads.T_factor_HW';    % (dp, time) array of pressures in the hanging wall
+            T_steps = loads.T_steps;             % degrees
+            time_steps = loads.time_steps;       % years
+            i_res_FW = member.i_FW(y);           % reservoir indices in FW
+            i_res_HW = member.i_HW(y);           % reservoir indices in HW
+            dT_unit_FW = double(i_res_FW);       % unit dT in FW compartment 
+            dT_unit_HW = double(i_res_HW);       % unit dT in HW compartment
+            self.dT_FW = dT_unit_FW * T_steps' .* loads.T_factor_FW';    % (dp, time) array of temperatures in the footwall
+            self.dT_HW = dT_unit_HW * T_steps' .* loads.T_factor_HW';    % (dp, time) array of temperatures in the hanging wall
 
             % add a depth-dependent temperature increase within reservoir
             addition_dT = member.dT_dy_multiplier * y;      % additional depth-dependent dT
-            i_res_FW = find(and(y <= member.y_FW_top, y >= member.y_FW_base ));
-            i_res_HW = find(and(y <= member.y_HW_top, y >= member.y_HW_base ));
             self.dT_FW(i_res_FW,:) = self.dT_FW(i_res_FW,:) + addition_dT(i_res_FW);
             self.dT_HW(i_res_HW,:) = self.dT_HW(i_res_HW,:) + addition_dT(i_res_HW);
 
@@ -73,9 +79,9 @@ classdef Temperature
             if load_step < 1 || load_step > size(self.T, 2)
                 disp('Selected load step is outside calculation time range');
             else
-                for i = 1 : size(self.p, 1)
-                    x_ind = linspace(1, size(self.p, 2), size(self.p, 2));% indices of time, P, or T steps
-                    T_at_load_step(i) = interp1(x_ind, self.p(i, :), load_step);
+                for i = 1 : size(self.T, 1)
+                    x_ind = linspace(1, size(self.T, 2), size(self.T, 2));% indices of time, P, or T steps
+                    T_at_load_step(i) = interp1(x_ind, self.T(i, :), load_step);
                 end     
             end
         end

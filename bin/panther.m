@@ -75,8 +75,8 @@ function [analysis] = panther(analysis)
         initial_stress{i} = InitialStress(y, ensemble_members{i});
         
         % pressure and temperature changes
-        pressure{i} = Pressure(ensemble_members{i}, load_table, analysis);
-        temperature{i} = Temperature(ensemble_members{i}, y, load_table, diffusion_T, 'min');
+        pressure{i} = Pressure(analysis);
+        temperature{i} = Temperature(analysis, 'min');
         
         % stress changes
         stress_change{i} = FaultStressChange(length(y), size(pressure{i}.dP,2));        % initialize fault stresses for P
