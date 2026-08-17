@@ -45,16 +45,6 @@ classdef FaultStress
         end
 
 
-        function scu = get_scu(self, f_s, cohesion)
-            % calculate the Shear Capacity Utilization
-            scu = self.tau ./ (self.sne .* f_s + cohesion); 
-        end
-
-        function cff = get_cff(self, mu, cohesion)
-            % calculate the Coulomb Failure Stress
-            cff = self.tau - (self.sne .* mu + cohesion); 
-        end
-
         function [sne_f, tau_f] = get_stress_at_load_step(self, load_step)
             % obtain the fault stresses at arbitrary value between 1 and
             % length(timesteps). 
@@ -69,29 +59,6 @@ classdef FaultStress
                     tau_f(i) = interp1(x_ind, self.tau(i, :), load_step);
                 end     
             end
-        end
-
-        function [cff_max, cff_ymid] = get_cff_rates(self, f_s, cohesion, time_yrs, time_range)
-            % Get the maximum Coulomb Stress Change CFF rate along the
-            % fault as well as the CFF
-            % INPUT
-            % time      % time in yrs. should be equal to size(self.sne, 2)
-            % time_range [min, max] time range over which CFF is computed
-            min_index  = time_range(1);
-            max_index = time_range(2);    % must be indices within
-            cff_max = 0;        % maximum stress rate
-            cff_ymid = 0;        % stress rate at mid reservoir depth
-            if length(time_yrs) ~= size(self.sne,2)
-                error('Time steps do not match number of stress output times');
-            end
-            cff = self.get_cff(f_s, cohesion);
-            cff = cff(:, min_index:max_index);
-            time_yrs = time_yrs(min_index:max_index);
-            cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
-            cff_max = max(max(cff_rate));   % maximum Coulomb stress rate
-            % average_cff_over_depth_range = mean(cff_rate(depth_range,:));
-            i_ymid = ceil(size(self.sne,1)/2);
-            cff_ymid = mean(cff_rate(i_ymid,:));
         end
 
         function [dsne, dtau] = get_stress_changes(self)

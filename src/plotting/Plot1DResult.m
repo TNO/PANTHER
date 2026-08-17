@@ -29,26 +29,26 @@ classdef Plot1DResult < LoadFigure
             disp('Initialize plot for on-fault results');
         end
 
-        function self = plot_PANTHER_result(self, fault_data)
+        function self = plot_PANTHER_result(self, analysis)
             % here
             self.n_rows = 1;
             self.n_columns = length(self.plot_results);
             self.axes_width = 2.5;
             self.axes_xspacing = 0.3;
             [self.plot_handles] = self.load();  % load default figure
-            n_steps = size(fault_data.stress{1}.sne, 2);
+            n_steps = analysis.nTimes;
             if strcmp(self.plot_step,'last')
                 i_step = n_steps;
-            elseif isnumeric(self.plot_step) & self.plot_step <= n_steps
+            elseif isnumeric(self.plot_step) && self.plot_step <= n_steps
                 i_step = self.plot_step;
             else
-                i_step = n_stepts;
+                i_step = n_steps;
             end
-            y_abs  = fault_data.getDepth();
+            y_abs  = analysis.getDepth();
             for i = 1 : length(self.plot_results)
-                x{i} = self.retrieve_result_plot_data(fault_data, fault_data, self.plot_results{i}, i_step);
+                x{i} = self.retrieve_result_plot_data(analysis, self.plot_results{i}, i_step);
                 if self.plot_initial
-                    x_ini{i} = self.retrieve_result_plot_data(fault_data, fault_data, self.plot_results{i}, 1);
+                    x_ini{i} = self.retrieve_result_plot_data(analysis,  self.plot_results{i}, 1);
                 end
             end
             x_labels = self.retrieve_labels();
@@ -80,13 +80,13 @@ classdef Plot1DResult < LoadFigure
                 if strcmp(self.ax_scale,'auto')
                     set(gca, 'YLim', [min(y_abs), max(y_abs)]);
                 else
-                if ~isempty(self.ylim) & strcmp(self.ax_scale, 'explicit')
-                    set(gca,'YLim', self.ylim);
+                    if ~isempty(self.ylim) && strcmp(self.ax_scale, 'explicit')
+                        set(gca,'YLim', self.ylim);
+                    end
+                    if ~isempty(self.xlim)
+                        set(gca,'XLim', self.xlim);
+                    end
                 end
-                if ~isempty(self.xlim)
-                    set(gca,'XLim', self.xlim);
-                end
-            end
             end
             if length(self.plot_handles.ax) > 1
                 set(self.plot_handles.ax(2:end), 'YTick','');
@@ -99,21 +99,13 @@ classdef Plot1DResult < LoadFigure
             end
         end
 
-        function [array_to_plot] = retrieve_result_plot_data(~, inputs, result, parameter, i_step)
-            array_to_plot = zeros(size(result.stress{1}));
-            if contains(parameter, 'P' )
-                array_to_plot = result.pressure{1}.(parameter)(:,i_step);
-            elseif contains(parameter, 'T' )
-                array_to_plot = result.temperature{1}.(parameter)(:,i_step);
-            elseif contains(parameter, 'sne' ) | contains(parameter, 'tau' ) 
-                array_to_plot = result.stress{1}.(parameter)(:,i_step);
-            elseif contains(parameter, 'slip' )
-                array_to_plot = result.slip{1}.(parameter)(:,i_step);
-            elseif contains(parameter, 'scu' )
-                f_s = inputs.input_parameters.f_s.value;
-                coh = inputs.input_parameters.cohesion.value;
-                scu = result.stress{1}.get_scu(f_s, coh);
+        function [array_to_plot] = retrieve_result_plot_data(~, analysis, parameter, i_step)
+            
+            if contains(parameter, 'scu' )
+                scu = analysis.getSCU();
                 array_to_plot = scu(:, i_step);
+            else
+                array_to_plot = analysis.faultResults.(parameter)(:,i_step);
             end
         end
 
@@ -135,16 +127,13 @@ classdef Plot1DResult < LoadFigure
             end
         end
         
-        function plot_side_indicators(self, inputs)
-           % inputs.
-            axpos = get(gca, 'Position')
-
+          function plot_side_indicators(~, ~)
         end
 
-        function self = plot_custom_plot_in_axes()
+          function self = plot_custom_plot_in_axes(self)
         end
 
-        function validate_plot_variables()
+          function validate_plot_variables(~)
            % {mustBeMember(plot_results, 'P','T','sne','tau','sne_reac','tau_reac','sne_nuc','tau_nuc')}
         end
     end

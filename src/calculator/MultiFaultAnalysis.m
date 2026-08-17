@@ -35,7 +35,7 @@ classdef MultiFaultAnalysis < handle
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
-        parallel = 1        % overrides parallel setting of individual faults
+        parallel = 1                % overrides parallel setting of individual faults
         suppress_fault_run_status_output = 0
     end
 
@@ -417,18 +417,139 @@ classdef MultiFaultAnalysis < handle
             % return output only at give time step indices
             % provide nan if you don't want to store output (only reac and
             % nuc stresses are stored)
+            if nargin < 2 || isempty(timeStepIndices)
+                return;
+            end
+
+            if isscalar(timeStepIndices) && isnan(timeStepIndices)
                 for i = 1 : self.nFaults
-                    if max(timeStepIndices) < size(self.faults(i).stress{1}.sne, 2)  & ...
-                        (min(timeStepIndices) >= 1)
-                    self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(timeStepIndices);
-                    self.faults(i).temperature{1} = self.faults(i).temperature{1}.reduce_steps(timeStepIndices);
-                    self.faults(i).pressure{1} = self.faults(i).pressure{1}.reduce_steps(timeStepIndices);
-                    self.faults(i).slip{1} = self.faults(i).slip{1}.reduce_steps(timeStepIndices);
-                        if ~isnan(timeStepIndices)
-                            self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
+                    if ~self.faults(i).keepModelObjects
+                        if isstruct(self.faults(i).faultResults)
+                            if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = []; end
+                            if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = []; end
+                            if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = []; end
+                            if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = []; end
+                            if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = []; end
+                            if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = []; end
+                            if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = []; end
                         end
+                        self.faults(i).load_table = self.faults(i).load_table([],:);
+                        continue;
                     end
+
+                    if isobject(self.faults(i).stress{1})
+                        self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(nan);
+                    elseif isstruct(self.faults(i).stress{1})
+                        if isfield(self.faults(i).stress{1}, 'sne'); self.faults(i).stress{1}.sne = []; end
+                        if isfield(self.faults(i).stress{1}, 'tau'); self.faults(i).stress{1}.tau = []; end
+                    end
+
+                    if isobject(self.faults(i).temperature{1})
+                        self.faults(i).temperature{1} = self.faults(i).temperature{1}.reduce_steps(nan);
+                    elseif isstruct(self.faults(i).temperature{1})
+                        if isfield(self.faults(i).temperature{1}, 'T'); self.faults(i).temperature{1}.T = []; end
+                        if isfield(self.faults(i).temperature{1}, 'dT'); self.faults(i).temperature{1}.dT = []; end
+                    end
+
+                    if isobject(self.faults(i).pressure{1})
+                        self.faults(i).pressure{1} = self.faults(i).pressure{1}.reduce_steps(nan);
+                    elseif isstruct(self.faults(i).pressure{1})
+                        if isfield(self.faults(i).pressure{1}, 'P'); self.faults(i).pressure{1}.P = []; end
+                        if isfield(self.faults(i).pressure{1}, 'dP'); self.faults(i).pressure{1}.dP = []; end
+                    end
+
+                    if isobject(self.faults(i).slip{1})
+                        self.faults(i).slip{1} = self.faults(i).slip{1}.reduce_steps(nan);
+                    elseif isstruct(self.faults(i).slip{1})
+                        if isfield(self.faults(i).slip{1}, 'slip'); self.faults(i).slip{1}.slip = []; end
+                    end
+
+                    if isstruct(self.faults(i).faultResults)
+                        if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = []; end
+                        if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = []; end
+                        if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = []; end
+                        if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = []; end
+                        if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = []; end
+                        if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = []; end
+                        if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = []; end
+                    end
+                    self.faults(i).load_table = self.faults(i).load_table([],:);
                 end
+                return;
+            end
+
+            if ~isnumeric(timeStepIndices) || any(~isfinite(timeStepIndices)) || any(mod(timeStepIndices,1) ~= 0)
+                error('timeStepIndices must be a numeric vector of finite integers, or scalar NaN');
+            end
+
+            timeStepIndices = unique(timeStepIndices(:)');
+            if min(timeStepIndices) < 1
+                error('timeStepIndices must be >= 1');
+            end
+
+            for i = 1 : self.nFaults
+                if ~self.faults(i).keepModelObjects
+                    nSteps = size(self.faults(i).faultResults.sne, 2);
+                else
+                    nSteps = size(self.faults(i).stress{1}.sne, 2);
+                end
+                if max(timeStepIndices) > nSteps
+                    error('timeStepIndices exceed available number of timesteps (%d) for fault %d', nSteps, i);
+                end
+
+                if ~self.faults(i).keepModelObjects
+                    if isstruct(self.faults(i).faultResults)
+                        if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = self.faults(i).faultResults.P(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = self.faults(i).faultResults.dP(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = self.faults(i).faultResults.T(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = self.faults(i).faultResults.dT(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = self.faults(i).faultResults.sne(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = self.faults(i).faultResults.tau(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = self.faults(i).faultResults.slip(:, timeStepIndices); end
+                    end
+                    self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
+                    continue;
+                end
+
+                if isobject(self.faults(i).stress{1})
+                    self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(timeStepIndices);
+                elseif isstruct(self.faults(i).stress{1})
+                    if isfield(self.faults(i).stress{1}, 'sne'); self.faults(i).stress{1}.sne = self.faults(i).stress{1}.sne(:, timeStepIndices); end
+                    if isfield(self.faults(i).stress{1}, 'tau'); self.faults(i).stress{1}.tau = self.faults(i).stress{1}.tau(:, timeStepIndices); end
+                end
+
+                if isobject(self.faults(i).temperature{1})
+                    self.faults(i).temperature{1} = self.faults(i).temperature{1}.reduce_steps(timeStepIndices);
+                elseif isstruct(self.faults(i).temperature{1})
+                    if isfield(self.faults(i).temperature{1}, 'T'); self.faults(i).temperature{1}.T = self.faults(i).temperature{1}.T(:, timeStepIndices); end
+                    if isfield(self.faults(i).temperature{1}, 'dT'); self.faults(i).temperature{1}.dT = self.faults(i).temperature{1}.dT(:, timeStepIndices); end
+                end
+
+                if isobject(self.faults(i).pressure{1})
+                    self.faults(i).pressure{1} = self.faults(i).pressure{1}.reduce_steps(timeStepIndices);
+                elseif isstruct(self.faults(i).pressure{1})
+                    if isfield(self.faults(i).pressure{1}, 'P'); self.faults(i).pressure{1}.P = self.faults(i).pressure{1}.P(:, timeStepIndices); end
+                    if isfield(self.faults(i).pressure{1}, 'dP'); self.faults(i).pressure{1}.dP = self.faults(i).pressure{1}.dP(:, timeStepIndices); end
+                end
+
+                if isobject(self.faults(i).slip{1})
+                    self.faults(i).slip{1} = self.faults(i).slip{1}.reduce_steps(timeStepIndices);
+                elseif isstruct(self.faults(i).slip{1})
+                    if isfield(self.faults(i).slip{1}, 'slip'); self.faults(i).slip{1}.slip = self.faults(i).slip{1}.slip(:, timeStepIndices); end
+                end
+
+                if isstruct(self.faults(i).faultResults)
+                    if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = self.faults(i).faultResults.P(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = self.faults(i).faultResults.dP(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = self.faults(i).faultResults.T(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = self.faults(i).faultResults.dT(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = self.faults(i).faultResults.sne(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = self.faults(i).faultResults.tau(:, timeStepIndices); end
+                    if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = self.faults(i).faultResults.slip(:, timeStepIndices); end
+                end
+
+                self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
+            end
         end
 
 
@@ -495,10 +616,10 @@ classdef MultiFaultAnalysis < handle
             % getResultsSummary Gets the summary of results of individual
             % faults
             if self.runDone
-                summary = self.faults(1).summary;
+                summary = self.faults(1).faultSummary;
                 % Concatenate summary tables from individual faults.
-                for i = 1 : self.nFaults - 1
-                    summary = [summary; self.faults(i).summary];
+                for i = 2 : self.nFaults
+                    summary = [summary; self.faults(i).faultSummary];
                 end
             else
                 disp('Run not yet exectued, empty summary');

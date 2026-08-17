@@ -86,6 +86,14 @@ classdef Temperature
             end
         end
 
+        function dT_HW = get_dT_HW(self)
+            dT_HW = self.dT_HW;
+        end
+
+        function dT_FW = get_dT_FW(self)
+            dT_FW = self.dT_FW;
+        end
+
 
         function self = reduce_steps(self, steps)
             props = properties(self);
