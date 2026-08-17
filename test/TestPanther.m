@@ -55,30 +55,35 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_single_with_depth_varying_friction(testCase)
              % test depth-variable friction
-            run_instance = PantherAnalysis;
+            run_instance = PantherAnalysis();
             run_instance.run();
             i_mid = ceil(length(run_instance.y)/2);
             nuc_step = run_instance.faultSummary.nucleation_load_step;
-            nuc_dp_uniform = run_instance.faultResults.dP(i_mid, nuc_step);
+            nuc_dp_uniform = run_instance.get_output_at_load_step('dP', nuc_step);
+            nuc_dp_uniform = nuc_dp_uniform(i_mid);
             % make an array of f_s of size (y)
-            f_s_with_depth = ones(size(run_instance.y))*0.6;
-            % set a different friction at the top of the reservoir
-            run_instance.generate_ensemble();
-            i_reservoir_top = run_instance.ensemble_members{1}.i_HW_top(run_instance.y);
+            run_instance2 = PantherAnalysis();
+            run_instance2.generate_ensemble();
+            f_s_with_depth = ones(size(run_instance2.y))*0.6;
+            i_reservoir_top = run_instance2.ensemble_members{1}.i_HW_top(run_instance2.y);
             f_s_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
-            run_instance.setDepthDependentInputParameter('f_s', f_s_with_depth);
+            %run_instance2.y(i_reservoir_top - 15: i_reservoir_top + 15)
+            run_instance2.setDepthDependentInputParameter('f_s', f_s_with_depth);
             % run the model
-            run_instance.generate_ensemble();
-            run_instance = run_instance.run();
-            nuc_step = run_instance.faultSummary.nucleation_load_step;
-            actual = run_instance.faultResults.dP(i_mid, nuc_step);
-            expected = -17.53;
+            run_instance2.generate_ensemble();
+            run_instance2.run();
+            nuc_step = run_instance2.faultSummary.nucleation_load_step;
+            nuc_dp_2 = run_instance2.get_output_at_load_step('dP', nuc_step);
+            actual = nuc_dp_2(i_mid);
+            % actual = run_instance.faultResults.dP(i_mid, nuc_step);
+            expected = -17.61;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             % reset to uniform friction, but with f_s of length(y)
-            run_instance.setDepthDependentInputParameter('f_s', ones(size(run_instance.y))*0.6);
-            run_instance = run_instance.run();
-            nuc_step = run_instance.faultSummary.nucleation_load_step;
-            actual = run_instance.faultResults.dP(i_mid, nuc_step);
+            run_instance2.setDepthDependentInputParameter('f_s', ones(size(run_instance.y))*0.6);
+            run_instance2.run();
+            nuc_step = run_instance2.faultSummary.nucleation_load_step;
+            nuc_dp_uniform_after_reset = run_instance2.get_output_at_load_step('dP', nuc_step);
+            actual = nuc_dp_uniform_after_reset(i_mid);
             expected = nuc_dp_uniform;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
             % test with different f_d and d_c
@@ -94,11 +99,10 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.setDepthDependentInputParameter('f_d', f_d_with_depth);
             run_instance.setDepthDependentInputParameter('d_c', d_c_with_depth);
             % run the model
-            run_instance = run_instance.run();
+            run_instance.run();
             nuc_step = run_instance.faultSummary.nucleation_load_step;
-            actual = run_instance.faultResults.dP(i_mid, nuc_step);
-            % expected = -19.77;
-            % expected = -20.50;
+            nuc_dp = run_instance.get_output_at_load_step('dP', nuc_step);
+            actual = nuc_dp(i_mid);
             expected = -21.04;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
          end

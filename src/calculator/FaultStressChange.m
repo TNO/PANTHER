@@ -176,10 +176,6 @@ classdef FaultStressChange
             end
         end
 
-        function [dscu] = get_scu_change(self, f_s, cohesion)
-            % return Shear Capacity Utilization 
-            dscu = self.dtau ./ (self.dsn .* f_s + cohesion); 
-        end
     end
 
 end

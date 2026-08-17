@@ -60,10 +60,10 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             
             % unwrap some input parameters for convenience
             dip = self.getInputParameter('dip');
-            f_s = self.getInputParameter('f_s');
-            f_d = self.getInputParameter('f_d');
-            d_c = self.getInputParameter('d_c');
-            cohesion = self.getInputParameter('cohesion');
+            f_s = self.getDepthDependentInputParameter('f_s');
+            f_d = self.getDepthDependentInputParameter('f_d');
+            d_c = self.getDepthDependentInputParameter('d_c');
+            cohesion = self.getDepthDependentInputParameter('cohesion');
             y = self.y; 
             nFaultCells = self.faultLen;
             nTimeSteps = self.nTimes;
@@ -343,15 +343,9 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             elseif strcmp(result_name, 'scu')
                 output = self.get_scu(run_nr);
             elseif strcmp(result_name, 'tau_s')
-                sne = self.stress{run_nr}.sne;
-                f_s = self.getInputParameter('f_s');
-                cohesion = self.getInputParameter('cohesion');
-                output = sne.*f_s + cohesion;
+                output = self.getStaticFaultStrength(run_nr);
             elseif strcmp(result_name, 'tau_d')
-                sne = self.stress{run_nr}.sne;
-                f_d = self.getInputParameter('f_d');
-                cohesion = self.getInputParameter('cohesion');
-                output = sne.*f_d + cohesion;
+                output = self.getDynamicFaultStrength(run_nr);
             elseif strcmp(result_name, 'cfs')
                 output = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
             elseif strcmp(result_name, 'dcfs')
@@ -364,6 +358,61 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 output = gradient(cff, time, 2); 
             else
                 output = self.stress{run_nr}.(result_name);
+            end
+        end
+
+        function output_at_load_step = get_output_at_load_step(self, output_name, load_step)
+            % get_output_at_load_step Return any faultResults field at an
+            % arbitrary load step index between 1 and nTimes.
+            %
+            % Inputs
+            %   output_name - field name in self.faultResults
+            %   load_step   - scalar load-step index (can be fractional)
+            if ~(ischar(output_name) || (isstring(output_name) && isscalar(output_name)))
+                error('output_name must be a string');
+            end
+            output_name = char(output_name);
+
+            if isempty(self.faultResults) || ~isstruct(self.faultResults)
+                error('faultResults is empty. Run PantherAnalysis.run() first.');
+            end
+            if ~isfield(self.faultResults, output_name)
+                valid_fields = fieldnames(self.faultResults);
+                valid_fields = [append(valid_fields, repmat({', '}, length(valid_fields), 1))];
+                error(['Requested output ''', output_name, ''' not found in faultResults. Valid fields: ', valid_fields{:}]);
+            end
+
+            if ~(isnumeric(load_step) && isscalar(load_step) && isfinite(load_step))
+                error('load_step must be a finite numeric scalar');
+            end
+            if load_step < 1 || load_step > self.nTimes
+                error('load_step must be between 1 and nTimes (%d)', self.nTimes);
+            end
+
+            output = self.faultResults.(output_name);
+            if ~isnumeric(output)
+                error('faultResults.%s must be numeric', output_name);
+            end
+
+            % Time-dependent outputs are sampled along dimension 2.
+            if isvector(output)
+                if numel(output) == self.nTimes
+                    x_ind = 1:self.nTimes;
+                    output_at_load_step = interp1(x_ind, output(:), load_step);
+                else
+                    output_at_load_step = output;
+                end
+                return;
+            end
+
+            n_cols = size(output, 2);
+            if n_cols == self.nTimes
+                x_ind = 1:self.nTimes;
+                output_at_load_step = interp1(x_ind, output', load_step)';
+            elseif n_cols == 1
+                output_at_load_step = output;
+            else
+                error(['faultResults.', output_name, ' has size (*,%d) which does not match nTimes (%d)'], n_cols, self.nTimes);
             end
         end
 
@@ -380,6 +429,26 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             sne = self.stress{run_nr}.sne;
             tau = self.stress{run_nr}.tau;
             scu = tau ./ (sne .* f_s + cohesion);
+        end
+
+        function tau_s = getStaticFaultStrength(self, run_nr)
+            if nargin < 2 || isempty(run_nr)
+                run_nr = 1;
+            end
+            sne = self.stress{run_nr}.sne;
+            f_s = self.getDepthDependentInputParameter('f_s');
+            cohesion = self.getDepthDependentInputParameter('cohesion');
+            tau_s = sne .* f_s + cohesion;
+        end
+
+        function tau_d = getDynamicFaultStrength(self, run_nr)
+            if nargin < 2 || isempty(run_nr)
+                run_nr = 1;
+            end
+            sne = self.stress{run_nr}.sne;
+            f_d = self.getDepthDependentInputParameter('f_d');
+            cohesion = self.getDepthDependentInputParameter('cohesion');
+            tau_d = sne .* f_d + cohesion;
         end
 
         function cff = get_cff(self, run_nr, mu, cohesion)
