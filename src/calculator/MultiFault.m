@@ -1,5 +1,5 @@
-classdef MultiFaultAnalysis < handle
-    % MultiFaultAnalysis handles multiple 2D fault cross-sections.
+classdef MultiFault < handle
+    % MultiFault handles multiple 2D fault cross-sections.
     %
     % The class stores one PantherAnalysis object per fault and provides
     % convenience methods to:
@@ -17,7 +17,7 @@ classdef MultiFaultAnalysis < handle
     %   suppress_fault_run_status_output - Suppress per-fault progress output
     %
     % Dependent Properties:
-    %   nFaults - Number of faults
+    %   n_faults - Number of faults
     %
     % Methods:
     %   initialize - Create default faults and optional metadata table
@@ -35,20 +35,20 @@ classdef MultiFaultAnalysis < handle
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
-        parallel = 1                % overrides parallel setting of individual faults
+        parallel = 1        % overrides parallel setting of individual faults
         suppress_fault_run_status_output = 0
     end
 
     properties (Dependent)
-        nFaults double
+        n_faults double
     end
 
     methods
-        function self = MultiFaultAnalysis()
+        function self = MultiFault()
             % MultiFaultCalculator Constructor to initialize the class with n_faults.
         end
         
-        function self = initialize(self, nFaults, metadataTable)
+                 function self = initialize(self, nFaults, metadataTable)
         % Input:
             %   n_faults - Number of faults
             % Optional:
@@ -80,26 +80,20 @@ classdef MultiFaultAnalysis < handle
         function self = run(self)
             % run Runs the simulation for all faults.
             all_faults = self.faults;   % contains input objects for each fault
-            n = self.nFaults;
-            faults_updated_with_results = all_faults;  % preallocate typed output array for parfor
+            n = self.n_faults;
+            faults_updated_with_results = empty(n, 1);  % generate a separate output array to be able to use in parfor loop
             suppress_run_status_output = self.suppress_fault_run_status_output;
             if self.parallel
                 parfor i = 1 : n
-                    fault_i = all_faults(i);
-                    fault_i = fault_i.run();
-                    fault_i = fault_i.make_result_summary();
-                    faults_updated_with_results(i,1) = fault_i;
+                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
                     if ~suppress_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
                 end
             else
-                faults_updated_with_results = all_faults;
+                faults_updated_with_results = empty(n,1);
                 for i = 1 : n
-                    fault_i = all_faults(i);
-                    fault_i = fault_i.run();
-                    fault_i = fault_i.make_result_summary();
-                    faults_updated_with_results(i,1) = fault_i;
+                    faults_updated_with_results(i,1) = panther(all_faults(i), self.suppress_fault_run_status_output);
                     if ~self.suppress_fault_run_status_output
                         disp(['fault ', num2str(i),' of ', num2str(n)]);
                     end
@@ -138,7 +132,7 @@ classdef MultiFaultAnalysis < handle
             %   indices - Optional fault indices to update. If omitted,
             %             all faults are updated.
             % sets numeric input of depth-dependent Panther input parameters
-            nFaults = self.nFaults;
+            nFaults = self.n_faults;
             if nargin < 4 || isempty(indices)
                 indices = 1:nFaults;
             end
@@ -177,25 +171,6 @@ classdef MultiFaultAnalysis < handle
             end
         end
 
-        function self = deactivateDepthDependentInputParameter(self, parameterName, indices)
-            % deactivateDepthDependentInputParameter Switches selected
-            % faults back to uniform-with-depth mode for one parameter.
-            nFaults = self.nFaults;
-            if nargin < 3 || isempty(indices)
-                indices = 1:nFaults;
-            end
-
-            if ~isnumeric(indices) || any(indices < 1) || any(indices > nFaults) || any(mod(indices,1) ~= 0)
-                error('indices must contain valid integer fault indices between 1 and n_faults');
-            end
-            indices = indices(:);
-
-            for k = 1 : numel(indices)
-                i = indices(k);
-                self.faults(i) = self.faults(i).deactivateDepthDependentInputParameter(parameterName);
-            end
-        end
-
 
         function self = setInputParameter(self, parameterName, parameterValues)
             % setInputParameter Sets numeric input parameters.
@@ -205,8 +180,8 @@ classdef MultiFaultAnalysis < handle
             %   single value
             % sets numeric input Panther input parameters
             % check the input parameter is the same length as n_faults
-            if  (length(parameterValues) == self.nFaults) || isscalar(parameterValues)
-                for i = 1 : self.nFaults
+            if  (length(parameterValues) == self.n_faults) || isscalar(parameterValues)
+                for i = 1 : self.n_faults
                     if isscalar(parameterValues)
                         % same value assigned to all faults
                         self.faults(i).setInputParameter(parameterName, parameterValues);
@@ -228,9 +203,9 @@ classdef MultiFaultAnalysis < handle
             %   parameter_type - Property type ('value', 'a', or 'b')
 
             % Check if height table matches number of fault
-                if ~(height(inputTable) == self.nFaults)
+                if ~(height(inputTable) == self.n_faults)
                 error(['Input table height should match number of faults on the fault',...
-                    ' # of faults = ', num2str(self.nFaults), ' but # of table rows is ', num2str(height(inputTable))]);
+                    ' # of faults = ', num2str(self.n_faults), ' but # of table rows is ', num2str(height(inputTable))]);
             end
             
             % Get the list of properties of the fault input parameters 
@@ -243,7 +218,7 @@ classdef MultiFaultAnalysis < handle
             for j = 1:length(tableColumns)
                 propName = tableColumns{j};
                 if ismember(propName, fault_input_props)
-                    for i = 1 : self.nFaults
+                    for i = 1 : self.n_faults
                         self.faults(i) = self.faults(i).setInputParameter(propName, inputTable.(propName)(i));
                     end
                 end
@@ -256,8 +231,8 @@ classdef MultiFaultAnalysis < handle
             fault_input_props = properties(self.faults(1).input_parameters);
             tableColumns = self.faultMetadata.Properties.VariableNames;
             valid_props = intersect(tableColumns, fault_input_props, 'stable');
-            nFaults = self.nFaults;
-            for i = 1 : nFaults
+            n_faults = self.n_faults;
+            for i = 1 : n_faults
                 for j = 1 : length(valid_props)
                     propName = valid_props{j};
                     value = self.faultMetadata.(propName)(i);
@@ -278,51 +253,12 @@ classdef MultiFaultAnalysis < handle
             % INPUT
             % parameter_name    string. parameter name, e.g. 'dip'
  
-              inputParameters = zeros(self.nFaults, 1);
+            inputParameters = zeros(self.n_faults, 1);
   %           if self.isValidInputParameterName(parameter_name)
-                  for i = 1 : self.nFaults
+                 for i = 1 : self.n_faults
                     inputParameters(i) = self.faults(i).getInputParameter(parameterName);
                 end
    %         end
-        end
-
-        function [depths] = getDepth(self)
-            % getDepth Returns the absolute depth vector for each fault.
-            % Output:
-            %   depths - Cell array with one absolute-depth vector per fault.
-            depths = cell(self.nFaults, 1);
-            for i = 1 : self.nFaults
-                depths{i} = self.faults(i).getDepth();
-            end
-        end
-
-        function [LDip, dLDip] = getLAlongDip(self, faultIndices)
-            % getLAlongDip Wrapper around PantherAnalysis.getLAlongDip for one or more faults.
-            % Input:
-            %   faultIndices - optional fault indices (default: all faults)
-            % Output:
-            %   LDip  - along-fault length vector (single fault) or cell array
-            %   dLDip - spacing scalar/vector (single fault) or cell array
-            if nargin < 2 || isempty(faultIndices)
-                faultIndices = 1:self.nFaults;
-            end
-
-            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
-                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
-                error('faultIndices must contain valid integer indices between 1 and nFaults');
-            end
-            faultIndices = faultIndices(:);
-
-            if isscalar(faultIndices)
-                [LDip, dLDip] = self.faults(faultIndices).getLAlongDip();
-                return;
-            end
-
-            LDip = cell(numel(faultIndices), 1);
-            dLDip = cell(numel(faultIndices), 1);
-            for k = 1 : numel(faultIndices)
-                [LDip{k}, dLDip{k}] = self.faults(faultIndices(k)).getLAlongDip();
-            end
         end
 
         function [parameterValues] = getDepthDependentInputParameter(self, parameterName)
@@ -334,7 +270,7 @@ classdef MultiFaultAnalysis < handle
             %   parameterValues - cell array (n_faults x 1) with one
             %   depth-profile vector per fault
 
-            n = self.nFaults;
+            n = self.n_faults;
             parameterValues = cell(n, 1);
             if n == 0
                 return;
@@ -366,7 +302,7 @@ classdef MultiFaultAnalysis < handle
                 error('Invalid setting name: %s', settingName);
             end
 
-            n = self.nFaults;
+            n = self.n_faults;
             % Fast path: if a scalar value is supplied, broadcast and assign
             % with minimal per-fault checks. For non-scalar inputs, convert
             % to a cell array of per-fault values and assign.
@@ -409,10 +345,10 @@ classdef MultiFaultAnalysis < handle
            if ~(size(loadTableArray,2) == 1)
                disp('ERROR: Input cell array of load tables must be n_faults x 1, or 1 x 1. Value not assigned');
            end
-           if ~(size(loadTableArray,1) == 1 | size(loadTableArray,1) == self.nFaults)
+           if ~(size(loadTableArray,1) == 1 | size(loadTableArray,1) == self.n_faults)
                disp('ERROR: Input cell array of load tables must be n_faults x 1, or 1 x 1. Value not assigned');
            else
-               for i = 1 : self.nFaults
+               for i = 1 : self.n_faults
                    self.faults(i).load_table = loadTableArray{i};
                end
            end
@@ -433,7 +369,7 @@ classdef MultiFaultAnalysis < handle
             % overwriteNucleationStress Overwrites nucleation stress.
             % Input:
             %   new_nucleation_load_step - New nucleation load step
-            for i = 1 : self.nFaults
+            for i = 1 : self.n_faults
                 nuc = newNucleationLoadStep;
                 self.faults(i).stress{1} = self.faults(i).stress{1}.get_nucleation_stress(nuc);
             end
@@ -446,149 +382,28 @@ classdef MultiFaultAnalysis < handle
             % return output only at give time step indices
             % provide nan if you don't want to store output (only reac and
             % nuc stresses are stored)
-            if nargin < 2 || isempty(timeStepIndices)
-                return;
-            end
-
-            if isscalar(timeStepIndices) && isnan(timeStepIndices)
-                for i = 1 : self.nFaults
-                    if ~self.faults(i).keepModelObjects
-                        if isstruct(self.faults(i).faultResults)
-                            if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = []; end
-                            if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = []; end
-                            if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = []; end
-                            if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = []; end
-                            if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = []; end
-                            if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = []; end
-                            if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = []; end
-                        end
-                        self.faults(i).load_table = self.faults(i).load_table([],:);
-                        continue;
-                    end
-
-                    if isobject(self.faults(i).stress{1})
-                        self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(nan);
-                    elseif isstruct(self.faults(i).stress{1})
-                        if isfield(self.faults(i).stress{1}, 'sne'); self.faults(i).stress{1}.sne = []; end
-                        if isfield(self.faults(i).stress{1}, 'tau'); self.faults(i).stress{1}.tau = []; end
-                    end
-
-                    if isobject(self.faults(i).temperature{1})
-                        self.faults(i).temperature{1} = self.faults(i).temperature{1}.reduce_steps(nan);
-                    elseif isstruct(self.faults(i).temperature{1})
-                        if isfield(self.faults(i).temperature{1}, 'T'); self.faults(i).temperature{1}.T = []; end
-                        if isfield(self.faults(i).temperature{1}, 'dT'); self.faults(i).temperature{1}.dT = []; end
-                    end
-
-                    if isobject(self.faults(i).pressure{1})
-                        self.faults(i).pressure{1} = self.faults(i).pressure{1}.reduce_steps(nan);
-                    elseif isstruct(self.faults(i).pressure{1})
-                        if isfield(self.faults(i).pressure{1}, 'P'); self.faults(i).pressure{1}.P = []; end
-                        if isfield(self.faults(i).pressure{1}, 'dP'); self.faults(i).pressure{1}.dP = []; end
-                    end
-
-                    if isobject(self.faults(i).slip{1})
-                        self.faults(i).slip{1} = self.faults(i).slip{1}.reduce_steps(nan);
-                    elseif isstruct(self.faults(i).slip{1})
-                        if isfield(self.faults(i).slip{1}, 'slip'); self.faults(i).slip{1}.slip = []; end
-                    end
-
-                    if isstruct(self.faults(i).faultResults)
-                        if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = []; end
-                        if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = []; end
-                        if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = []; end
-                        if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = []; end
-                        if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = []; end
-                        if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = []; end
-                        if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = []; end
-                    end
-                    self.faults(i).load_table = self.faults(i).load_table([],:);
-                end
-                return;
-            end
-
-            if ~isnumeric(timeStepIndices) || any(~isfinite(timeStepIndices)) || any(mod(timeStepIndices,1) ~= 0)
-                error('timeStepIndices must be a numeric vector of finite integers, or scalar NaN');
-            end
-
-            timeStepIndices = unique(timeStepIndices(:)');
-            if min(timeStepIndices) < 1
-                error('timeStepIndices must be >= 1');
-            end
-
-            for i = 1 : self.nFaults
-                if ~self.faults(i).keepModelObjects
-                    nSteps = size(self.faults(i).faultResults.sne, 2);
-                else
-                    nSteps = size(self.faults(i).stress{1}.sne, 2);
-                end
-                if max(timeStepIndices) > nSteps
-                    error('timeStepIndices exceed available number of timesteps (%d) for fault %d', nSteps, i);
-                end
-
-                if ~self.faults(i).keepModelObjects
-                    if isstruct(self.faults(i).faultResults)
-                        if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = self.faults(i).faultResults.P(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = self.faults(i).faultResults.dP(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = self.faults(i).faultResults.T(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = self.faults(i).faultResults.dT(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = self.faults(i).faultResults.sne(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = self.faults(i).faultResults.tau(:, timeStepIndices); end
-                        if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = self.faults(i).faultResults.slip(:, timeStepIndices); end
-                    end
-                    self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
-                    continue;
-                end
-
-                if isobject(self.faults(i).stress{1})
+                for i = 1 : self.n_faults
+                    if max(timeStepIndices) < size(self.faults(i).stress{1}.sne, 2)  & ...
+                        (min(timeStepIndices) >= 1)
                     self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(timeStepIndices);
-                elseif isstruct(self.faults(i).stress{1})
-                    if isfield(self.faults(i).stress{1}, 'sne'); self.faults(i).stress{1}.sne = self.faults(i).stress{1}.sne(:, timeStepIndices); end
-                    if isfield(self.faults(i).stress{1}, 'tau'); self.faults(i).stress{1}.tau = self.faults(i).stress{1}.tau(:, timeStepIndices); end
-                end
-
-                if isobject(self.faults(i).temperature{1})
                     self.faults(i).temperature{1} = self.faults(i).temperature{1}.reduce_steps(timeStepIndices);
-                elseif isstruct(self.faults(i).temperature{1})
-                    if isfield(self.faults(i).temperature{1}, 'T'); self.faults(i).temperature{1}.T = self.faults(i).temperature{1}.T(:, timeStepIndices); end
-                    if isfield(self.faults(i).temperature{1}, 'dT'); self.faults(i).temperature{1}.dT = self.faults(i).temperature{1}.dT(:, timeStepIndices); end
-                end
-
-                if isobject(self.faults(i).pressure{1})
                     self.faults(i).pressure{1} = self.faults(i).pressure{1}.reduce_steps(timeStepIndices);
-                elseif isstruct(self.faults(i).pressure{1})
-                    if isfield(self.faults(i).pressure{1}, 'P'); self.faults(i).pressure{1}.P = self.faults(i).pressure{1}.P(:, timeStepIndices); end
-                    if isfield(self.faults(i).pressure{1}, 'dP'); self.faults(i).pressure{1}.dP = self.faults(i).pressure{1}.dP(:, timeStepIndices); end
-                end
-
-                if isobject(self.faults(i).slip{1})
                     self.faults(i).slip{1} = self.faults(i).slip{1}.reduce_steps(timeStepIndices);
-                elseif isstruct(self.faults(i).slip{1})
-                    if isfield(self.faults(i).slip{1}, 'slip'); self.faults(i).slip{1}.slip = self.faults(i).slip{1}.slip(:, timeStepIndices); end
+                        if ~isnan(timeStepIndices)
+                            self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
+                        end
+                    end
                 end
-
-                if isstruct(self.faults(i).faultResults)
-                    if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = self.faults(i).faultResults.P(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = self.faults(i).faultResults.dP(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = self.faults(i).faultResults.T(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = self.faults(i).faultResults.dT(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = self.faults(i).faultResults.sne(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = self.faults(i).faultResults.tau(:, timeStepIndices); end
-                    if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = self.faults(i).faultResults.slip(:, timeStepIndices); end
-                end
-
-                self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
-            end
         end
 
 
         function [depthMidValues] = getInputParameterAlongDepthMid(self, parameterName)
             % check whether the parsed input parameter name is valid
             [valid_input] = self.isValidInputParameterName(parameterName);
-            depthMidValues = nan(1, self.nFaults);
-            absolute_depths = self.getDepth();
+            depthMidValues = nan(1, length(self.n_faults));
+            absolute_depths = self.getAbsoluteDepths();
             if valid_input
-                for i = 1 : self.nFaults
+                for i = 1 : self.n_faults
                     parameter = self.faults(i).input_parameters.(parameterName);
                     if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
                         depthMidValues(i) = parameter.value;
@@ -613,9 +428,9 @@ classdef MultiFaultAnalysis < handle
             % reservoirBoundaries  (table) table of n_faultsx4, with
             % columns top_FW, base_FW, top_HW, base_HW
             vars = {'FW_top','FW_base','HW_top', 'HW_base'};
-            reservoirBoundaries = array2table(zeros((self.nFaults),4),...
+            reservoirBoundaries = array2table(zeros((self.n_faults),4),...
                 'VariableNames', vars);
-            for i = 1 : self.nFaults
+            for i = 1 : self.n_faults
                 y = self.faults(i).y;
                 for j = 1 : length(vars)
                     if isempty(self.faults(i).ensemble_members{1})
@@ -628,8 +443,8 @@ classdef MultiFaultAnalysis < handle
 
         function [minDepth, maxDepth] = getMinMaxDepth(self)
             % getMinMaxDepth Gets the shallowest and deepest point on the fault surface 
-            absolute_depths = self.getDepth();
-            for i = 1 : self.nFaults
+            absolute_depths = self.getAbsoluteDepths();
+            for i = 1 : self.n_faults
                 depth = absolute_depths{i};
                 if i == 1
                     minDepth = min(depth);
@@ -641,60 +456,58 @@ classdef MultiFaultAnalysis < handle
             end
         end
 
+        function [absoluteDepths] = getAbsoluteDepths(self)
+            % getAbsoluteDepths Gets the absolute depth range for each
+            % fault.
+            absoluteDepths = cell(self.n_faults, 1);
+            for i = 1 : self.n_faults
+                depth_mid = self.faults(i).input_parameters.depth_mid.value;
+                absoluteDepths{i} = self.faults(i).y + depth_mid;
+            end
+        end
+
+        function [LDip, dLDip] = getLAlongDip(self, faultIndices)
+            % getLAlongDip Wrapper around PantherAnalysis.getLAlongDip for one or more faults.
+            % Input:
+            %   faultIndices - optional fault indices (default: all faults)
+            % Output:
+            %   LDip  - along-fault length vector (single fault) or cell array
+            %   dLDip - spacing scalar/vector (single fault) or cell array
+            if nargin < 2 || isempty(faultIndices)
+                faultIndices = 1:self.n_faults;
+            end
+
+            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
+                    any(faultIndices < 1) || any(faultIndices > self.n_faults)
+                error('faultIndices must contain valid integer indices between 1 and n_faults');
+            end
+            faultIndices = faultIndices(:);
+
+            if isscalar(faultIndices)
+                [LDip, dLDip] = self.faults(faultIndices).getLAlongDip();
+                return;
+            end
+
+            LDip = cell(numel(faultIndices), 1);
+            dLDip = cell(numel(faultIndices), 1);
+            for k = 1 : numel(faultIndices)
+                [LDip{k}, dLDip{k}] = self.faults(faultIndices(k)).getLAlongDip();
+            end
+        end
+
         function [summary] = getResultsSummary(self)
             % getResultsSummary Gets the summary of results of individual
             % faults
             if self.runDone
-                summary = self.faults(1).faultSummary;
+                summary = self.faults(1).summary;
                 % Concatenate summary tables from individual faults.
-                for i = 2 : self.nFaults
-                    summary = [summary; self.faults(i).faultSummary];
+                for i = 1 : self.n_faults - 1
+                    summary = [summary; self.faults(i).summary];
                 end
             else
                 disp('Run not yet exectued, empty summary');
                 summary = [];
             end
-        end
-
-        function self = regenerateFaultSummary(self, preserveCustomColumns)
-            % regenerateFaultSummary Rebuilds faultSummary from per-fault
-            % summaries and optionally preserves user-added columns.
-            % Input:
-            %   preserveCustomColumns - logical, default true
-            if nargin < 2
-                preserveCustomColumns = true;
-            end
-
-            refreshed = self.getResultsSummary();
-
-            if ~preserveCustomColumns || isempty(refreshed)
-                self.faultSummary = refreshed;
-                return;
-            end
-
-            if isempty(self.faultSummary)
-                self.faultSummary = refreshed;
-                return;
-            end
-
-            if ~istable(self.faultSummary) || height(self.faultSummary) ~= height(refreshed)
-                % Shapes differ; safest behavior is to use refreshed
-                % summary only.
-                self.faultSummary = refreshed;
-                return;
-            end
-
-            merged = refreshed;
-            refreshedNames = refreshed.Properties.VariableNames;
-            existingNames = self.faultSummary.Properties.VariableNames;
-            customNames = existingNames(~ismember(existingNames, refreshedNames));
-
-            for i = 1:numel(customNames)
-                cname = customNames{i};
-                merged.(cname) = self.faultSummary.(cname);
-            end
-
-            self.faultSummary = merged;
         end
 
         function [validName] = isValidInputParameterName(self, submittedName, warningOn)
@@ -795,8 +608,8 @@ classdef MultiFaultAnalysis < handle
             end
         end
 
-        function num = get.nFaults(self)
-            % get.nFaults Gets the number of faults.
+        function num = get.n_faults(self)
+            % get.n_faults Gets the number of faults.
             % Output:
             %   num - Number of faults
             % number of faults in the object

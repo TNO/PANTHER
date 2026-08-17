@@ -328,7 +328,32 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             %   absoluteDepth - Column vector of absolute depth values.
             absoluteDepth = self.y + self.getInputParameter('depth_mid');
         end
-        
+
+        function [LDip, dLDip] = getLAlongDip(self)
+            % getLAlongDip Returns along-fault length and spacing from y and dip.
+            y = self.y(:);
+            dip = self.getDepthDependentInputParameter('dip');
+
+            if isscalar(dip)
+                dip = repmat(dip, size(y));
+            else
+                dip = dip(:);
+            end
+
+            if numel(dip) ~= numel(y)
+                error('Length of dip (%d) must match length of y (%d)', numel(dip), numel(y));
+            end
+
+            LDip = y ./ sind(dip);
+
+            unique_dL = uniquetol(diff(LDip), 0.001);
+            if isscalar(unique_dL)
+                dLDip = abs(unique_dL);
+            else
+                dLDip = abs(diff(LDip));
+                dLDip = [dLDip; dLDip(end)];
+            end
+        end
 
         function [output] = get_member_output(self, result_name, run_nr)
             % getter function to conveniently retrieve output
