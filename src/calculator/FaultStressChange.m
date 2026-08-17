@@ -140,13 +140,13 @@ classdef FaultStressChange
 
         % function to check if pressure change is uniform (consider moving
         % to pressure object)
-        function check_uniform(~, pressure)
-            unique_P = unique(pressure.dP_FW);
-            if length(unique_P) > (size(pressure.dP_FW, 2) + 1)
+        function check_uniform(~, dP_HW, dP_FW)
+            unique_P = unique(dP_FW);
+            if length(unique_P) > (size(dP_FW, 2) + 1)
                 error('Pressure change in footwall is not uniform');
             end
-            unique_P = unique(pressure.dP_HW);
-            if length(unique_P) > (size(pressure.dP_HW, 2) + 1)
+            unique_P = unique(dP_HW);
+            if length(unique_P) > (size(dP_HW, 2) + 1)
                 error('Pressure change in hanging wall is not uniform');
             end
         end

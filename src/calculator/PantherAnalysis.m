@@ -57,6 +57,7 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             self.generate_ensemble();
             % run for one ensemble member (multiple members option will be
             % removed in future release)
+            
             % unwrap some input parameters for convenience
             dip = self.getInputParameter('dip');
             f_s = self.getInputParameter('f_s');

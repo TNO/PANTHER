@@ -2,14 +2,14 @@
 % Pressure object sets initial pressures and pressures during load steps 
 % in the FW, HW, and relative to those, in the fault
 % In this example a figure is generated with FW HW and fault pressure
-% Loes Buijze 05 - 01 - 2024
+
 
 analysis = PantherAnalysis();                          % intialize model run
-analysis.input_parameters.throw.value = 50;
-analysis.input_parameters.P_grad_res.value = 0.2;   % assign gas pressure gradient in the reservoir
-analysis.input_parameters.P_over.value = 2;         % overpressure of 2 MPa at the top of the reservoir
-analysis.input_parameters.width_FW.value = Inf;     % width of the footwall compartment
-analysis.input_parameters.width_HW.value = Inf;     % width of the hanging wall compartment
+analysis.setInputParameter('throw', 50);
+analysis.setInputParameter('P_grad_res', 0.2);      % assign gas pressure gradient in the reservoir
+analysis.setInputParameter('P_over', 2);            % overpressure of 2 MPa at the top of the reservoir
+analysis.setInputParameter('width_FW', Inf);        % width of the footwall compartment
+analysis.setInputParameter('width_HW', Inf);        % width of the hanging wall compartment
 analysis.P0_fault_mode = 'max';                     % initial fault pressure setting, relative to FW and HW pressures 
 analysis.P_fault_mode = 'mean';                     % fault pressure during load steps, based on FW and HW pressures
 analysis.load_table = analysis.load_table(1:3,:);   % reduce load table to 3 steps
@@ -18,9 +18,9 @@ analysis.load_table.P_steps(2) = -1;                % -1 MPa depletion
 analysis.load_table.time_steps(3) = 30;             % 30 years
 analysis.load_table.P_steps(3) = -30;               % -30 MPa depletion
 analysis.diffusion_P = 1;                           % diffusion on (=1) or off (=0)
-
-analysis = panther(analysis);
-plot_pressures(analysis, height(analysis.load_table));
+analysis.keepModelObjects = true;                   % keep the pressure object to easily regenerate p_FW, p_HW
+analysis.run();
+plot_pressures(analysis, analysis.nTimes);
 
 function [h2] = plot_pressures(analysis, t_step)
 

@@ -42,8 +42,8 @@ classdef TestPressure < matlab.unittest.TestCase
             
             % single side scenario
             tc.P_fault_mode = 'min';
-            tc.input_parameters.width_FW.value = 0;
-            tc.input_parameters.width_HW.value = inf;
+            tc.setInputParameter('width_FW', 0);
+            tc.setInputParameter('width_HW', inf);
             tc.generate_ensemble;
             p = Pressure(tc);
             
@@ -55,8 +55,8 @@ classdef TestPressure < matlab.unittest.TestCase
 
             % single side scenario
             tc.P_fault_mode = 'min';
-            tc.input_parameters.width_FW.value = inf;
-            tc.input_parameters.width_HW.value = 0;
+            tc.setInputParameter('width_FW', inf);
+            tc.setInputParameter('width_HW', 0);
             tc.generate_ensemble;
             p = Pressure(tc);
             
@@ -75,7 +75,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.load_table.time_steps(2) = 10;
             tc.load_table.P_steps(2) = -10;
             tc.diffusion_P = 1;
-            tc.input_parameters.P_over.value = 2;
+            tc.setInputParameter('P_over', 2);
             tc.P_fault_mode = 'min';
             tc.generate_ensemble();
             
@@ -96,7 +96,7 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.load_table.time_steps(2) = 1;
             tc.load_table.P_steps(2) = -1;
             tc.diffusion_P = 1;
-            tc.input_parameters.P_grad_res.value = 0.2;
+            tc.setInputParameter('P_grad_res', 0.2);
             tc.P0_fault_mode = 'max';
             tc.P_fault_mode = 'min';
             tc.generate_ensemble();
@@ -124,8 +124,8 @@ classdef TestPressure < matlab.unittest.TestCase
             tc.load_table.time_steps(2) = 1;
             tc.load_table.P_steps(2) = -1;
             tc.diffusion_P = 0;
-            tc.input_parameters.P_grad_res.value = 0.2;
-            tc.input_parameters.P_over.value = 0.2;
+            tc.setInputParameter('P_grad_res', 0.2);
+            tc.setInputParameter('P_over', 0.2);
             tc.P_fault_mode = 'max';
             tc.P0_fault_mode = 'min';
             tc.P_res_mode = 'same';

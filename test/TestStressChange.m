@@ -14,10 +14,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;
             % set 0 throw, 90 degree dip
-            run_instance.input_parameters.throw.value = 0;
-            run_instance.input_parameters.dip.value = 90;
-            run_instance.input_parameters.poisson.value = 0.2;
-            run_instance.input_parameters.biot.value = 1;
+            run_instance.setInputParameter('throw', 0);
+            run_instance.setInputParameter('dip', 90);
+            run_instance.setInputParameter('poisson', 0.2);
+            run_instance.setInputParameter('biot', 1);
             run_instance.generate_ensemble();
             run_instance.y_extent = 0;
             run_instance.diffusion_T = 0;
@@ -39,10 +39,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.T_steps(2) = -1;
             % set 0 throw, 90 degree dip
-            run_instance.input_parameters.throw.value = 0;
-            run_instance.input_parameters.dip.value = 90;
-            run_instance.input_parameters.poisson.value = 0.2;
-            run_instance.input_parameters.biot.value = 1;
+            run_instance.setInputParameter('throw', 0);
+            run_instance.setInputParameter('dip', 90);
+            run_instance.setInputParameter('poisson', 0.2);
+            run_instance.setInputParameter('biot', 1);
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
@@ -65,10 +65,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.load_table.T_steps(2) = -1;
             run_instance.load_table.P_steps(2) = -1;
             % set 0 throw, 90 degree dip
-            run_instance.input_parameters.throw.value = 0;
-            run_instance.input_parameters.dip.value = 90;
-            run_instance.input_parameters.poisson.value = 0.2;
-            run_instance.input_parameters.biot.value = 1;
+            run_instance.setInputParameter('throw', 0);
+            run_instance.setInputParameter('dip', 90);
+            run_instance.setInputParameter('poisson', 0.2);
+            run_instance.setInputParameter('biot', 1);
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
@@ -89,10 +89,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             % initialize run and simplify temperature steps
             run_instance = PantherAnalysis();
             % set 0 throw, 90 degree dip
-            run_instance.input_parameters.throw.value = 0;
-            run_instance.input_parameters.dip.value = 90;
-            run_instance.input_parameters.poisson.value = 0.2;
-            run_instance.input_parameters.biot.value = 1;
+            run_instance.setInputParameter('throw', 0);
+            run_instance.setInputParameter('dip', 90);
+            run_instance.setInputParameter('poisson', 0.2);
+            run_instance.setInputParameter('biot', 1);
             run_instance.diffusion_T = 1;
             run_instance.generate_ensemble();
             y = run_instance.y;      % only evaluate at mid depth
