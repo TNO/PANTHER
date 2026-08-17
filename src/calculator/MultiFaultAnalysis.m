@@ -35,7 +35,7 @@ classdef MultiFaultAnalysis < handle
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
-        parallel = 1        % overrides parallel setting of individual faults
+        parallel = 1                % overrides parallel setting of individual faults
         suppress_fault_run_status_output = 0
     end
 
@@ -423,6 +423,20 @@ classdef MultiFaultAnalysis < handle
 
             if isscalar(timeStepIndices) && isnan(timeStepIndices)
                 for i = 1 : self.nFaults
+                    if ~self.faults(i).keepModelObjects
+                        if isstruct(self.faults(i).faultResults)
+                            if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = []; end
+                            if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = []; end
+                            if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = []; end
+                            if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = []; end
+                            if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = []; end
+                            if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = []; end
+                            if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = []; end
+                        end
+                        self.faults(i).load_table = self.faults(i).load_table([],:);
+                        continue;
+                    end
+
                     if isobject(self.faults(i).stress{1})
                         self.faults(i).stress{1} = self.faults(i).stress{1}.reduce_steps(nan);
                     elseif isstruct(self.faults(i).stress{1})
@@ -474,9 +488,27 @@ classdef MultiFaultAnalysis < handle
             end
 
             for i = 1 : self.nFaults
-                nSteps = size(self.faults(i).stress{1}.sne, 2);
+                if ~self.faults(i).keepModelObjects
+                    nSteps = size(self.faults(i).faultResults.sne, 2);
+                else
+                    nSteps = size(self.faults(i).stress{1}.sne, 2);
+                end
                 if max(timeStepIndices) > nSteps
                     error('timeStepIndices exceed available number of timesteps (%d) for fault %d', nSteps, i);
+                end
+
+                if ~self.faults(i).keepModelObjects
+                    if isstruct(self.faults(i).faultResults)
+                        if isfield(self.faults(i).faultResults, 'P'); self.faults(i).faultResults.P = self.faults(i).faultResults.P(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'dP'); self.faults(i).faultResults.dP = self.faults(i).faultResults.dP(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'T'); self.faults(i).faultResults.T = self.faults(i).faultResults.T(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'dT'); self.faults(i).faultResults.dT = self.faults(i).faultResults.dT(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'sne'); self.faults(i).faultResults.sne = self.faults(i).faultResults.sne(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'tau'); self.faults(i).faultResults.tau = self.faults(i).faultResults.tau(:, timeStepIndices); end
+                        if isfield(self.faults(i).faultResults, 'slip'); self.faults(i).faultResults.slip = self.faults(i).faultResults.slip(:, timeStepIndices); end
+                    end
+                    self.faults(i).load_table = self.faults(i).load_table(timeStepIndices,:);
+                    continue;
                 end
 
                 if isobject(self.faults(i).stress{1})

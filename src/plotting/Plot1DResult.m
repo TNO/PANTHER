@@ -36,13 +36,13 @@ classdef Plot1DResult < LoadFigure
             self.axes_width = 2.5;
             self.axes_xspacing = 0.3;
             [self.plot_handles] = self.load();  % load default figure
-            n_steps = size(analysis.faultResults.sne, 2);
+            n_steps = analysis.nTimes;
             if strcmp(self.plot_step,'last')
                 i_step = n_steps;
-            elseif isnumeric(self.plot_step) & self.plot_step <= n_steps
+            elseif isnumeric(self.plot_step) && self.plot_step <= n_steps
                 i_step = self.plot_step;
             else
-                i_step = n_stepts;
+                i_step = n_steps;
             end
             y_abs  = analysis.getDepth();
             for i = 1 : length(self.plot_results)
@@ -80,13 +80,13 @@ classdef Plot1DResult < LoadFigure
                 if strcmp(self.ax_scale,'auto')
                     set(gca, 'YLim', [min(y_abs), max(y_abs)]);
                 else
-                if ~isempty(self.ylim) & strcmp(self.ax_scale, 'explicit')
-                    set(gca,'YLim', self.ylim);
+                    if ~isempty(self.ylim) && strcmp(self.ax_scale, 'explicit')
+                        set(gca,'YLim', self.ylim);
+                    end
+                    if ~isempty(self.xlim)
+                        set(gca,'XLim', self.xlim);
+                    end
                 end
-                if ~isempty(self.xlim)
-                    set(gca,'XLim', self.xlim);
-                end
-            end
             end
             if length(self.plot_handles.ax) > 1
                 set(self.plot_handles.ax(2:end), 'YTick','');
@@ -102,9 +102,7 @@ classdef Plot1DResult < LoadFigure
         function [array_to_plot] = retrieve_result_plot_data(~, analysis, parameter, i_step)
             
             if contains(parameter, 'scu' )
-                f_s = analysis.getInputParameter('f_s');
-                coh = analysis.getInputParameter('cohesion');
-                scu = analysis.get_scu(1, f_s, coh);
+                scu = analysis.getSCU();
                 array_to_plot = scu(:, i_step);
             else
                 array_to_plot = analysis.faultResults.(parameter)(:,i_step);
@@ -129,16 +127,13 @@ classdef Plot1DResult < LoadFigure
             end
         end
         
-        function plot_side_indicators(self, inputs)
-           % inputs.
-            axpos = get(gca, 'Position');
-
+          function plot_side_indicators(~, ~)
         end
 
-        function self = plot_custom_plot_in_axes()
+          function self = plot_custom_plot_in_axes(self)
         end
 
-        function validate_plot_variables()
+          function validate_plot_variables(~)
            % {mustBeMember(plot_results, 'P','T','sne','tau','sne_reac','tau_reac','sne_nuc','tau_nuc')}
         end
     end

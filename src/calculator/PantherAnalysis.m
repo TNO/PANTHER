@@ -21,12 +21,15 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
         keepModelObjects logical = false            % keep full result objects (Pressure/Temperature/Stress/Slip) after run
-        pressure cell
-        temperature cell
-        stress cell
-        slip cell
         faultResults struct
         faultSummary table
+    end
+
+    properties (Access = private)
+        pressure_store cell = {}
+        temperature_store cell = {}
+        stress_store cell = {}
+        slip_store cell = {}
     end
 
     properties (Constant)
@@ -36,6 +39,10 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     properties (Dependent) 
         ensemble table                              % ensemble member input translated to a table for convenient use
+        pressure cell                               % compatibility view (or stored objects when keepModelObjects=true)
+        temperature cell                            % compatibility view (or stored objects when keepModelObjects=true)
+        stress cell                                 % compatibility view (or stored objects when keepModelObjects=true)
+        slip cell                                   % compatibility view (or stored objects when keepModelObjects=true)
         nTimes (1,1) double                         % number of modeled load steps
         summary table                               % deprecated alias for faultSummary
     end
@@ -73,29 +80,29 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             initial_stress{1} = InitialStress(y, self.ensemble_members{1});
             
             % initialize pressure and temperature as function of time
-            self.pressure{1} = Pressure(self);
-            self.temperature{1} = Temperature(self, 'min');
+            pressure_obj = Pressure(self);
+            temperature_obj = Temperature(self, 'min');
             
             % stress changes
             stress_change{1} = FaultStressChange(nFaultCells, nTimeSteps);        % initialize fault stresses for P
             stress_change{1} = stress_change{1}.calc_stress_changes( ...
                 self.ensemble_members{1}, y, self.dx, ...
-                self.pressure{1}.get_dP_HW(), self.pressure{1}.get_dP_FW(), ...
-                self.temperature{1}.get_dT_HW(), self.temperature{1}.get_dT_FW(), ...
+                pressure_obj.get_dP_HW(), pressure_obj.get_dP_FW(), ...
+                temperature_obj.get_dT_HW(), temperature_obj.get_dT_FW(), ...
                 self.load_case);
         
             % stress (initial + change)
-            self.stress{1} = FaultStress(nFaultCells, nTimeSteps);
-            self.stress{1} = self.stress{1}.compute_fault_stress(initial_stress{1}, stress_change{1}, self.pressure{1}.P);
+            stress_obj = FaultStress(nFaultCells, nTimeSteps);
+            stress_obj = stress_obj.compute_fault_stress(initial_stress{1}, stress_change{1}, pressure_obj.P);
             
             % fault slip, reactivation, nucleation
-            self.slip{1} = FaultSlip(size(self.stress{1}.sne, 1), size(self.stress{1}.sne, 2));
+            slip_obj = FaultSlip(size(stress_obj.sne, 1), size(stress_obj.sne, 2));
             if self.aseismic_slip
-                fault_strength{1} = self.stress{1}.sne.*f_s + cohesion;
-                [self.slip{1}, self.stress{1}.tau] = self.slip{1}.calculate_fault_slip(L, self.stress{1}.sne, self.stress{1}.tau, ...
+                fault_strength{1} = stress_obj.sne.*f_s + cohesion;
+                [slip_obj, stress_obj.tau] = slip_obj.calculate_fault_slip(L, stress_obj.sne, stress_obj.tau, ...
                                                              fault_strength{1}, self.ensemble_members{1}.get_mu_II);
             end
-            self.slip{1} = self.slip{1}.detect_nucleation(y, L, self.stress{1}.sne, self.stress{1}.tau, f_s, ...
+            slip_obj = slip_obj.detect_nucleation(y, L, stress_obj.sne, stress_obj.tau, f_s, ...
                                                         f_d, d_c, cohesion,self.ensemble_members{1}.get_mu_II, ...
                                                         self.nucleation_criterion, self.nucleation_length_fixed);
             % clear to save memory
@@ -103,55 +110,57 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             initial_stress{1}= [];
 
             % get the fault stressses at onset of reactivation and nucleation 
-            self.stress{1} = self.stress{1}.get_reactivation_stress(self.slip{1}.reactivation_load_step);
-            self.stress{1} = self.stress{1}.get_nucleation_stress(self.slip{1}.nucleation_load_step);
+            stress_obj = stress_obj.get_reactivation_stress(slip_obj.reactivation_load_step);
+            stress_obj = stress_obj.get_nucleation_stress(slip_obj.nucleation_load_step);
+
+            % keep model objects when requested; otherwise expose array
+            % outputs via dependent views from faultResults.
+            if self.keepModelObjects
+                self.pressure_store = {pressure_obj};
+                self.temperature_store = {temperature_obj};
+                self.stress_store = {stress_obj};
+                self.slip_store = {slip_obj};
+            else
+                self.pressure_store = {};
+                self.temperature_store = {};
+                self.stress_store = {};
+            end
 
             % aggregate key outputs in a single struct for convenient access
             self.faultResults = struct( ...
-                'P0', self.pressure{1}.P0, ...
-                'P', self.pressure{1}.P, ...
-                'dP', self.pressure{1}.dP, ...
-                'T0', self.temperature{1}.T0, ...
-                'T', self.temperature{1}.T, ...
-                'dT', self.temperature{1}.dT, ...
-                'sne', self.stress{1}.sne, ...
-                'tau', self.stress{1}.tau, ...
-                'sne_reac', self.stress{1}.sne_reac, ...
-                'tau_reac', self.stress{1}.tau_reac, ...
-                'sne_nuc', self.stress{1}.sne_nuc, ...
-                'tau_nuc', self.stress{1}.tau_nuc, ...
-                'tau_nu', self.stress{1}.tau_nuc, ...
-                'slip', self.slip{1}.slip);
+                'P0', pressure_obj.P0, ...
+                'P', pressure_obj.P, ...
+                'dP', pressure_obj.dP, ...
+                'T0', temperature_obj.T0, ...
+                'T', temperature_obj.T, ...
+                'dT', temperature_obj.dT, ...
+                'sne', stress_obj.sne, ...
+                'tau', stress_obj.tau, ...
+                'sne_reac', stress_obj.sne_reac, ...
+                'tau_reac', stress_obj.tau_reac, ...
+                'sne_nuc', stress_obj.sne_nuc, ...
+                'tau_nuc', stress_obj.tau_nuc, ...
+                'tau_nu', stress_obj.tau_nuc, ...
+                'slip', slip_obj.slip);
 
             if ~self.keepModelObjects
-                % Replace heavy result objects with lightweight compatibility
-                % structs to lower memory usage while keeping common access
-                % patterns (e.g., pressure{1}.P, pressure{1}.dP).
-                self.pressure{1} = struct('P0', self.faultResults.P0, 'P', self.faultResults.P, 'dP', self.faultResults.dP);
-                self.temperature{1} = struct('T0', self.faultResults.T0, 'T', self.faultResults.T, 'dT', self.faultResults.dT);
-                self.stress{1} = struct( ...
-                    'sne', self.faultResults.sne, ...
-                    'tau', self.faultResults.tau, ...
-                    'sne_reac', self.faultResults.sne_reac, ...
-                    'tau_reac', self.faultResults.tau_reac, ...
-                    'sne_nuc', self.faultResults.sne_nuc, ...
-                    'tau_nuc', self.faultResults.tau_nuc, ...
-                    'tau_nu', self.faultResults.tau_nu);
-                self.slip{1} = struct( ...
-                    'slip', self.faultResults.slip, ...
-                    'reactivation', self.slip{1}.reactivation, ...
-                    'reactivation_load_step', self.slip{1}.reactivation_load_step, ...
-                    'nucleation', self.slip{1}.nucleation, ...
-                    'nucleation_load_step', self.slip{1}.nucleation_load_step, ...
-                    'nucleation_length', self.slip{1}.nucleation_length, ...
-                    'nucleation_zone_ymid', self.slip{1}.nucleation_zone_ymid, ...
-                    'max_slip_length', self.slip{1}.max_slip_length);
+                % Keep only lightweight scalar slip metadata in backing
+                % storage; pressure/temperature/stress/slip arrays are
+                % exposed via dependent views from faultResults.
+                self.slip_store = {struct( ...
+                    'reactivation', slip_obj.reactivation, ...
+                    'reactivation_load_step', slip_obj.reactivation_load_step, ...
+                    'nucleation', slip_obj.nucleation, ...
+                    'nucleation_load_step', slip_obj.nucleation_load_step, ...
+                    'nucleation_length', slip_obj.nucleation_length, ...
+                    'nucleation_zone_ymid', slip_obj.nucleation_zone_ymid, ...
+                    'max_slip_length', slip_obj.max_slip_length)};
             end
 
-                    % Keep run() behavior consistent with panther(): always
-                    % refresh faultSummary after computing outputs.
-                    self = self.make_result_summary();
-        
+            % Keep run() behavior consistent with panther(): always
+            % refresh faultSummary after computing outputs.
+            self = self.make_result_summary();
+
             % % reduce output
             % self.pressure{1} = self.pressure{1}.reduce_steps(indices_for_saving);
             % stress{1} = stress{1}.reduce_steps(indices_for_saving);
@@ -334,30 +343,29 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
                 error(['result name ', result_name, ' not valid, should be one of ', ...
                      resultnames_cellstring{:}]);
             end
-            if contains(result_name,'P')
-                output = self.pressure{run_nr}.(result_name);
-            elseif contains(result_name, 'T')
-                output = self.temperature{run_nr}.(result_name);
-            elseif strcmp(result_name, 'slip')
-                output = self.slip{run_nr}.(result_name);
+            if run_nr ~= 1
+                error('PantherAnalysis stores a single run. Use run_nr = 1.');
+            end
+            if isstruct(self.faultResults) && isfield(self.faultResults, result_name)
+                output = self.faultResults.(result_name);
             elseif strcmp(result_name, 'scu')
-                output = self.get_scu(run_nr);
+                output = self.getSCU(run_nr);
             elseif strcmp(result_name, 'tau_s')
                 output = self.getStaticFaultStrength(run_nr);
             elseif strcmp(result_name, 'tau_d')
                 output = self.getDynamicFaultStrength(run_nr);
             elseif strcmp(result_name, 'cfs')
-                output = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
+                output = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
             elseif strcmp(result_name, 'dcfs')
-                cff = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
+                cff = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
                 output = cff - cff(:,1);
             elseif strcmp(result_name, 'dcfs_dt')
-                cff = self.get_cff(run_nr, self.getInputParameter('f_s'), 0);
+                cff = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
                 time = self.load_table.time_steps;
                 % compute the time derivative (MPa/yr)
                 output = gradient(cff, time, 2); 
             else
-                output = self.stress{run_nr}.(result_name);
+                error('Output %s is not available in faultResults', result_name);
             end
         end
 
@@ -416,26 +424,39 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
         end
 
-        function scu = get_scu(self, run_nr, f_s, cohesion)
+        function scu = getSCU(self, run_nr, f_s, cohesion)
             if nargin < 2 || isempty(run_nr)
                 run_nr = 1;
             end
+            if run_nr ~= 1
+                error('PantherAnalysis stores a single run. Use run_nr = 1.');
+            end
             if nargin < 3 || isempty(f_s)
-                f_s = self.getInputParameter('f_s');
+                f_s = self.getDepthDependentInputParameter('f_s');
             end
             if nargin < 4 || isempty(cohesion)
-                cohesion = self.getInputParameter('cohesion');
+                cohesion = self.getDepthDependentInputParameter('cohesion');
             end
-            sne = self.stress{run_nr}.sne;
-            tau = self.stress{run_nr}.tau;
+            self.requireRunResults();
+            sne = self.faultResults.sne;
+            tau = self.faultResults.tau;
             scu = tau ./ (sne .* f_s + cohesion);
+        end
+
+        function scu = get_scu(self, run_nr, f_s, cohesion)
+            % Backward-compatible alias for getSCU.
+            scu = self.getSCU(run_nr, f_s, cohesion);
         end
 
         function tau_s = getStaticFaultStrength(self, run_nr)
             if nargin < 2 || isempty(run_nr)
                 run_nr = 1;
             end
-            sne = self.stress{run_nr}.sne;
+            if run_nr ~= 1
+                error('PantherAnalysis stores a single run. Use run_nr = 1.');
+            end
+            self.requireRunResults();
+            sne = self.faultResults.sne;
             f_s = self.getDepthDependentInputParameter('f_s');
             cohesion = self.getDepthDependentInputParameter('cohesion');
             tau_s = sne .* f_s + cohesion;
@@ -445,25 +466,38 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if nargin < 2 || isempty(run_nr)
                 run_nr = 1;
             end
-            sne = self.stress{run_nr}.sne;
+            if run_nr ~= 1
+                error('PantherAnalysis stores a single run. Use run_nr = 1.');
+            end
+            self.requireRunResults();
+            sne = self.faultResults.sne;
             f_d = self.getDepthDependentInputParameter('f_d');
             cohesion = self.getDepthDependentInputParameter('cohesion');
             tau_d = sne .* f_d + cohesion;
         end
 
-        function cff = get_cff(self, run_nr, mu, cohesion)
+        function cff = getCFF(self, run_nr, mu, cohesion)
             if nargin < 2 || isempty(run_nr)
                 run_nr = 1;
             end
+            if run_nr ~= 1
+                error('PantherAnalysis stores a single run. Use run_nr = 1.');
+            end
             if nargin < 3 || isempty(mu)
-                mu = self.getInputParameter('f_s');
+                mu = self.getDepthDependentInputParameter('f_s');
             end
             if nargin < 4 || isempty(cohesion)
-                cohesion = self.getInputParameter('cohesion');
+                cohesion = self.getDepthDependentInputParameter('cohesion');
             end
-            sne = self.stress{run_nr}.sne;
-            tau = self.stress{run_nr}.tau;
+            self.requireRunResults();
+            sne = self.faultResults.sne;
+            tau = self.faultResults.tau;
             cff = tau - (sne .* mu + cohesion);
+        end
+
+        function cff = get_cff(self, run_nr, mu, cohesion)
+            % Backward-compatible alias for getCFF.
+            cff = self.getCFF(run_nr, mu, cohesion);
         end
 
         function [cff_max, cff_ymid] = get_cff_rates(self, time_range, run_nr, mu, cohesion)
@@ -479,19 +513,113 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if nargin < 5 || isempty(cohesion)
                 cohesion = self.getInputParameter('cohesion');
             end
-            cff = self.get_cff(run_nr, mu, cohesion);
+            cff = self.getCFF(run_nr, mu, cohesion);
             min_index = time_range(1);
             max_index = time_range(2);
             cff = cff(:, min_index:max_index);
             time_yrs = self.load_table.time_steps(min_index:max_index);
             cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
             cff_max = max(max(cff_rate));
-            i_ymid = ceil(size(self.stress{run_nr}.sne, 1)/2);
+            i_ymid = ceil(size(self.faultResults.sne, 1)/2);
             cff_ymid = mean(cff_rate(i_ymid,:));
         end
 
         function ensemble = get.ensemble(self)
             ensemble = self.ensemble_to_table();
+        end
+
+        function pressure = get.pressure(self)
+            if ~isempty(self.pressure_store)
+                pressure = self.pressure_store;
+            elseif ~self.keepModelObjects && isstruct(self.faultResults) && ~isempty(fieldnames(self.faultResults))
+                pressure = {struct('P0', self.faultResults.P0, 'P', self.faultResults.P, 'dP', self.faultResults.dP)};
+            else
+                pressure = {};
+            end
+        end
+
+        function self = set.pressure(self, pressure)
+            self.pressure_store = pressure;
+        end
+
+        function temperature = get.temperature(self)
+            if ~isempty(self.temperature_store)
+                temperature = self.temperature_store;
+            elseif ~self.keepModelObjects && isstruct(self.faultResults) && ~isempty(fieldnames(self.faultResults))
+                temperature = {struct('T0', self.faultResults.T0, 'T', self.faultResults.T, 'dT', self.faultResults.dT)};
+            else
+                temperature = {};
+            end
+        end
+
+        function self = set.temperature(self, temperature)
+            self.temperature_store = temperature;
+        end
+
+        function stress = get.stress(self)
+            if ~isempty(self.stress_store)
+                stress = self.stress_store;
+            elseif ~self.keepModelObjects && isstruct(self.faultResults) && ~isempty(fieldnames(self.faultResults))
+                stress = {struct( ...
+                    'sne', self.faultResults.sne, ...
+                    'tau', self.faultResults.tau, ...
+                    'sne_reac', self.faultResults.sne_reac, ...
+                    'tau_reac', self.faultResults.tau_reac, ...
+                    'sne_nuc', self.faultResults.sne_nuc, ...
+                    'tau_nuc', self.faultResults.tau_nuc, ...
+                    'tau_nu', self.faultResults.tau_nu)};
+            else
+                stress = {};
+            end
+        end
+
+        function self = set.stress(self, stress)
+            self.stress_store = stress;
+        end
+
+        function slip = get.slip(self)
+            if ~isempty(self.slip_store) && (~self.keepModelObjects || ~isstruct(self.slip_store{1}))
+                % In lightweight mode, slip_store keeps scalar metadata.
+                meta = self.slip_store{1};
+            else
+                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'nucleation', nan, ...
+                    'nucleation_load_step', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
+            end
+
+            if ~isempty(self.slip_store) && self.keepModelObjects
+                slip = self.slip_store;
+                return;
+            elseif ~self.keepModelObjects && isstruct(self.faultResults) && ~isempty(fieldnames(self.faultResults))
+                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'nucleation', nan, ...
+                    'nucleation_load_step', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
+                if ~isempty(self.slip_store)
+                    meta = self.slip_store{1};
+                elseif ~isempty(self.faultSummary)
+                    meta = struct( ...
+                        'reactivation', self.faultSummary.reactivation(1), ...
+                        'reactivation_load_step', self.faultSummary.reactivation_load_step(1), ...
+                        'nucleation', self.faultSummary.nucleation(1), ...
+                        'nucleation_load_step', self.faultSummary.nucleation_load_step(1), ...
+                        'nucleation_length', self.faultSummary.nucleation_length(1), ...
+                        'nucleation_zone_ymid', self.faultSummary.nucleation_zone_ymid(1), ...
+                        'max_slip_length', self.faultSummary.max_slip_length(1));
+                end
+                slip = {struct( ...
+                    'slip', self.faultResults.slip, ...
+                    'reactivation', meta.reactivation, ...
+                    'reactivation_load_step', meta.reactivation_load_step, ...
+                    'nucleation', meta.nucleation, ...
+                    'nucleation_load_step', meta.nucleation_load_step, ...
+                    'nucleation_length', meta.nucleation_length, ...
+                    'nucleation_zone_ymid', meta.nucleation_zone_ymid, ...
+                    'max_slip_length', meta.max_slip_length)};
+            else
+                slip = self.slip_store;
+            end
+        end
+
+        function self = set.slip(self, slip)
+            self.slip_store = slip;
         end
 
         function nTimes = get.nTimes(self)
@@ -530,6 +658,12 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
     end
 
     methods (Access = private)
+        function requireRunResults(self)
+            if isempty(self.faultResults) || ~isstruct(self.faultResults) || isempty(fieldnames(self.faultResults))
+                error('Run results are not available. Execute PantherAnalysis.run() first.');
+            end
+        end
+
         function parameterName = validateInputParameterName(self, parameterName)
             % validateInputParameterName Ensures parameter name is text and
             % exists on input_parameters.

@@ -50,7 +50,7 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
     'Initial shear stress', 'Final shear stress'});
 
 subplot(1,3,2); hold on;
-scu = sc1_variable_friction.get_scu();
+scu = sc1_variable_friction.getSCU();
 hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
 hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
@@ -115,7 +115,7 @@ legend(hp, {'Initial normal stress', 'Final normal stress',...
     'Initial shear stress', 'Final shear stress'});
 
 subplot(1,3,2); hold on;
-scu = sc2_variable_dip.get_scu();
+scu = sc2_variable_dip.getSCU();
 hs(1) = plot(scu(:,1), y_abs, 'LineStyle','--','Color',[0.5,0.5,0.5]);
 hs(2) = plot(scu(:,end), y_abs);
 set(hs, 'LineWidth', 1.5);
