@@ -23,7 +23,7 @@ classdef FaultStressChange
             self.dtau = zeros(size_y, size_t);
         end
 
-        function self = calc_stress_changes(self, params, y, dx, dP_HW, dP_FW, dT_HW, dT_FW, load_case)
+        function self = calc_stress_changes(self, params, y, dx, dP_HW, dP_FW, dT_HW, dT_FW, load_case, GF)
             % calculator for stress changes due to P and/or T.
             % controls the calculation for uniform and non-uniform pressure
             % and temperature profiles, non-uniform elastic parameters
@@ -33,17 +33,20 @@ classdef FaultStressChange
             % params                    input parameters for 1 ensemble member
             % y                         depth array w.r.t. y_mid
             % load_case                 P, T, or PT
-            % check if pressure or temperature change is more than a single
-            % value imposed in the reservoir. e.g. if there is diffusion
-            [vary_P, vary_T] = self.variable_PT(dP_HW, dP_FW, dT_HW, dT_FW);
+            % GF (optional)            pre-computed Green's functions cell array from
+            %                          initialize_greens_functions. When supplied the
+            %                          Green's functions are not recomputed here.
+            [vary_P, vary_T] = FaultStressChange.variableWithDepthGeometryConstant(dP_HW, dP_FW, dT_HW, dT_FW);
             % check if the dip is variable with depth
-            [vary_dip] = self.variable_dip(params);
+            [vary_dip] = FaultStressChange.variableWithDepth(params);
             if and(contains(load_case,'P'), vary_P) || and(contains(load_case,'T'), vary_T)
                 vary_PT = 1;
             else
                 vary_PT = 0;
             end
-            GF = initialize_greens_functions(params, y, dx, vary_PT, vary_dip);
+            if nargin < 10 || isempty(GF)
+                GF = GreensFunctions.initialize(params, y, dx, vary_PT, vary_dip);
+            end
             % stress changes due to pressure changes
             if contains(load_case,'P')
               dsigma_P = self.calc_stress_changes_dP(params, y, dP_HW, dP_FW, GF, vary_PT, vary_dip );
@@ -151,9 +154,13 @@ classdef FaultStressChange
             end
         end
 
-        function [vary_P, vary_T] = variable_PT(~, dP_HW, dP_FW, dT_HW, dT_FW)
+    end
+
+    methods (Static)
+
+        function [vary_P, vary_T] = variableWithDepthGeometryConstant(dP_HW, dP_FW, dT_HW, dT_FW)
             % check if pressure or temperature are non uniform with y
-            % return true if they vary . move to pressure object
+            % return true if they vary
             vary_P = 0;
             vary_T = 0;
             if length(unique(dP_FW)) > size(dP_FW,2) + 1
@@ -168,7 +175,7 @@ classdef FaultStressChange
             end
         end
 
-        function [vary_dip] = variable_dip(~, params)
+        function [vary_dip] = variableWithDepth(params)
             if or(length(params.dip) > 1, iscell(params.dip))
                 vary_dip = 1;
             else

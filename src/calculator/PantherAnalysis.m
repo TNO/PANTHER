@@ -17,7 +17,6 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         nucleation_length_fixed double = 10;  
         ensemble_members cell                       % single cached member object stored in a 1x1 cell array
         ensemble_dirty logical = true               % indicate whether the cached member must be regenerated
-        parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
         keepModelObjects logical = false            % keep full result objects (Pressure/Temperature/Stress/Slip) after run
@@ -59,113 +58,97 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         end
 
         function self = run(self)
-            % run the single PantherAnalysis member
-            % refresh the cached member
-            self.generate_ensemble();
-            % run for one ensemble member (multiple members option will be
-            % removed in future release)
-            
-            % unwrap some input parameters for convenience
-            dip = self.getInputParameter('dip');
-            f_s = self.getDepthDependentInputParameter('f_s');
-            f_d = self.getDepthDependentInputParameter('f_d');
-            d_c = self.getDepthDependentInputParameter('d_c');
-            cohesion = self.getDepthDependentInputParameter('cohesion');
-            y = self.y; 
-            nFaultCells = self.faultLen;
-            nTimeSteps = self.nTimes;
-            L = y./sin(dip*pi/180);
+            % run Compute stress, slip and nucleation for this fault.
+            % Delegates to the three-step extract/compute/apply pattern so
+            % MultiFaultAnalysis can run the compute step in a parfor
+            % without broadcasting the full PantherAnalysis object.
+            inputs  = self.extractInputs();
+            results = PantherAnalysis.computeStressAndNucleation(inputs);
+            self    = self.applyResults(results);
+        end
 
-            % initial stress
-            initial_stress{1} = InitialStress(y, self.ensemble_members{1});
-            
-            % initialize pressure and temperature as function of time
-            pressure_obj = Pressure(self);
+        function inputs = extractInputs(self)
+            % extractInputs Prepare all data needed for stress computation
+            % as a plain struct.  Pre-computes Pressure and Temperature so
+            % the heavy compute step (computeStressAndNucleation) has no
+            % dependency on the PantherAnalysis object.
+            self = self.generate_ensemble();
+
+            dip       = self.getInputParameter('dip');
+            f_s       = self.getDepthDependentInputParameter('f_s');
+            f_d       = self.getDepthDependentInputParameter('f_d');
+            d_c       = self.getDepthDependentInputParameter('d_c');
+            cohesion  = self.getDepthDependentInputParameter('cohesion');
+
+            pressure_obj    = Pressure(self);
             temperature_obj = Temperature(self, 'min');
-            
-            % stress changes
-            stress_change{1} = FaultStressChange(nFaultCells, nTimeSteps);        % initialize fault stresses for P
-            stress_change{1} = stress_change{1}.calc_stress_changes( ...
-                self.ensemble_members{1}, y, self.dx, ...
-                pressure_obj.get_dP_HW(), pressure_obj.get_dP_FW(), ...
-                temperature_obj.get_dT_HW(), temperature_obj.get_dT_FW(), ...
-                self.load_case);
-        
-            % stress (initial + change)
-            stress_obj = FaultStress(nFaultCells, nTimeSteps);
-            stress_obj = stress_obj.compute_fault_stress(initial_stress{1}, stress_change{1}, pressure_obj.P);
-            
-            % fault slip, reactivation, nucleation
-            slip_obj = FaultSlip(size(stress_obj.sne, 1), size(stress_obj.sne, 2));
-            if self.aseismic_slip
-                fault_strength{1} = stress_obj.sne.*f_s + cohesion;
-                [slip_obj, stress_obj.tau] = slip_obj.calculate_fault_slip(L, stress_obj.sne, stress_obj.tau, ...
-                                                             fault_strength{1}, self.ensemble_members{1}.get_mu_II);
-            end
-            slip_obj = slip_obj.detect_nucleation(y, L, stress_obj.sne, stress_obj.tau, f_s, ...
-                                                        f_d, d_c, cohesion,self.ensemble_members{1}.get_mu_II, ...
-                                                        self.nucleation_criterion, self.nucleation_length_fixed);
-            % clear to save memory
-            stress_change{1} = [];
-            initial_stress{1}= [];
 
-            % get the fault stressses at onset of reactivation and nucleation 
-            stress_obj = stress_obj.get_reactivation_stress(slip_obj.reactivation_load_step);
-            stress_obj = stress_obj.get_nucleation_stress(slip_obj.nucleation_load_step);
-
-            % keep model objects when requested; otherwise expose array
-            % outputs via dependent views from faultResults.
+            inputs = struct();
+            inputs.ensemble_member     = self.ensemble_members{1};
+            inputs.y                   = self.y;
+            inputs.dx                  = self.dx;
+            inputs.load_case           = self.load_case;
+            inputs.nFaultCells         = self.faultLen;
+            inputs.nTimeSteps          = self.nTimes;
+            % Pre-computed pressure arrays
+            inputs.dP_HW = pressure_obj.get_dP_HW();
+            inputs.dP_FW = pressure_obj.get_dP_FW();
+            inputs.P     = pressure_obj.P;
+            inputs.P0    = pressure_obj.P0;
+            inputs.dP    = pressure_obj.dP;
+            % Pre-computed temperature arrays
+            inputs.dT_HW = temperature_obj.get_dT_HW();
+            inputs.dT_FW = temperature_obj.get_dT_FW();
+            inputs.T     = temperature_obj.T;
+            inputs.T0    = temperature_obj.T0;
+            inputs.dT    = temperature_obj.dT;
+            % Pre-compute Green's functions (geometry only — no time dependence)
+            % so workers receive ready-made GF rather than recomputing it.
+            [vary_P, vary_T] = FaultStressChange.variableWithDepthGeometryConstant( ....
+                inputs.dP_HW, inputs.dP_FW, inputs.dT_HW, inputs.dT_FW);
+            vary_dip = FaultStressChange.variableWithDepth(inputs.ensemble_member);
+            lc = self.load_case;
+            vary_PT = (contains(lc,'P') && vary_P) || (contains(lc,'T') && vary_T);
+            inputs.GF = GreensFunctions.initialize( ....
+                inputs.ensemble_member, inputs.y, inputs.dx, vary_PT, vary_dip);
+            % Friction / nucleation parameters
+            inputs.f_s                      = f_s;
+            inputs.f_d                      = f_d;
+            inputs.d_c                      = d_c;
+            inputs.cohesion                 = cohesion;
+            inputs.dip                      = dip;
+            inputs.aseismic_slip            = self.aseismic_slip;
+            inputs.nucleation_criterion     = self.nucleation_criterion;
+            inputs.nucleation_length_fixed  = self.nucleation_length_fixed;
+            inputs.keepModelObjects         = self.keepModelObjects;
+            % Store model objects only when explicitly requested
             if self.keepModelObjects
-                self.pressure_store = {pressure_obj};
-                self.temperature_store = {temperature_obj};
-                self.stress_store = {stress_obj};
-                self.slip_store = {slip_obj};
+                inputs.pressure_obj    = pressure_obj;
+                inputs.temperature_obj = temperature_obj;
+            end
+        end
+
+        function self = applyResults(self, results)
+            % applyResults Store computeStressAndNucleation output back
+            % into this PantherAnalysis and refresh the fault summary.
+            % Ensure ensemble_members is populated (may be empty if this
+            % fault object was never run directly via run()).
+            if isempty(self.ensemble_members) || self.ensemble_dirty
+                self = self.generate_ensemble();
+            end
+            self.faultResults = results.faultResults;
+            self.slip_store   = {results.slip_meta};
+            if results.keepModelObjects
+                self.pressure_store    = {results.pressure_obj};
+                self.temperature_store = {results.temperature_obj};
+                self.stress_store      = {results.stress_obj};
+                self.slip_store        = {results.slip_obj};
             else
-                self.pressure_store = {};
+                self.pressure_store    = {};
                 self.temperature_store = {};
-                self.stress_store = {};
+                self.stress_store      = {};
             end
-
-            % aggregate key outputs in a single struct for convenient access
-            self.faultResults = struct( ...
-                'P0', pressure_obj.P0, ...
-                'P', pressure_obj.P, ...
-                'dP', pressure_obj.dP, ...
-                'T0', temperature_obj.T0, ...
-                'T', temperature_obj.T, ...
-                'dT', temperature_obj.dT, ...
-                'sne', stress_obj.sne, ...
-                'tau', stress_obj.tau, ...
-                'sne_reac', stress_obj.sne_reac, ...
-                'tau_reac', stress_obj.tau_reac, ...
-                'sne_nuc', stress_obj.sne_nuc, ...
-                'tau_nuc', stress_obj.tau_nuc, ...
-                'tau_nu', stress_obj.tau_nuc, ...
-                'slip', slip_obj.slip);
-
-            if ~self.keepModelObjects
-                % Keep only lightweight scalar slip metadata in backing
-                % storage; pressure/temperature/stress/slip arrays are
-                % exposed via dependent views from faultResults.
-                self.slip_store = {struct( ...
-                    'reactivation', slip_obj.reactivation, ...
-                    'reactivation_load_step', slip_obj.reactivation_load_step, ...
-                    'nucleation', slip_obj.nucleation, ...
-                    'nucleation_load_step', slip_obj.nucleation_load_step, ...
-                    'nucleation_length', slip_obj.nucleation_length, ...
-                    'nucleation_zone_ymid', slip_obj.nucleation_zone_ymid, ...
-                    'max_slip_length', slip_obj.max_slip_length)};
-            end
-
-            % Keep run() behavior consistent with panther(): always
-            % refresh faultSummary after computing outputs.
             self = self.make_result_summary();
-
-            % % reduce output
-            % self.pressure{1} = self.pressure{1}.reduce_steps(indices_for_saving);
-            % stress{1} = stress{1}.reduce_steps(indices_for_saving);
-            % self.temperature{1} = self.temperature{1}.reduce_steps(indices_for_saving);
-            % self.slip{1} = self.slip{1}.reduce_steps(indices_for_saving);
         end
 
         function self = mark_ensemble_dirty(self)
@@ -701,6 +684,79 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             if ~ismember(parameterName, valid_input_parameter_names)
                 validNames = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
                 error(['input parameter name ', parameterName, ' not valid, should be one of ', validNames{:}]);
+            end
+        end
+
+    end
+
+    methods (Static)
+
+        function results = computeStressAndNucleation(inputs)
+            % computeStressAndNucleation Compute fault stress, slip and
+            % nucleation from a plain inputs struct produced by extractInputs.
+            %
+            % This is a static method with no PantherAnalysis dependency so
+            % it can be called inside a parfor without broadcasting the full
+            % object — only the compact inputs struct is sent to each worker.
+            y           = inputs.y;
+            L           = y ./ sin(inputs.dip * pi / 180);
+            nFaultCells = inputs.nFaultCells;
+            nTimeSteps  = inputs.nTimeSteps;
+
+            % Initial stress
+            initial_stress = InitialStress(y, inputs.ensemble_member);
+
+            % Stress changes (uses pre-computed dP/dT arrays and GF from extract_inputs)
+            stress_change = FaultStressChange(nFaultCells, nTimeSteps);
+            stress_change = stress_change.calc_stress_changes( ...
+                inputs.ensemble_member, y, inputs.dx, ...
+                inputs.dP_HW, inputs.dP_FW, ...
+                inputs.dT_HW, inputs.dT_FW, ...
+                inputs.load_case, inputs.GF);
+
+            % Total fault stress
+            stress_obj = FaultStress(nFaultCells, nTimeSteps);
+            stress_obj = stress_obj.compute_fault_stress(initial_stress, stress_change, inputs.P);
+
+            % Aseismic slip and nucleation
+            slip_obj = FaultSlip(size(stress_obj.sne, 1), size(stress_obj.sne, 2));
+            if inputs.aseismic_slip
+                fault_strength = stress_obj.sne .* inputs.f_s + inputs.cohesion;
+                [slip_obj, stress_obj.tau] = slip_obj.calculate_fault_slip(L, stress_obj.sne, stress_obj.tau, ...
+                    fault_strength, inputs.ensemble_member.get_mu_II);
+            end
+            slip_obj = slip_obj.detect_nucleation(y, L, stress_obj.sne, stress_obj.tau, ...
+                inputs.f_s, inputs.f_d, inputs.d_c, inputs.cohesion, ...
+                inputs.ensemble_member.get_mu_II, ...
+                inputs.nucleation_criterion, inputs.nucleation_length_fixed);
+
+            % Reactivation and nucleation stresses
+            stress_obj = stress_obj.get_reactivation_stress(slip_obj.reactivation_load_step);
+            stress_obj = stress_obj.get_nucleation_stress(slip_obj.nucleation_load_step);
+
+            % Pack results
+            results = struct();
+            results.keepModelObjects = inputs.keepModelObjects;
+            results.faultResults = struct( ...
+                'P0', inputs.P0, 'P', inputs.P, 'dP', inputs.dP, ...
+                'T0', inputs.T0, 'T', inputs.T, 'dT', inputs.dT, ...
+                'sne', stress_obj.sne, 'tau', stress_obj.tau, ...
+                'sne_reac', stress_obj.sne_reac, 'tau_reac', stress_obj.tau_reac, ...
+                'sne_nuc', stress_obj.sne_nuc, 'tau_nuc', stress_obj.tau_nuc, ...
+                'tau_nu', stress_obj.tau_nuc, 'slip', slip_obj.slip);
+            results.slip_meta = struct( ...
+                'reactivation', slip_obj.reactivation, ...
+                'reactivation_load_step', slip_obj.reactivation_load_step, ...
+                'nucleation', slip_obj.nucleation, ...
+                'nucleation_load_step', slip_obj.nucleation_load_step, ...
+                'nucleation_length', slip_obj.nucleation_length, ...
+                'nucleation_zone_ymid', slip_obj.nucleation_zone_ymid, ...
+                'max_slip_length', slip_obj.max_slip_length);
+            if inputs.keepModelObjects
+                results.pressure_obj    = inputs.pressure_obj;
+                results.temperature_obj = inputs.temperature_obj;
+                results.stress_obj      = stress_obj;
+                results.slip_obj        = slip_obj;
             end
         end
 
