@@ -81,51 +81,56 @@ classdef MultiFaultAnalysis < handle
 
         function self = run(self)
             % run Runs the simulation for all faults.
-            % Uses cell arrays for parfor input/output so MATLAB can slice
-            % properly — each worker receives exactly one fault object
-            % instead of broadcasting the entire typed array.
-            all_faults = self.faults;
-            n = self.nFaults;
-            printStatus     = self.printStatusOutput;
-            printEveryN     = max(1, round(self.printStatusEveryNFaults));
+            %
+            % Each fault is handled in two steps that are both inside the
+            % parallel loop so that Pressure, Temperature, and Green's
+            % function construction (the expensive operations) are
+            % distributed across workers:
+            %
+            %   extract_inputs()                — builds plain-struct inputs
+            %                                     (Pressure, Temperature, GF)
+            %   compute_stress_and_nucleation() — static; stress + slip + nuc
+            %
+            % Results are then applied back serially via apply_results().
+            % Using cell arrays for parfor input/output ensures MATLAB slices
+            % exactly one PantherAnalysis object per worker rather than
+            % broadcasting the full typed array.
+            all_faults  = self.faults;
+            n           = self.nFaults;
+            printStatus = self.printStatusOutput;
+            printEveryN = max(1, round(self.printStatusEveryNFaults));
 
+            % Pack faults into cell array for parfor slicing
+            fault_cell = cell(n, 1);
+            for i = 1 : n
+                fault_cell{i} = all_faults(i);
+            end
+
+            result_cell = cell(n, 1);
             if self.parallel
-                % Pack faults into a cell array so parfor can slice them.
-                fault_cell_in = cell(n, 1);
-                for i = 1 : n
-                    fault_cell_in{i} = all_faults(i);
-                end
-
-                fault_cell_out = cell(n, 1);
                 parfor i = 1 : n
-                    fi = fault_cell_in{i};
-                    fi = fi.run();
-                    fi = fi.make_result_summary();
-                    fault_cell_out{i} = fi;
+                    inputs          = fault_cell{i}.extract_inputs();
+                    result_cell{i}  = PantherAnalysis.compute_stress_and_nucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
                 end
-
-                faults_updated_with_results = all_faults;  % pre-alloc typed output
-                for i = 1 : n
-                    faults_updated_with_results(i, 1) = fault_cell_out{i};
-                end
             else
-                faults_updated_with_results = all_faults;
                 for i = 1 : n
-                    fault_i = all_faults(i);
-                    fault_i = fault_i.run();
-                    fault_i = fault_i.make_result_summary();
-                    faults_updated_with_results(i, 1) = fault_i;
+                    inputs          = fault_cell{i}.extract_inputs();
+                    result_cell{i}  = PantherAnalysis.compute_stress_and_nucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
-                        disp(['fault ', num2str(i), ' of ', num2str(n)]);
+                        fprintf('fault %d of %d\n', i, n);
                     end
                 end
             end
 
-            self.faults = faults_updated_with_results;
-            self.runDone = true;
+            % Apply results serially
+            for i = 1 : n
+                all_faults(i) = all_faults(i).apply_results(result_cell{i});
+            end
+            self.faults       = all_faults;
+            self.runDone      = true;
             self.faultSummary = self.getResultsSummary();
         end
 

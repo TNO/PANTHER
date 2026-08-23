@@ -145,4 +145,101 @@ classdef GreensFunctions
 
     end
 
+    methods (Static)
+
+        function GF = initialize(params, y, dx, variable_PT, variable_dip)
+            % initialize  Build a cell array of GreensFunctions objects for
+            % a given fault geometry, choosing the appropriate mode:
+            %   uniform    — single GF shifted along-depth  (fastest)
+            %   variable PT — one GF convolved by shift vector (intermediate)
+            %   variable dip — separate GF at every depth cell (slowest)
+            %
+            % INPUT
+            % params        PantherMember with fault/reservoir geometry
+            % y             [m] depth array w.r.t. y_mid
+            % dx            [m] distance from fault in x
+            % variable_PT   logical — true when P or T vary with depth
+            % (vertical slice can be translated)
+            % variable_dip  logical — true when dip varies with depth
+            % (separate Greens's function at each depth)
+            %
+            % OUTPUT
+            % GF   cell(1,1) for uniform case; cell(length(y),1) otherwise
+
+            correction_value = 1e-3;
+            if dx == 0 || dx == params.width_FW || dx == -params.width_HW
+                dx = dx + correction_value;
+            end
+            reservoir_boundaries = [params.y_FW_top, params.y_HW_top, params.y_HW_base, params.y_FW_base];
+            y_correction = zeros(size(y));
+            for i = 1 : length(reservoir_boundaries)
+                if ismember(y, reservoir_boundaries(i))
+                    if i == 1 || i == 2
+                        y_correction(ismember(y, reservoir_boundaries(i))) = -correction_value;
+                    else
+                        y_correction(ismember(y, reservoir_boundaries(i))) = correction_value;
+                    end
+                end
+            end
+            y = y + y_correction;
+            xeval = y ./ (tan(params.dip * pi / 180)) + dx;
+
+            if ~variable_PT && ~variable_dip
+                % --- uniform case ---
+                GF{1} = GreensFunctions(y);
+                GF{1}.y_correction = y_correction;
+                if params.width_FW > 0
+                    GF{1} = GF{1}.green_FW(xeval, y, params.dip, params.thick, params.throw, params.width_FW, 0, 0);
+                end
+                if params.width_HW > 0
+                    GF{1} = GF{1}.green_HW(xeval, y, params.dip, params.thick, params.throw, params.width_HW, 0, 0);
+                end
+
+            elseif variable_PT && ~variable_dip
+                % --- variable P/T, uniform dip: shift a single GF ---
+                slice_thick = y(1) - y(2);
+                y2     = [y; y(1:end-1) + (y(end) - y(1)) - slice_thick];
+                xeval2 = y2 / (tan(params.dip * pi / 180)) + dx;
+                i_mid  = ceil(length(y2) / 2);
+                slice_y = y2(i_mid);
+                slice_x = slice_y / (tan(params.dip * pi / 180));
+                slice_throw = 0;
+                greens_f = GreensFunctions(y2);
+                if params.width_FW > 0
+                    greens_f = greens_f.green_FW(xeval2, y2, params.dip, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
+                end
+                if params.width_HW > 0
+                    greens_f = greens_f.green_HW(xeval2, y2, params.dip, slice_thick, slice_throw, params.width_HW, slice_x, slice_y);
+                end
+                GF = cell(length(y), 1);
+                for j = 1 : length(y)
+                    GF{j} = greens_f;
+                    GF{j}.Gnorm_FW  = GF{j}.Gnorm_FW(i_mid-j+1 : 2*i_mid-j);
+                    GF{j}.Gnorm_HW  = GF{j}.Gnorm_HW(i_mid-j+1 : 2*i_mid-j);
+                    GF{j}.Gshear_FW = GF{j}.Gshear_FW(i_mid-j+1 : 2*i_mid-j);
+                    GF{j}.Gshear_HW = GF{j}.Gshear_HW(i_mid-j+1 : 2*i_mid-j);
+                end
+
+            else
+                % --- variable dip: separate GF per depth cell (slowest) ---
+                slice_thick = y(1) - y(2);
+                slice_throw = 0;
+                GF = cell(length(y), 1);
+                for j = 1 : length(y)
+                    if variable_dip
+                        dip_j = params.dip(j);
+                    else
+                        dip_j = params.dip;
+                    end
+                    slice_y = y(j);
+                    slice_x = slice_y / (tan(dip_j * pi / 180));
+                    GF{j} = GreensFunctions(y);
+                    GF{j} = GF{j}.green_FW(xeval, y, dip_j, slice_thick, slice_throw, params.width_FW, slice_x, slice_y);
+                    GF{j} = GF{j}.green_HW(xeval, y, dip_j, slice_thick, slice_throw, params.width_HW, slice_x, slice_y);
+                end
+            end
+        end
+
+    end
+
 end
