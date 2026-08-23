@@ -22,8 +22,8 @@ pert = amp.*sin(2*pi*F.*sc1_variable_friction.y);
 sc1_variable_friction.setDepthDependentInputParameter('shsv',...
     sc1_variable_friction.getInputParameter('shsv') + pert) ;
 
-% generate model ensemble
-sc1_variable_friction.generate_ensemble();
+% generate fault realization
+sc1_variable_friction.generateRealization();
 
 % run panther with current input instance
 sc1_variable_friction.run();
@@ -88,8 +88,8 @@ sc2_variable_dip.setDepthDependentInputParameter('dip', varying_dip);
 % turn aseismic slip off
 sc2_variable_dip.aseismic_slip = 0;
 
-% generate model ensemble
-sc2_variable_dip.generate_ensemble();
+% generate fault realization
+sc2_variable_dip.generateRealization();
 
 % run panther with current input instance
 sc2_variable_dip.run();
@@ -136,4 +136,6 @@ ylabel('Depth (m)');
 ylim([sc2_variable_dip.getInputParameter('depth_mid') - 300, sc2_variable_dip.getInputParameter('depth_mid') + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
+
+
 

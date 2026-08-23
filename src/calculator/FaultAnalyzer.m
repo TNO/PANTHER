@@ -15,21 +15,15 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
-        ensemble_members cell                       % single cached member object stored in a 1x1 cell array
-        ensemble_dirty logical = true               % indicate whether the cached member must be regenerated
+        faultRealization = []                       % FaultRealization for this fault; empty until generateRealization() is called
+        realizationStale logical = true             % true when faultRealization must be regenerated. Note that it will always be regenerated when executing run.  
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
-        suppress_status_output logical = false      % indicate ensemble member calculation 
-        keepModelObjects logical = false            % keep full result objects (Pressure/Temperature/Stress/Slip) after run
-        faultResults struct
-        faultSummary table
-    end
-
-    properties (Access = private)
-        pressure_store cell = {}
-        temperature_store cell = {}
-        stress_store cell = {}
-        slip_store cell = {}
-    end
+        keepModelObjects logical = false            % true: retain full Pressure/Temperature/FaultStress/FaultSlip objects in *_store
+                                                    % after run (for object-method access). Note: raw arrays are always in faultResults
+                                                    % regardless; this flag trades extra memory for access to object methods.
+        faultResults struct                         % lightweight plain-array results (sne, tau, P, slip, etc.); always populated after run
+        faultSummary table                          % per-run scalar summary (reactivation, nucleation step, lengths, etc.)
+    end 
 
     properties (Constant)
         dx double  = 0;                             % [m] distance from from (for now only on fault allowed)
@@ -37,13 +31,28 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
     end
 
     properties (Dependent) 
-        ensemble table                              % ensemble member input translated to a table for convenient use
-        pressure cell                               % compatibility view (or stored objects when keepModelObjects=true)
-        temperature cell                            % compatibility view (or stored objects when keepModelObjects=true)
-        stress cell                                 % compatibility view (or stored objects when keepModelObjects=true)
-        slip cell                                   % compatibility view (or stored objects when keepModelObjects=true)
+        realizationTable table                      % faultRealization parameters as a flat table for inspection
         nTimes (1,1) double                         % number of modeled load steps
         summary table                               % deprecated alias for faultSummary
+    end
+
+    properties (Access = private)
+        % Internal result caches. Access via faultResults (arrays) or the
+        % Dependent properties (objects, when keepModelObjects = true).
+        pressure_store cell = {}                    % {Pressure} when keepModelObjects=true; empty otherwise (data lives in faultResults)
+        temperature_store cell = {}                 % {Temperature} when keepModelObjects=true; empty otherwise
+        stress_store cell = {}                      % {FaultStress} when keepModelObjects=true; empty otherwise
+        slip_store cell = {}                        % always populated after run: {FaultSlip} (keepModelObjects=true) or {slip_meta struct} (lightweight)
+    end
+
+    properties (Dependent, Hidden)
+        % Backward-compatibility accessors. Prefer faultResults fields directly.
+        pressure cell                               % Deprecated. Use faultResults.P. Returns {Pressure obj} if keepModelObjects=true, else struct view.
+        temperature cell                            % Deprecated. Use faultResults.T. Returns {Temperature obj} if keepModelObjects=true, else struct view.
+        stress cell                                 % Deprecated. Use faultResults.sne/tau. Returns {FaultStress obj} if keepModelObjects=true, else struct view.
+        slip cell                                   % Deprecated. Use faultResults.slip. Returns {FaultSlip obj} if keepModelObjects=true, else struct with scalar slip metadata.
+        ensemble_members                            % Deprecated. Use faultRealization instead.
+        ensemble                                    % Deprecated. Use realizationTable instead.
     end
 
     methods
@@ -54,7 +63,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % delay heavy load_table initialization when performing bulk creation
             % if create_ensemble
             self.load_table = initialize_load_table();
-            % self.generate_ensemble();
+            % self.generateRealization();
         end
 
         function self = run(self)
@@ -72,7 +81,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % as a plain struct.  Pre-computes Pressure and Temperature so
             % the heavy compute step (computeStressAndNucleation) has no
             % dependency on the FaultAnalyzer object.
-            self = self.generate_ensemble();
+            self = self.generateRealization();
 
             dip       = self.getInputParameter('dip');
             f_s       = self.getDepthDependentInputParameter('f_s');
@@ -84,7 +93,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             temperature_obj = Temperature(self, 'min');
 
             inputs = struct();
-            inputs.ensemble_member     = self.ensemble_members{1};
+            inputs.faultRealization     = self.faultRealization;
             inputs.y                   = self.y;
             inputs.dx                  = self.dx;
             inputs.load_case           = self.load_case;
@@ -106,11 +115,11 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % so workers receive ready-made GF rather than recomputing it.
             [vary_P, vary_T] = FaultStressChange.variableWithDepthGeometryConstant( ....
                 inputs.dP_HW, inputs.dP_FW, inputs.dT_HW, inputs.dT_FW);
-            vary_dip = FaultStressChange.variableWithDepth(inputs.ensemble_member);
+            vary_dip = FaultStressChange.variableWithDepth(inputs.faultRealization);
             lc = self.load_case;
             vary_PT = (contains(lc,'P') && vary_P) || (contains(lc,'T') && vary_T);
             inputs.GF = GreensFunctions.initialize( ....
-                inputs.ensemble_member, inputs.y, inputs.dx, vary_PT, vary_dip);
+                inputs.faultRealization, inputs.y, inputs.dx, vary_PT, vary_dip);
             % Friction / nucleation parameters
             inputs.f_s                      = f_s;
             inputs.f_d                      = f_d;
@@ -131,10 +140,10 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         function self = applyResults(self, results)
             % applyResults Store computeStressAndNucleation output back
             % into this FaultAnalyzer and refresh the fault summary.
-            % Ensure ensemble_members is populated (may be empty if this
+            % Ensure faultRealization is populated (may be empty if this
             % fault object was never run directly via run()).
-            if isempty(self.ensemble_members) || self.ensemble_dirty
-                self = self.generate_ensemble();
+            if isempty(self.faultRealization) || self.realizationStale
+                self = self.generateRealization();
             end
             self.faultResults = results.faultResults;
             self.slip_store   = {results.slip_meta};
@@ -151,8 +160,8 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             self = self.make_result_summary();
         end
 
-        function self = mark_ensemble_dirty(self)
-            self.ensemble_dirty = true;
+        function self = mark_realizationStale(self)
+            self.realizationStale = true;
         end
        
 
@@ -170,7 +179,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             p = self.input_parameters.(parameterName);
             p.(parameterType) = parameterValues;
             self.input_parameters.(parameterName) = p;
-            self.ensemble_dirty = true;
+            self.realizationStale = true;
         end
 
         function self = setDepthDependentInputParameter(self, parameterName, parameterValues)
@@ -182,7 +191,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             p.uniform_with_depth = 0;
             p.value_with_depth = parameterValues;
             self.input_parameters.(parameterName) = p;
-            self.ensemble_dirty = true;
+            self.realizationStale = true;
         end
 
         function self = deactivateDepthDependentInputParameter(self, parameterName)
@@ -193,30 +202,29 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             p = self.input_parameters.(parameterName);
             p.uniform_with_depth = 1;
             self.input_parameters.(parameterName) = p;
-            self.ensemble_dirty = true;
+            self.realizationStale = true;
         end
 
-        function self = generate_ensemble(self)
-            % Generate the single cached PantherMember used by this analysis.
-            self.ensemble_members = cell(1, 1);
-            self.ensemble_members{1,1} = PantherMember(self.input_parameters, self.stochastic);
-            self.ensemble_dirty = false;
+        function self = generateRealization(self)
+            % generateRealization  Build the single FaultRealization for this fault.
+            % Call this (or run()) before accessing faultRealization.
+            self.faultRealization = FaultRealization(self.input_parameters, self.stochastic);
+            self.realizationStale = false;
         end
 
-        function ensemble_table = ensemble_to_table(self)
-            % create table of input parameter values for easy inspection
-            if isempty(self.ensemble_members) || self.ensemble_dirty
-                self.generate_ensemble();
+        function self = generate_ensemble(self) %#ok<MANU>
+            % generate_ensemble  Deprecated. Use generateRealization() instead.
+            warning('FaultAnalyzer:deprecated', ...
+                'generate_ensemble() is deprecated. Use generateRealization() instead.');
+            self = self.generateRealization();
+        end
+
+        function realizationTable = toRealizationTable(self)
+            % toRealizationTable  Return faultRealization parameters as a flat table.
+            if isempty(self.faultRealization) || self.realizationStale
+                self = self.generateRealization();
             end
-            ensemble_table = table;
-            for j = 1 : length(self.ensemble_members)
-                if j == 1 
-                    ensemble_table = self.ensemble_members{j,1}.to_table();
-                else
-                    new_row = self.ensemble_members{j,1}.to_table();
-                    ensemble_table = [ensemble_table; new_row];
-                end
-            end
+            realizationTable = self.faultRealization.to_table();
         end
 
         function self = make_result_summary(self)
@@ -238,7 +246,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             column_names = {'reactivation', 'reactivation_load_step', 'nucleation', ...
                 'nucleation_load_step', 'nucleation_length', 'nucleation_zone_ymid', ...
                 'max_slip_length'};
-            num_rows = length(self.ensemble_members);
+            num_rows = 1;
             self.faultSummary = table(nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 'VariableNames', column_names);
@@ -254,34 +262,33 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             warning('on'); 
         end
         
-        function [geom_table] = get_ensemble_geometries(self)
-            % geo_geometries Returns useful geometrical indicators for all
-            % ensemble members
-            % Input:
+        function [geom_table] = getRealizationGeometries(self)
+            % getRealizationGeometries  Returns geometric indicators for the
+            % fault realization as a table.
             % Output:
-            %   geom_table - table (height ensemble)
-            if ~isempty(self.ensemble)
+            %   geom_table - table with geometry, reservoir indices, etc.
+            if ~isempty(self.realizationTable)
                 input_geometries = {'depth_mid','thick','throw','width_FW', 'width_HW', 'dip'};
-                input_table = self.ensemble;
+                input_table = self.realizationTable;
                 geom_table = input_table(:, input_geometries);
                 y = self.y;
-                for i = 1 : length(self.ensemble_members)
+                for i = 1 : 1
                     geom_table.y_abs{i} = y + geom_table.depth_mid(i);
-                    geom_table.L{i} = self.ensemble_members{i}.get_along_fault_length(y);
-                    geom_table.y_FW_top(i) = self.ensemble_members{i}.y_FW_top();
-                    geom_table.y_FW_base(i) = self.ensemble_members{i}.y_FW_base();
-                    geom_table.y_HW_top(i) = self.ensemble_members{i}.y_HW_top();
-                    geom_table.y_HW_base(i) = self.ensemble_members{i}.y_HW_base();
-                    geom_table.i_FW_top(i) = self.ensemble_members{i}.i_FW_top(y);
-                    geom_table.i_FW_base(i) = self.ensemble_members{i}.i_FW_base(y);
-                    geom_table.i_HW_top(i) = self.ensemble_members{i}.i_HW_top(y);
-                    geom_table.i_HW_base(i) = self.ensemble_members{i}.i_HW_base(y);
-                    geom_table.i_FW{i} = self.ensemble_members{i}.i_FW(y);
-                    geom_table.i_HW{i} = self.ensemble_members{i}.i_HW(y);
-                    geom_table.i_reservoir{i} = self.ensemble_members{i}.i_reservoir(y);
+                    geom_table.L{i} = self.faultRealization.get_along_fault_length(y);
+                    geom_table.y_FW_top(i) = self.faultRealization.y_FW_top();
+                    geom_table.y_FW_base(i) = self.faultRealization.y_FW_base();
+                    geom_table.y_HW_top(i) = self.faultRealization.y_HW_top();
+                    geom_table.y_HW_base(i) = self.faultRealization.y_HW_base();
+                    geom_table.i_FW_top(i) = self.faultRealization.i_FW_top(y);
+                    geom_table.i_FW_base(i) = self.faultRealization.i_FW_base(y);
+                    geom_table.i_HW_top(i) = self.faultRealization.i_HW_top(y);
+                    geom_table.i_HW_base(i) = self.faultRealization.i_HW_base(y);
+                    geom_table.i_FW{i} = self.faultRealization.i_FW(y);
+                    geom_table.i_HW{i} = self.faultRealization.i_HW(y);
+                    geom_table.i_reservoir{i} = self.faultRealization.i_reservoir(y);
                 end
             else
-                warning('Ensemble not yet initialized, run generate_ensemble first');
+                warning('FaultAnalyzer:noRealization', 'Realization not yet built, call generateRealization() first.');
             end
         end
         
@@ -532,8 +539,38 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             cff_ymid = mean(cff_rate(i_ymid,:));
         end
 
-        function ensemble = get.ensemble(self)
-            ensemble = self.ensemble_to_table();
+        function realizationTable = get.realizationTable(self)
+            % Returns an empty table if the realization has not been built
+            % yet, to avoid triggering generateRealization() implicitly
+            % (e.g. Variable Explorer, parfor broadcast, display).
+            % Call generateRealization() or run() first to populate.
+            if isempty(self.faultRealization) || self.realizationStale
+                realizationTable = table();
+            else
+                realizationTable = self.faultRealization.to_table();
+            end
+        end
+
+        % --- Backward-compat getter for deprecated ensemble property ---
+        function t = get.ensemble(self)
+            warning('FaultAnalyzer:deprecated', ...
+                'ensemble is deprecated. Use realizationTable instead.');
+            t = self.realizationTable;
+        end
+
+        % --- Backward-compat getter/setter for deprecated ensemble_members ---
+        function em = get.ensemble_members(self)
+            if isempty(self.faultRealization)
+                em = {};
+            else
+                em = {self.faultRealization};
+            end
+        end
+
+        function self = set.ensemble_members(self, val)
+            if ~isempty(val)
+                self.faultRealization = val{1};
+            end
         end
 
         function pressure = get.pressure(self)
@@ -704,12 +741,12 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             nTimeSteps  = inputs.nTimeSteps;
 
             % Initial stress
-            initial_stress = InitialStress(y, inputs.ensemble_member);
+            initial_stress = InitialStress(y, inputs.faultRealization);
 
             % Stress changes (uses pre-computed dP/dT arrays and GF from extract_inputs)
             stress_change = FaultStressChange(nFaultCells, nTimeSteps);
             stress_change = stress_change.calc_stress_changes( ...
-                inputs.ensemble_member, y, inputs.dx, ...
+                inputs.faultRealization, y, inputs.dx, ...
                 inputs.dP_HW, inputs.dP_FW, ...
                 inputs.dT_HW, inputs.dT_FW, ...
                 inputs.load_case, inputs.GF);
@@ -723,11 +760,11 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             if inputs.aseismic_slip
                 fault_strength = stress_obj.sne .* inputs.f_s + inputs.cohesion;
                 [slip_obj, stress_obj.tau] = slip_obj.calculate_fault_slip(L, stress_obj.sne, stress_obj.tau, ...
-                    fault_strength, inputs.ensemble_member.get_mu_II);
+                    fault_strength, inputs.faultRealization.get_mu_II);
             end
             slip_obj = slip_obj.detect_nucleation(y, L, stress_obj.sne, stress_obj.tau, ...
                 inputs.f_s, inputs.f_d, inputs.d_c, inputs.cohesion, ...
-                inputs.ensemble_member.get_mu_II, ...
+                inputs.faultRealization.get_mu_II, ...
                 inputs.nucleation_criterion, inputs.nucleation_length_fixed);
 
             % Reactivation and nucleation stresses
@@ -762,4 +799,8 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
 
     end
 end
+
+
+
+
 

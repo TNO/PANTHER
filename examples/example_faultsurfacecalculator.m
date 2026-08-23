@@ -29,11 +29,11 @@ depth_dependent_shsv = cell(size(fault.pillars));
 depth_dependent_shsv(:) = {ones(size(y))*0.8};
 % set the reservoir interval shsv to a different value
 for i = 1 : length(fault.pillars)
-    fault.pillars{i}.generate_ensemble();
-    i_HW_top = fault.pillars{i}.ensemble_members{1}.i_HW_top(y);
-    i_FW_top = fault.pillars{i}.ensemble_members{1}.i_FW_top(y);
-    i_HW_base = fault.pillars{i}.ensemble_members{1}.i_HW_base(y);
-    i_FW_base = fault.pillars{i}.ensemble_members{1}.i_FW_base(y);
+    fault.pillars{i}.generateRealization();
+    i_HW_top = fault.pillars{i}.faultRealization.i_HW_top(y);
+    i_FW_top = fault.pillars{i}.faultRealization.i_FW_top(y);
+    i_HW_base = fault.pillars{i}.faultRealization.i_HW_base(y);
+    i_FW_base = fault.pillars{i}.faultRealization.i_FW_base(y);
     top_reservoir_interval = min(i_FW_top, i_HW_top);
     base_reservoir_interval = max(i_FW_base, i_HW_base);
     depth_dependent_shsv{i}(top_reservoir_interval:base_reservoir_interval) = 0.75;
@@ -130,5 +130,6 @@ ylabel(cb, '\tau/\sigma_n''');
 xlim([min(fault.L), max(fault.L)]);
 [ymin, ymax]  = fault.get_min_max_depth;
 ylim([ymin, ymax]);
+
 
 

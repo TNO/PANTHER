@@ -30,7 +30,7 @@ classdef FaultStressChange
             % INPUT
             % dP_HW, dP_FW             pressure changes on HW/FW
             % dT_HW, dT_FW             temperature changes on HW/FW
-            % params                    input parameters for 1 ensemble member
+            % params                    FaultRealization with fault/reservoir geometry
             % y                         depth array w.r.t. y_mid
             % load_case                 P, T, or PT
             % GF (optional)            pre-computed Green's functions cell array from

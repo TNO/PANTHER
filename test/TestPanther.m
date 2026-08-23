@@ -22,8 +22,8 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance = FaultAnalyzer;
             run_instance.load_case = 'T';
             run_instance.diffusion_T = 0;
-            run_instance.generate_ensemble();
-            run_instance.ensemble_members{1}.get_gamma_T;
+            run_instance.generateRealization();
+            run_instance.faultRealization.get_gamma_T;
                 run_instance = run_instance.run();
             i_mid = ceil(length(run_instance.y)/2);
                 actual = run_instance.faultResults.sne(i_mid, end);
@@ -63,14 +63,14 @@ classdef TestPanther < matlab.unittest.TestCase
             nuc_dp_uniform = nuc_dp_uniform(i_mid);
             % make an array of f_s of size (y)
             run_instance2 = FaultAnalyzer();
-            run_instance2.generate_ensemble();
+            run_instance2.generateRealization();
             f_s_with_depth = ones(size(run_instance2.y))*0.6;
-            i_reservoir_top = run_instance2.ensemble_members{1}.i_HW_top(run_instance2.y);
+            i_reservoir_top = run_instance2.faultRealization.i_HW_top(run_instance2.y);
             f_s_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
             %run_instance2.y(i_reservoir_top - 15: i_reservoir_top + 15)
             run_instance2.setDepthDependentInputParameter('f_s', f_s_with_depth);
             % run the model
-            run_instance2.generate_ensemble();
+            run_instance2.generateRealization();
             run_instance2.run();
             nuc_step = run_instance2.faultSummary.nucleation_load_step;
             nuc_dp_2 = run_instance2.get_output_at_load_step('dP', nuc_step);
@@ -91,7 +91,7 @@ classdef TestPanther < matlab.unittest.TestCase
             f_d_with_depth = ones(size(run_instance.y))*0.45;
             d_c_with_depth = ones(size(run_instance.y))*0.005;
             % set a different friction at the top of the reservoir
-            i_reservoir_top = run_instance.ensemble_members{1}.i_HW_top(run_instance.y);
+            i_reservoir_top = run_instance.faultRealization.i_HW_top(run_instance.y);
             f_s_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.55;
             f_d_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.43; 
             d_c_with_depth(i_reservoir_top - 15: i_reservoir_top + 15) = 0.12;
@@ -129,8 +129,8 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.setInputParameter('dip_azi', 90);   % strike parallel to sH_dir
             result = run_instance.run();
             actual = result.faultResults.sne(1);
-            expected = -run_instance.ensemble_members{1}.depth_mid/1000 * ((run_instance.ensemble_members{1}.sv_grad ...
-                * run_instance.ensemble_members{1}.shsv) - run_instance.ensemble_members{1}.P_grad) ; 
+            expected = -run_instance.faultRealization.depth_mid/1000 * ((run_instance.faultRealization.sv_grad ...
+                * run_instance.faultRealization.shsv) - run_instance.faultRealization.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10);
             
             % test with sH_dir perpendicular to strike (parallel to
@@ -138,8 +138,8 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.setInputParameter('sH_dir', 90);
             result = run_instance.run();
             actual = result.faultResults.sne(1);
-            expected = -run_instance.ensemble_members{1}.depth_mid/1000 * ((run_instance.ensemble_members{1}.sv_grad ...
-                * run_instance.ensemble_members{1}.shsv * run_instance.ensemble_members{1}.sHsh) - run_instance.ensemble_members{1}.P_grad) ; 
+            expected = -run_instance.faultRealization.depth_mid/1000 * ((run_instance.faultRealization.sv_grad ...
+                * run_instance.faultRealization.shsv * run_instance.faultRealization.sHsh) - run_instance.faultRealization.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
 
             % test with sH_dir perpendicular to strike (parallel to
@@ -147,10 +147,11 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.setInputParameter('sH_dir', -90);
             result = run_instance.run();
             actual = result.faultResults.sne(1);
-            expected = -run_instance.ensemble_members{1}.depth_mid/1000 * ((run_instance.ensemble_members{1}.sv_grad ...
-                * run_instance.ensemble_members{1}.shsv * run_instance.ensemble_members{1}.sHsh) - run_instance.ensemble_members{1}.P_grad) ; 
+            expected = -run_instance.faultRealization.depth_mid/1000 * ((run_instance.faultRealization.sv_grad ...
+                * run_instance.faultRealization.shsv * run_instance.faultRealization.sHsh) - run_instance.faultRealization.P_grad) ; 
             testCase.verifyEqual(actual, expected, "RelTol", 1e-10); 
         end
 
     end
 end
+

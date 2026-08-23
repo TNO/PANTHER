@@ -290,7 +290,7 @@ classdef MultiFaultAnalyzer < handle
                     end
                     self.faults(i).setInputParameter(propName, value);
                 end
-                self.faults(i).ensemble_dirty = true;
+                self.faults(i).realizationStale = true;
             end
         end
 
@@ -642,10 +642,10 @@ classdef MultiFaultAnalyzer < handle
             for i = 1 : self.nFaults
                 y = self.faults(i).y;
                 for j = 1 : length(vars)
-                    if isempty(self.faults(i).ensemble_members{1})
-                        self.faults(i).generate_ensemble();
+                    if isempty(self.faults(i).faultRealization)
+                        self.faults(i).generateRealization();
                     end
-                    reservoirBoundaries.(vars{j})(i) = self.faults(i).ensemble_members{1}.(['y_', vars{j}]) + self.faults(i).ensemble_members{1}.depth_mid;
+                    reservoirBoundaries.(vars{j})(i) = self.faults(i).faultRealization.(['y_', vars{j}]) + self.faults(i).faultRealization.depth_mid;
                 end
             end
         end
@@ -785,7 +785,7 @@ classdef MultiFaultAnalyzer < handle
             %   submitted_name - Name of the setting to validate
             % check if run setting name is valid
             valid_setting_names = fields(self.faults(1));
-            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'input_parameters','load_table','y','ensemble'})
+            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'input_parameters','load_table','y','realizationTable'})
                 validName = true;
                 if ismember(submittedName,{'P_res_mode','P_fault_mode','P0_fault_mode',...
                         'load_case','nucleation_criterion'})
@@ -803,6 +803,9 @@ classdef MultiFaultAnalyzer < handle
         end
 
         function [validTimeStep] = isValidTimeStep(self, timeStep)
+            % TODO: still assumes timesteps are equal for all faults. 
+            % Consider to constrain that all faults are ran with same nr of
+            % load steps, and/or move this method to PantherAnalysis level
             validTimeStep = false;
             if ~(timeStep == floor(timeStep))
                 error(['Time step must be an integer between 1 and ',...
@@ -829,4 +832,8 @@ classdef MultiFaultAnalyzer < handle
 
     end
 end
+
+
+
+
 
