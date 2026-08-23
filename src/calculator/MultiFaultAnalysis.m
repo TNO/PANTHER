@@ -14,7 +14,8 @@ classdef MultiFaultAnalysis < handle
     %   faultSummary - Table summarizing run results per fault
     %   runDone - Logical flag indicating whether run() has completed
     %   parallel - Enables parallel execution when true
-    %   suppress_fault_run_status_output - Suppress per-fault progress output
+    %   printStatusOutput - Print per-fault progress output (default: true)
+    %   printStatusEveryNFaults - Print every N faults (default: 1 = every fault)
     %
     % Dependent Properties:
     %   nFaults - Number of faults
@@ -35,8 +36,9 @@ classdef MultiFaultAnalysis < handle
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
-        parallel = 1                % overrides parallel setting of individual faults
-        suppress_fault_run_status_output = 0
+        parallel = 1                % parallel calculation of faults stresses and slip
+        printStatusOutput = true    % print per-fault progress during run
+        printStatusEveryNFaults = 1 % print status every N faults (1 = every fault)
     end
 
     properties (Dependent)
@@ -50,11 +52,11 @@ classdef MultiFaultAnalysis < handle
         
         function self = initialize(self, nFaults, metadataTable)
         % Input:
-            %   n_faults - Number of faults
+            %   nFaults - Number of faults to be initialized
             % Optional:
-            %   metadata_table   - table with additional metadata columns
-            % construct the class with n_faults, assign ID in the
-            % metadata table, and initialize the default PANTHER model for each fault
+            %   metadataTable   - table with additional metadata columns
+            % construct the class with nFaults, assign ID in the
+            % metadata table, and initialize the default PantherAnalysis for each fault
             if nargin < 3 || isempty(metadataTable)
                 metadataTable = table();
             end
@@ -79,19 +81,35 @@ classdef MultiFaultAnalysis < handle
 
         function self = run(self)
             % run Runs the simulation for all faults.
-            all_faults = self.faults;   % contains input objects for each fault
+            % Uses cell arrays for parfor input/output so MATLAB can slice
+            % properly — each worker receives exactly one fault object
+            % instead of broadcasting the entire typed array.
+            all_faults = self.faults;
             n = self.nFaults;
-            faults_updated_with_results = all_faults;  % preallocate typed output array for parfor
-            suppress_run_status_output = self.suppress_fault_run_status_output;
+            printStatus     = self.printStatusOutput;
+            printEveryN     = max(1, round(self.printStatusEveryNFaults));
+
             if self.parallel
+                % Pack faults into a cell array so parfor can slice them.
+                fault_cell_in = cell(n, 1);
+                for i = 1 : n
+                    fault_cell_in{i} = all_faults(i);
+                end
+
+                fault_cell_out = cell(n, 1);
                 parfor i = 1 : n
-                    fault_i = all_faults(i);
-                    fault_i = fault_i.run();
-                    fault_i = fault_i.make_result_summary();
-                    faults_updated_with_results(i,1) = fault_i;
-                    if ~suppress_run_status_output
-                        disp(['fault ', num2str(i),' of ', num2str(n)]);
+                    fi = fault_cell_in{i};
+                    fi = fi.run();
+                    fi = fi.make_result_summary();
+                    fault_cell_out{i} = fi;
+                    if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
+                        fprintf('fault %d of %d\n', i, n);
                     end
+                end
+
+                faults_updated_with_results = all_faults;  % pre-alloc typed output
+                for i = 1 : n
+                    faults_updated_with_results(i, 1) = fault_cell_out{i};
                 end
             else
                 faults_updated_with_results = all_faults;
@@ -99,15 +117,16 @@ classdef MultiFaultAnalysis < handle
                     fault_i = all_faults(i);
                     fault_i = fault_i.run();
                     fault_i = fault_i.make_result_summary();
-                    faults_updated_with_results(i,1) = fault_i;
-                    if ~self.suppress_fault_run_status_output
-                        disp(['fault ', num2str(i),' of ', num2str(n)]);
+                    faults_updated_with_results(i, 1) = fault_i;
+                    if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
+                        disp(['fault ', num2str(i), ' of ', num2str(n)]);
                     end
                 end
-            end      
-            self.faults = faults_updated_with_results;        % update pantherinput objects with the results
+            end
+
+            self.faults = faults_updated_with_results;
             self.runDone = true;
-            self.faultSummary = self.getResultsSummary();  
+            self.faultSummary = self.getResultsSummary();
         end
 
         function self = addFaultMetadataAsTable(self, infoTableToBeAdded)

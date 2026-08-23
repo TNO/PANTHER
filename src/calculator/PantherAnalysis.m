@@ -17,7 +17,6 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
         nucleation_length_fixed double = 10;  
         ensemble_members cell                       % single cached member object stored in a 1x1 cell array
         ensemble_dirty logical = true               % indicate whether the cached member must be regenerated
-        parallel logical = 1                        % parallel computing for large number of simulations
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         suppress_status_output logical = false      % indicate ensemble member calculation 
         keepModelObjects logical = false            % keep full result objects (Pressure/Temperature/Stress/Slip) after run
