@@ -69,11 +69,13 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
             % faultSummary should be a non-empty table after run().
             mfa = MultiFaultAnalyzer();
             mfa = mfa.initialize(2);
+            mfa.setInputParameter('dip',[60,70]);
             mfa.parallel = 0;
             mfa.printStatusOutput = false;
             mfa = mfa.run();
             testCase.verifyNotEmpty(mfa.faultSummary);
             testCase.verifyTrue(istable(mfa.faultSummary));
+            testCase.verifyEqual(height(mfa.faultSummary), mfa.nFaults);
         end
 
         function test_print_status_every_n(testCase)

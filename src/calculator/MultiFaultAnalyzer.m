@@ -668,16 +668,26 @@ classdef MultiFaultAnalyzer < handle
         function [summary] = getResultsSummary(self)
             % getResultsSummary Gets the summary of results of individual
             % faults
-            if self.runDone
-                summary = self.faults(1).faultSummary;
-                % Concatenate summary tables from individual faults.
-                for i = 2 : self.nFaults
-                    summary = [summary; self.faults(i).faultSummary];
-                end
-            else
-                disp('Run not yet exectued, empty summary');
-                summary = [];
+            if ~isscalar(self.runDone) || ~self.runDone
+                disp('Run not yet executed, empty summary');
+                summary = table();
+                return;
             end
+
+            nFaults = self.nFaults;
+            if nFaults == 0
+                summary = table();
+                return;
+            end
+
+            summaries = cell(nFaults, 1);
+            for i = 1 : nFaults
+                if ~istable(self.faults(i).faultSummary)
+                    error('Fault %d does not contain a valid fault summary table.', i);
+                end
+                summaries{i} = self.faults(i).faultSummary;
+            end
+            summary = vertcat(summaries{:});
         end
 
         function self = regenerateFaultSummary(self, preserveCustomColumns)
