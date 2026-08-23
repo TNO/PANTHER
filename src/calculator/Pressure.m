@@ -81,12 +81,12 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
         function self = Pressure(analysis)
             % PantherPressure Constructor to initialize the pressure model.
             % Input:
-            %   analysis - PantherAnalysis instance containing the cached
+            %   analysis - FaultAnalyzer instance containing the cached
             %     member, load table, geometry grid, and pressure settings.
-            if isempty(analysis.ensemble_members) || analysis.ensemble_dirty
-                analysis = analysis.generate_ensemble();
+            if isempty(analysis.faultRealization) || analysis.realizationStale
+                analysis = analysis.generateRealization();
             end
-            member = analysis.ensemble_members{1};
+            member = analysis.faultRealization;
             self = self.update_properties(analysis);
             self = self.update_properties(member);
             self = self.update_properties(analysis.load_table);
@@ -517,3 +517,6 @@ classdef (HandleCompatible) Pressure < ModelGeometry & FaultMesh
     end
 
 end
+
+
+

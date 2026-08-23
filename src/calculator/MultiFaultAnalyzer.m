@@ -1,7 +1,7 @@
-classdef MultiFaultAnalysis < handle
-    % MultiFaultAnalysis handles multiple 2D fault cross-sections.
+classdef MultiFaultAnalyzer < handle
+    % MultiFaultAnalyzer handles multiple 2D fault cross-sections.
     %
-    % The class stores one PantherAnalysis object per fault and provides
+    % The class stores one FaultAnalyzer object per fault and provides
     % convenience methods to:
     % - assign uniform or depth-dependent input parameters,
     % - set run settings across all faults,
@@ -9,7 +9,7 @@ classdef MultiFaultAnalysis < handle
     % - summarize and post-process outputs.
     %
     % Properties:
-    %   faults - Array of PantherAnalysis objects (one per fault)
+    %   faults - Array of FaultAnalyzer objects (one per fault)
     %   faultMetadata - Table with metadata per fault (ID, coordinates, etc.)
     %   faultSummary - Table summarizing run results per fault
     %   runDone - Logical flag indicating whether run() has completed
@@ -32,7 +32,7 @@ classdef MultiFaultAnalysis < handle
     %
 
     properties
-        faults PantherAnalysis      % array of PantherAnalysis objects
+        faults FaultAnalyzer      % array of FaultAnalyzer objects
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
@@ -46,7 +46,7 @@ classdef MultiFaultAnalysis < handle
     end
 
     methods
-        function self = MultiFaultAnalysis()
+        function self = MultiFaultAnalyzer()
             % MultiFaultCalculator Constructor to initialize the class with n_faults.
         end
         
@@ -56,7 +56,7 @@ classdef MultiFaultAnalysis < handle
             % Optional:
             %   metadataTable   - table with additional metadata columns
             % construct the class with nFaults, assign ID in the
-            % metadata table, and initialize the default PantherAnalysis for each fault
+            % metadata table, and initialize the default FaultAnalyzer for each fault
             if nargin < 3 || isempty(metadataTable)
                 metadataTable = table();
             end
@@ -64,7 +64,7 @@ classdef MultiFaultAnalysis < handle
                 error('metadata_table must be a table');
             end
 
-            self.faults = PantherAnalysis.empty(0, 1);
+            self.faults = FaultAnalyzer.empty(0, 1);
             self.faultMetadata = table((1:nFaults)', 'VariableNames', {'ID'});
             if ~isempty(metadataTable)
                 if height(metadataTable) ~= nFaults
@@ -74,7 +74,7 @@ classdef MultiFaultAnalysis < handle
                 self = self.addFaultMetadataAsTable(metadataTable);
             end
             for i = 1 : nFaults
-                self.faults(i, 1) = PantherAnalysis();
+                self.faults(i, 1) = FaultAnalyzer();
             end
             self.runDone = zeros(nFaults, 1);
         end
@@ -93,7 +93,7 @@ classdef MultiFaultAnalysis < handle
             %
             % Results are then applied back serially via applyResults().
             % Using cell arrays for parfor input/output ensures MATLAB slices
-            % exactly one PantherAnalysis object per worker rather than
+            % exactly one FaultAnalyzer object per worker rather than
             % broadcasting the full typed array.
             all_faults  = self.faults;
             n           = self.nFaults;
@@ -110,7 +110,7 @@ classdef MultiFaultAnalysis < handle
             if self.parallel
                 parfor i = 1 : n
                     inputs          = fault_cell{i}.extractInputs();
-                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
+                    result_cell{i}  = FaultAnalyzer.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
@@ -118,7 +118,7 @@ classdef MultiFaultAnalysis < handle
             else
                 for i = 1 : n
                     inputs          = fault_cell{i}.extractInputs();
-                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
+                    result_cell{i}  = FaultAnalyzer.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
@@ -258,7 +258,7 @@ classdef MultiFaultAnalysis < handle
             end
             
             % Get the list of properties of the fault input parameters 
-            fault_input_props = properties(self.faults(1).input_parameters);
+            fault_input_props = properties(self.faults(1).faultParameterSpecs);
                         
             % Get the list of column names from the input table
             tableColumns = inputTable.Properties.VariableNames;
@@ -277,7 +277,7 @@ classdef MultiFaultAnalysis < handle
         function self = updateInputParameterFromMetadata(self)
             % updateInputParameterFromMetadata Updates input parameters from fault metadata.
             % Input values are applied per fault using the metadata columns.
-            fault_input_props = properties(self.faults(1).input_parameters);
+            fault_input_props = properties(self.faults(1).faultParameterSpecs);
             tableColumns = self.faultMetadata.Properties.VariableNames;
             valid_props = intersect(tableColumns, fault_input_props, 'stable');
             nFaults = self.nFaults;
@@ -290,7 +290,7 @@ classdef MultiFaultAnalysis < handle
                     end
                     self.faults(i).setInputParameter(propName, value);
                 end
-                self.faults(i).ensemble_dirty = true;
+                self.faults(i).realizationStale = true;
             end
         end
 
@@ -364,7 +364,7 @@ classdef MultiFaultAnalysis < handle
                 return;
             end
 
-            valid_input_parameter_names = properties(self.faults(1).input_parameters);
+            valid_input_parameter_names = properties(self.faults(1).faultParameterSpecs);
             if ~ismember(parameterName, valid_input_parameter_names)
                 valid_names = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
                 error(['input parameter name ', parameterName, ' not valid, should be one of ', valid_names{:}]);
@@ -613,13 +613,13 @@ classdef MultiFaultAnalysis < handle
             absolute_depths = self.getDepth();
             if valid_input
                 for i = 1 : self.nFaults
-                    parameter = self.faults(i).input_parameters.(parameterName);
+                    parameter = self.faults(i).faultParameterSpecs.(parameterName);
                     if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
                         depthMidValues(i) = parameter.value;
                     else
                         value_with_depth = parameter.value_with_depth;
                         depth = absolute_depths;
-                        depth_mid = self.faults(i).input_parameters.depth_mid.value;
+                        depth_mid = self.faults(i).faultParameterSpecs.depth_mid.value;
                         depthMidValues(i) = interp1(depth, value_with_depth, depth_mid);    % should be the same as taking the middle element
                     end
                 end
@@ -642,10 +642,10 @@ classdef MultiFaultAnalysis < handle
             for i = 1 : self.nFaults
                 y = self.faults(i).y;
                 for j = 1 : length(vars)
-                    if isempty(self.faults(i).ensemble_members{1})
-                        self.faults(i).generate_ensemble();
+                    if isempty(self.faults(i).faultRealization)
+                        self.faults(i).generateRealization();
                     end
-                    reservoirBoundaries.(vars{j})(i) = self.faults(i).ensemble_members{1}.(['y_', vars{j}]) + self.faults(i).ensemble_members{1}.depth_mid;
+                    reservoirBoundaries.(vars{j})(i) = self.faults(i).faultRealization.(['y_', vars{j}]) + self.faults(i).faultRealization.depth_mid;
                 end
             end
         end
@@ -731,7 +731,7 @@ classdef MultiFaultAnalysis < handle
             if nargin < 3
                 warningOn = true;
             end
-            valid_field_names = fields(self.faults(1).input_parameters);
+            valid_field_names = fields(self.faults(1).faultParameterSpecs);
             if ismember(submittedName, valid_field_names)
                 validName = true;
             else
@@ -785,7 +785,7 @@ classdef MultiFaultAnalysis < handle
             %   submitted_name - Name of the setting to validate
             % check if run setting name is valid
             valid_setting_names = fields(self.faults(1));
-            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'input_parameters','load_table','y','ensemble'})
+            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'faultParameterSpecs','input_parameters','load_table','y','realizationTable'})
                 validName = true;
                 if ismember(submittedName,{'P_res_mode','P_fault_mode','P0_fault_mode',...
                         'load_case','nucleation_criterion'})
@@ -803,6 +803,9 @@ classdef MultiFaultAnalysis < handle
         end
 
         function [validTimeStep] = isValidTimeStep(self, timeStep)
+            % TODO: still assumes timesteps are equal for all faults. 
+            % Consider to constrain that all faults are ran with same nr of
+            % load steps, and/or move this method to PantherAnalysis level
             validTimeStep = false;
             if ~(timeStep == floor(timeStep))
                 error(['Time step must be an integer between 1 and ',...
@@ -829,3 +832,8 @@ classdef MultiFaultAnalysis < handle
 
     end
 end
+
+
+
+
+

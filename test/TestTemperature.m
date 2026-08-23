@@ -8,19 +8,19 @@ classdef TestTemperature < matlab.unittest.TestCase
 
         function test_default_T (testCase)
             % test with default input, with dT and T diffusion    
-            trun = PantherAnalysis;
+            trun = FaultAnalyzer;
             trun.load_case = 'T';
             trun.diffusion_T = 0;
-            trun.generate_ensemble();
+            trun.generateRealization();
             temperature = Temperature(trun, 'min');
             i_mid = floor(length(trun.y)/2);
             testCase.verifyEqual(temperature.dT(i_mid,end), trun.load_table.T_steps(end), "RelTol", 0.01);
 
             % T with linear gradient added in reservoir
             trun.setInputParameter('dT_dy_multiplier', 0.03);
-            trun.generate_ensemble();
+            trun.generateRealization();
             temperature = Temperature(trun, 'min');
-            y_base_HW = trun.ensemble_members{1}.y_HW_base;
+            y_base_HW = trun.faultRealization.y_HW_base;
             i_base_HW = find(trun.y >= y_base_HW, 1,'last');
             add_dT = (trun.y(i_base_HW) * trun.getInputParameter('dT_dy_multiplier'));
             expected =  trun.load_table.T_steps(end) + add_dT;
@@ -31,3 +31,4 @@ classdef TestTemperature < matlab.unittest.TestCase
 end
 
 %https://github.com/marketplace/actions/run-matlab-tests
+

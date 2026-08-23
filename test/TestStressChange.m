@@ -9,7 +9,7 @@ classdef TestStressChange < matlab.unittest.TestCase
     methods (Test)
         function test_poroelastic_stress(testCase)
             % initialize run and simplify pressure steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;
@@ -18,12 +18,12 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.setInputParameter('dip', 90);
             run_instance.setInputParameter('poisson', 0.2);
             run_instance.setInputParameter('biot', 1);
-            run_instance.generate_ensemble();
+            run_instance.generateRealization();
             run_instance.y_extent = 0;
             run_instance.diffusion_T = 0;
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
-            params = run_instance.ensemble_members{1};
+            params = run_instance.faultRealization;
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -34,7 +34,7 @@ classdef TestStressChange < matlab.unittest.TestCase
 
          function test_thermoelastic_stress(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.T_steps(2) = -1;
@@ -45,10 +45,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.setInputParameter('biot', 1);
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.diffusion_T = 0;
-            run_instance.generate_ensemble();
+            run_instance.generateRealization();
             y = run_instance.y;     
             dx = 0;
-            params = run_instance.ensemble_members{1};
+            params = run_instance.faultRealization;
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -59,7 +59,7 @@ classdef TestStressChange < matlab.unittest.TestCase
 
           function test_poro_thermoelastic_stress(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.T_steps(2) = -1;
@@ -71,10 +71,10 @@ classdef TestStressChange < matlab.unittest.TestCase
             run_instance.setInputParameter('biot', 1);
             run_instance.y_extent = 0;  %  % only evaluate at mid depth
             run_instance.diffusion_T = 0;
-            run_instance.generate_ensemble();
+            run_instance.generateRealization();
             y = run_instance.y;      
             dx = 0;
-            params = run_instance.ensemble_members{1};
+            params = run_instance.faultRealization;
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(pressure.dP,2));
@@ -87,17 +87,17 @@ classdef TestStressChange < matlab.unittest.TestCase
 
          function test_thermoelastic_stress_diffusion(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             % set 0 throw, 90 degree dip
             run_instance.setInputParameter('throw', 0);
             run_instance.setInputParameter('dip', 90);
             run_instance.setInputParameter('poisson', 0.2);
             run_instance.setInputParameter('biot', 1);
             run_instance.diffusion_T = 1;
-            run_instance.generate_ensemble();
+            run_instance.generateRealization();
             y = run_instance.y;      % only evaluate at mid depth
             dx = 0;
-            params = run_instance.ensemble_members{1};
+            params = run_instance.faultRealization;
             pressure = Pressure(run_instance);
             temperature = Temperature(run_instance, 'min');
             stress_change = FaultStressChange(length(y), size(temperature.dT, 2));
@@ -109,4 +109,6 @@ classdef TestStressChange < matlab.unittest.TestCase
 
     end
 end
+
+
 

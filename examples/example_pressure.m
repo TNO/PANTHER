@@ -4,7 +4,7 @@
 % In this example a figure is generated with FW HW and fault pressure
 
 
-analysis = PantherAnalysis();                          % intialize model run
+analysis = FaultAnalyzer();                          % intialize model run
 analysis.setInputParameter('throw', 50);
 analysis.setInputParameter('P_grad_res', 0.2);      % assign gas pressure gradient in the reservoir
 analysis.setInputParameter('P_over', 2);            % overpressure of 2 MPa at the top of the reservoir
@@ -34,15 +34,15 @@ function [h2] = plot_pressures(analysis, t_step)
     ay0 = 1;
     % t_step = 2;
     run_description = ['\DeltaP: ', num2str(analysis.load_table.P_steps(t_step),'%.0f'),' MPa, ',...
-        'w_{FW}: ', num2str(analysis.ensemble.width_FW(1),'%.0f' ), ' m, ', ...
-        'w_{HW}: ', num2str(analysis.ensemble.width_HW(1),'%.0f' ), ' m, ', ...
+        'w_{FW}: ', num2str(analysis.realizationTable.width_FW(1),'%.0f' ), ' m, ', ...
+        'w_{HW}: ', num2str(analysis.realizationTable.width_HW(1),'%.0f' ), ' m, ', ...
         'p0 mode: ', analysis.P0_fault_mode,', ',...
         'p mode: ', analysis.P_fault_mode];
 
     figure_name = ['Fig_LargethrowDiff1_p0mode_',analysis.P0_fault_mode,'_pmode_',analysis.P_fault_mode,...
         '_dp_',num2str(analysis.load_table.P_steps(t_step),'%.0f'),...
-        '_wFW_',num2str(analysis.ensemble.width_FW(1),'%.0f' ),...
-        '_wHW_',num2str(analysis.ensemble.width_HW(1),'%.0f' )];
+        '_wFW_',num2str(analysis.realizationTable.width_FW(1),'%.0f' ),...
+        '_wHW_',num2str(analysis.realizationTable.width_HW(1),'%.0f' )];
 
     P_HW = analysis.pressure{1}.get_P_HW();
     P_FW = analysis.pressure{1}.get_P_FW();
@@ -92,3 +92,5 @@ function [h2] = plot_pressures(analysis, t_step)
     set(ax(2:end),'YTickLabel','');
  
 end
+
+

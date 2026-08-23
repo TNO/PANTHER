@@ -2,7 +2,7 @@
 % parameter
 
 % initialize input Scenario 1: variable friction
-sc1_variable_friction = PantherAnalysis;
+sc1_variable_friction = FaultAnalyzer;
 % change some input properties
 sc1_variable_friction.setInputParameter('width_HW', 500);
 sc1_variable_friction.setInputParameter('throw', 50);
@@ -11,7 +11,7 @@ sc1_variable_friction.setInputParameter('throw', 50);
 % set depth varying initial stress - sinusoidal variation
 shsv_default = sc1_variable_friction.getInputParameter('shsv');
 sc1_variable_friction.setDepthDependentInputParameter('shsv', ones(size(sc1_variable_friction.y))*shsv_default);
-%sc1_variable_friction.input_parameters.shsv.value_with_depth = ones(size(sc1_variable_friction.y))*shsv_default;
+%sc1_variable_friction.faultParameterSpecs.shsv.value_with_depth = ones(size(sc1_variable_friction.y))*shsv_default;
 i_mid = ceil(length(sc1_variable_friction.y)/2);
 % introduce a perturbation
 F = 10;     % freq 
@@ -22,8 +22,8 @@ pert = amp.*sin(2*pi*F.*sc1_variable_friction.y);
 sc1_variable_friction.setDepthDependentInputParameter('shsv',...
     sc1_variable_friction.getInputParameter('shsv') + pert) ;
 
-% generate model ensemble
-sc1_variable_friction.generate_ensemble();
+% generate fault realization
+sc1_variable_friction.generateRealization();
 
 % run panther with current input instance
 sc1_variable_friction.run();
@@ -77,10 +77,10 @@ legend(hs, {'Initial', 'Final'});
 %%
 
 % initialize input Scenario 2: variable dip
-sc2_variable_dip = PantherAnalysis;
+sc2_variable_dip = FaultAnalyzer;
 
 % set depth varying dip
-% sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
+% sc2_variable_dip.faultParameterSpecs.dip.uniform_with_depth = 0;       % make dip depth-variable
 y = sc2_variable_dip.y;
 varying_dip = 80*ones(size(y));
 varying_dip(i_mid:end) = 60;
@@ -88,8 +88,8 @@ sc2_variable_dip.setDepthDependentInputParameter('dip', varying_dip);
 % turn aseismic slip off
 sc2_variable_dip.aseismic_slip = 0;
 
-% generate model ensemble
-sc2_variable_dip.generate_ensemble();
+% generate fault realization
+sc2_variable_dip.generateRealization();
 
 % run panther with current input instance
 sc2_variable_dip.run();
@@ -136,3 +136,6 @@ ylabel('Depth (m)');
 ylim([sc2_variable_dip.getInputParameter('depth_mid') - 300, sc2_variable_dip.getInputParameter('depth_mid') + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
+
+
+

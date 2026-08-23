@@ -1,18 +1,18 @@
-classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
-    % TestMultiFaultAnalysis Functional tests for MultiFaultAnalysis controller.
-    % Tests verify that running multiple faults via MultiFaultAnalysis
-    % produces the same results as running each PantherAnalysis individually.
+classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
+    % TestMultiFaultAnalyzer Functional tests for MultiFaultAnalyzer controller.
+    % Tests verify that running multiple faults via MultiFaultAnalyzer
+    % produces the same results as running each FaultAnalyzer individually.
 
     methods (Test)
 
         function test_sequential_run_matches_single(testCase)
-            % A MultiFaultAnalysis with 2 identical default faults run
+            % A MultiFaultAnalyzer with 2 identical default faults run
             % sequentially should produce the same sne/tau as a single
-            % PantherAnalysis run.
-            ref = PantherAnalysis();
+            % FaultAnalyzer run.
+            ref = FaultAnalyzer();
             ref = ref.run();
 
-            mfa = MultiFaultAnalysis();
+            mfa = MultiFaultAnalyzer();
             mfa = mfa.initialize(2);
             mfa.parallel = 0;
             mfa.printStatusOutput = false;
@@ -33,13 +33,13 @@ classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
 
         function test_parallel_matches_sequential(testCase)
             % Parallel run should give identical results to sequential run.
-            mfa_seq = MultiFaultAnalysis();
+            mfa_seq = MultiFaultAnalyzer();
             mfa_seq = mfa_seq.initialize(3);
             mfa_seq.parallel = 0;
             mfa_seq.printStatusOutput = false;
             mfa_seq = mfa_seq.run();
 
-            mfa_par = MultiFaultAnalysis();
+            mfa_par = MultiFaultAnalyzer();
             mfa_par = mfa_par.initialize(3);
             mfa_par.parallel = 1;
             mfa_par.printStatusOutput = false;
@@ -57,7 +57,7 @@ classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
 
         function test_run_done_flag(testCase)
             % runDone should be true after run().
-            mfa = MultiFaultAnalysis();
+            mfa = MultiFaultAnalyzer();
             mfa = mfa.initialize(2);
             mfa.parallel = 0;
             mfa.printStatusOutput = false;
@@ -67,7 +67,7 @@ classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
 
         function test_fault_summary_populated(testCase)
             % faultSummary should be a non-empty table after run().
-            mfa = MultiFaultAnalysis();
+            mfa = MultiFaultAnalyzer();
             mfa = mfa.initialize(2);
             mfa.parallel = 0;
             mfa.printStatusOutput = false;
@@ -78,7 +78,7 @@ classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
 
         function test_print_status_every_n(testCase)
             % printStatusEveryNFaults should not cause errors.
-            mfa = MultiFaultAnalysis();
+            mfa = MultiFaultAnalyzer();
             mfa = mfa.initialize(5);
             mfa.parallel = 0;
             mfa.printStatusOutput = true;
@@ -89,3 +89,5 @@ classdef TestMultiFaultAnalysis < matlab.unittest.TestCase
 
     end
 end
+
+

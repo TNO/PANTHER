@@ -155,7 +155,7 @@ classdef GreensFunctions
             %   variable dip — separate GF at every depth cell (slowest)
             %
             % INPUT
-            % params        PantherMember with fault/reservoir geometry
+            % params        FaultRealization with fault/reservoir geometry
             % y             [m] depth array w.r.t. y_mid
             % dx            [m] distance from fault in x
             % variable_PT   logical — true when P or T vary with depth
