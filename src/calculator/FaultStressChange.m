@@ -36,9 +36,9 @@ classdef FaultStressChange
             % GF (optional)            pre-computed Green's functions cell array from
             %                          initialize_greens_functions. When supplied the
             %                          Green's functions are not recomputed here.
-            [vary_P, vary_T] = FaultStressChange.variable_PT(dP_HW, dP_FW, dT_HW, dT_FW);
+            [vary_P, vary_T] = FaultStressChange.variableWithDepthGeometryConstant(dP_HW, dP_FW, dT_HW, dT_FW);
             % check if the dip is variable with depth
-            [vary_dip] = FaultStressChange.variable_dip(params);
+            [vary_dip] = FaultStressChange.variableWithDepth(params);
             if and(contains(load_case,'P'), vary_P) || and(contains(load_case,'T'), vary_T)
                 vary_PT = 1;
             else
@@ -158,7 +158,7 @@ classdef FaultStressChange
 
     methods (Static)
 
-        function [vary_P, vary_T] = variable_PT(dP_HW, dP_FW, dT_HW, dT_FW)
+        function [vary_P, vary_T] = variableWithDepthGeometryConstant(dP_HW, dP_FW, dT_HW, dT_FW)
             % check if pressure or temperature are non uniform with y
             % return true if they vary
             vary_P = 0;
@@ -175,7 +175,7 @@ classdef FaultStressChange
             end
         end
 
-        function [vary_dip] = variable_dip(params)
+        function [vary_dip] = variableWithDepth(params)
             if or(length(params.dip) > 1, iscell(params.dip))
                 vary_dip = 1;
             else

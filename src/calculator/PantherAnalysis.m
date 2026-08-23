@@ -62,17 +62,17 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             % Delegates to the three-step extract/compute/apply pattern so
             % MultiFaultAnalysis can run the compute step in a parfor
             % without broadcasting the full PantherAnalysis object.
-            inputs  = self.extract_inputs();
-            results = PantherAnalysis.compute_stress_and_nucleation(inputs);
-            self    = self.apply_results(results);
+            inputs  = self.extractInputs();
+            results = PantherAnalysis.computeStressAndNucleation(inputs);
+            self    = self.applyResults(results);
         end
 
-        function inputs = extract_inputs(self)
-            % extract_inputs Prepare all data needed for stress computation
+        function inputs = extractInputs(self)
+            % extractInputs Prepare all data needed for stress computation
             % as a plain struct.  Pre-computes Pressure and Temperature so
-            % the heavy compute step (compute_stress_and_nucleation) has no
+            % the heavy compute step (computeStressAndNucleation) has no
             % dependency on the PantherAnalysis object.
-            self.generate_ensemble();
+            self = self.generate_ensemble();
 
             dip       = self.getInputParameter('dip');
             f_s       = self.getDepthDependentInputParameter('f_s');
@@ -104,9 +104,9 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             inputs.dT    = temperature_obj.dT;
             % Pre-compute Green's functions (geometry only — no time dependence)
             % so workers receive ready-made GF rather than recomputing it.
-            [vary_P, vary_T] = FaultStressChange.variable_PT( ....
+            [vary_P, vary_T] = FaultStressChange.variableWithDepthGeometryConstant( ....
                 inputs.dP_HW, inputs.dP_FW, inputs.dT_HW, inputs.dT_FW);
-            vary_dip = FaultStressChange.variable_dip(inputs.ensemble_member);
+            vary_dip = FaultStressChange.variableWithDepth(inputs.ensemble_member);
             lc = self.load_case;
             vary_PT = (contains(lc,'P') && vary_P) || (contains(lc,'T') && vary_T);
             inputs.GF = GreensFunctions.initialize( ....
@@ -128,9 +128,14 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
             end
         end
 
-        function self = apply_results(self, results)
-            % apply_results Store compute_stress_and_nucleation output back
+        function self = applyResults(self, results)
+            % applyResults Store computeStressAndNucleation output back
             % into this PantherAnalysis and refresh the fault summary.
+            % Ensure ensemble_members is populated (may be empty if this
+            % fault object was never run directly via run()).
+            if isempty(self.ensemble_members) || self.ensemble_dirty
+                self = self.generate_ensemble();
+            end
             self.faultResults = results.faultResults;
             self.slip_store   = {results.slip_meta};
             if results.keepModelObjects
@@ -686,9 +691,9 @@ classdef (HandleCompatible) PantherAnalysis < FaultMesh
 
     methods (Static)
 
-        function results = compute_stress_and_nucleation(inputs)
-            % compute_stress_and_nucleation Compute fault stress, slip and
-            % nucleation from a plain inputs struct produced by extract_inputs.
+        function results = computeStressAndNucleation(inputs)
+            % computeStressAndNucleation Compute fault stress, slip and
+            % nucleation from a plain inputs struct produced by extractInputs.
             %
             % This is a static method with no PantherAnalysis dependency so
             % it can be called inside a parfor without broadcasting the full

@@ -87,11 +87,11 @@ classdef MultiFaultAnalysis < handle
             % function construction (the expensive operations) are
             % distributed across workers:
             %
-            %   extract_inputs()                — builds plain-struct inputs
+            %   extractInputs()                — builds plain-struct inputs
             %                                     (Pressure, Temperature, GF)
-            %   compute_stress_and_nucleation() — static; stress + slip + nuc
+            %   computeStressAndNucleation() — static; stress + slip + nuc
             %
-            % Results are then applied back serially via apply_results().
+            % Results are then applied back serially via applyResults().
             % Using cell arrays for parfor input/output ensures MATLAB slices
             % exactly one PantherAnalysis object per worker rather than
             % broadcasting the full typed array.
@@ -109,16 +109,16 @@ classdef MultiFaultAnalysis < handle
             result_cell = cell(n, 1);
             if self.parallel
                 parfor i = 1 : n
-                    inputs          = fault_cell{i}.extract_inputs();
-                    result_cell{i}  = PantherAnalysis.compute_stress_and_nucleation(inputs);
+                    inputs          = fault_cell{i}.extractInputs();
+                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
                 end
             else
                 for i = 1 : n
-                    inputs          = fault_cell{i}.extract_inputs();
-                    result_cell{i}  = PantherAnalysis.compute_stress_and_nucleation(inputs);
+                    inputs          = fault_cell{i}.extractInputs();
+                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
@@ -127,7 +127,7 @@ classdef MultiFaultAnalysis < handle
 
             % Apply results serially
             for i = 1 : n
-                all_faults(i) = all_faults(i).apply_results(result_cell{i});
+                all_faults(i) = all_faults(i).applyResults(result_cell{i});
             end
             self.faults       = all_faults;
             self.runDone      = true;
