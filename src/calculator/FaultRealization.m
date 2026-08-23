@@ -30,27 +30,27 @@ classdef FaultRealization < ModelGeometry
     end    
 
     methods
-        function self = FaultRealization(input_parameters, stochastic_analysis)
+        function self = FaultRealization(faultParameterSpecs, stochastic_analysis)
             % FaultRealization creates a single fault parameter realization with default or
             % stochastic input parameters, or depth-dependent input
             % INPUT
-            % input_parameters: object with input settings for each input 
-            % parameters defined in PantherParameterList
+            % faultParameterSpecs: object with settings for each fault input
+            % parameters defined in FaultParameterList
             % stochastic analysis: 0 or 1, specified in PantherInput
-            param_names = properties(input_parameters);
+            param_names = properties(faultParameterSpecs);
             for i = 1 : length(param_names)
                 % initialize with default value 
-                self.(param_names{i}) = input_parameters.(param_names{i}).value;  
-                if ~input_parameters.(param_names{i}).uniform_with_depth
-                    self.(param_names{i}) = input_parameters.(param_names{i}).value_with_depth;  
+                self.(param_names{i}) = faultParameterSpecs.(param_names{i}).value;  
+                if ~faultParameterSpecs.(param_names{i}).uniform_with_depth
+                    self.(param_names{i}) = faultParameterSpecs.(param_names{i}).value_with_depth;  
                 else
                     % and replace if parameter is a stochastic parameter
                     % if a property is depth-dependent it cannot (yet) be
                     % stochastic
-                    if input_parameters.(param_names{i}).stochastic && stochastic_analysis
-                        dist = input_parameters.(param_names{i}).distribution;
-                        a = input_parameters.(param_names{i}).a;
-                        b = input_parameters.(param_names{i}).b;
+                    if faultParameterSpecs.(param_names{i}).stochastic && stochastic_analysis
+                        dist = faultParameterSpecs.(param_names{i}).distribution;
+                        a = faultParameterSpecs.(param_names{i}).a;
+                        b = faultParameterSpecs.(param_names{i}).b;
                         random_sample = random(dist, a, b);
                         self.(param_names{i}) = random_sample;
                     end

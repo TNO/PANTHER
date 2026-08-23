@@ -5,6 +5,18 @@ classdef TestPanther < matlab.unittest.TestCase
     end
     
     methods (Test)
+        function test_fault_parameter_specs_backward_compatibility(testCase)
+            analysis = FaultAnalyzer();
+
+            testCase.verifyClass(analysis.faultParameterSpecs, 'FaultParameterList');
+            legacySpecs = analysis.input_parameters;
+            testCase.verifyEqual(legacySpecs, analysis.faultParameterSpecs);
+
+            replacementSpecs = PantherParameterList();
+            analysis.input_parameters = replacementSpecs;
+            testCase.verifyEqual(analysis.faultParameterSpecs, replacementSpecs);
+        end
+
         function test_default_single_run_P (testCase)
             result = FaultAnalyzer();
             result = result.run();

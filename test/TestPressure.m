@@ -135,8 +135,8 @@ classdef TestPressure < matlab.unittest.TestCase
             i_seal_res = floor((p.i_FW_top(p.y) + p.i_HW_top(p.y))/2);
             % expected pressure equal to p gradient without p_grad_res and
             % p_over because P_fault_mode = 'min' 
-            expected = -(1/1000)*(p.y(i_seal_res) + tc.input_parameters.depth_mid.value)...,
-                *tc.input_parameters.P_grad.value + tc.input_parameters.P_offset.value;
+                expected = -(1/1000)*(p.y(i_seal_res) + tc.faultParameterSpecs.depth_mid.value)...,
+                    *tc.faultParameterSpecs.P_grad.value + tc.faultParameterSpecs.P_offset.value;
             observed = p.P(i_seal_res, 1) ;
             testCase.verifyEqual(observed, expected, "RelTol", 1e-10);
         end

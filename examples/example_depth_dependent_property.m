@@ -11,7 +11,7 @@ sc1_variable_friction.setInputParameter('throw', 50);
 % set depth varying initial stress - sinusoidal variation
 shsv_default = sc1_variable_friction.getInputParameter('shsv');
 sc1_variable_friction.setDepthDependentInputParameter('shsv', ones(size(sc1_variable_friction.y))*shsv_default);
-%sc1_variable_friction.input_parameters.shsv.value_with_depth = ones(size(sc1_variable_friction.y))*shsv_default;
+%sc1_variable_friction.faultParameterSpecs.shsv.value_with_depth = ones(size(sc1_variable_friction.y))*shsv_default;
 i_mid = ceil(length(sc1_variable_friction.y)/2);
 % introduce a perturbation
 F = 10;     % freq 
@@ -80,7 +80,7 @@ legend(hs, {'Initial', 'Final'});
 sc2_variable_dip = FaultAnalyzer;
 
 % set depth varying dip
-% sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
+% sc2_variable_dip.faultParameterSpecs.dip.uniform_with_depth = 0;       % make dip depth-variable
 y = sc2_variable_dip.y;
 varying_dip = 80*ones(size(y));
 varying_dip(i_mid:end) = 60;

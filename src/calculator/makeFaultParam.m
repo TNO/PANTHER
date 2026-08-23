@@ -1,5 +1,5 @@
-function p = makePantherParam(varargin)
-% makePantherParam factory returning a plain struct for fast allocation
+function p = makeFaultParam(varargin)
+% makeFaultParam factory returning a plain struct for fast allocation
 % Fields (in order): value, name, name_short, unit, uniform_with_depth,
 % value_with_depth, stochastic, distribution, a, b
     props = {'value','name','name_short','unit','uniform_with_depth', 'value_with_depth', 'stochastic', 'distribution', 'a', 'b'};

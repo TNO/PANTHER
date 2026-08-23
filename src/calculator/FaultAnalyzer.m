@@ -3,7 +3,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
     % contains the results
 
     properties
-        input_parameters                            % object containing input parameter settings 
+        faultParameterSpecs                         % FaultParameterList containing fault parameter specifications
         load_case {mustBeMember(load_case, {'P','T','PT'})} = 'P';               % load case 'P': pressure changes, 'T': temperature changes
         load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
         stochastic logical = 0;                     % activate stochastic analysis for the single cached member
@@ -15,7 +15,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
         nucleation_length_fixed double = 10;  
-        faultRealization = []                       % FaultRealization for this fault; empty until generateRealization() is called
+        faultRealization = []                       % {FaultRealization object} for this fault; empty until generateRealization() is called
         realizationStale logical = true             % true when faultRealization must be regenerated. Note that it will always be regenerated when executing run.  
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
         keepModelObjects logical = false            % true: retain full Pressure/Temperature/FaultStress/FaultSlip objects in *_store
@@ -47,6 +47,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
 
     properties (Dependent, Hidden)
         % Backward-compatibility accessors. Prefer faultResults fields directly.
+        input_parameters                            % Deprecated. Use faultParameterSpecs instead.
         pressure cell                               % Deprecated. Use faultResults.P. Returns {Pressure obj} if keepModelObjects=true, else struct view.
         temperature cell                            % Deprecated. Use faultResults.T. Returns {Temperature obj} if keepModelObjects=true, else struct view.
         stress cell                                 % Deprecated. Use faultResults.sne/tau. Returns {FaultStress obj} if keepModelObjects=true, else struct view.
@@ -59,7 +60,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         
         function self = FaultAnalyzer(~)
             % PantherInput Load default input parameters
-            self.input_parameters = PantherParameterList(); 
+            self.faultParameterSpecs = FaultParameterList(); 
             % delay heavy load_table initialization when performing bulk creation
             % if create_ensemble
             self.load_table = initialize_load_table();
@@ -77,7 +78,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         end
 
         function inputs = extractInputs(self)
-            % extractInputs Prepare all data needed for stress computation
+            % extractInputs Prepare all data needed for run and extract
             % as a plain struct.  Pre-computes Pressure and Temperature so
             % the heavy compute step (computeStressAndNucleation) has no
             % dependency on the FaultAnalyzer object.
@@ -176,9 +177,9 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     error('Assigning to input parameter ''%s'' value must be a numeric scalar', parameterName);
                 end
             end
-            p = self.input_parameters.(parameterName);
+            p = self.faultParameterSpecs.(parameterName);
             p.(parameterType) = parameterValues;
-            self.input_parameters.(parameterName) = p;
+            self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
         end
 
@@ -187,10 +188,10 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             if ~isvector(parameterValues)
                 error('parameterValues must be a vector');
             end
-            p = self.input_parameters.(parameterName);
+            p = self.faultParameterSpecs.(parameterName);
             p.uniform_with_depth = 0;
             p.value_with_depth = parameterValues;
-            self.input_parameters.(parameterName) = p;
+            self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
         end
 
@@ -199,16 +200,16 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % parameter back to uniform-with-depth mode.
             parameterName = self.validateInputParameterName(parameterName);
 
-            p = self.input_parameters.(parameterName);
+            p = self.faultParameterSpecs.(parameterName);
             p.uniform_with_depth = 1;
-            self.input_parameters.(parameterName) = p;
+            self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
         end
 
         function self = generateRealization(self)
             % generateRealization  Build the single FaultRealization for this fault.
             % Call this (or run()) before accessing faultRealization.
-            self.faultRealization = FaultRealization(self.input_parameters, self.stochastic);
+            self.faultRealization = FaultRealization(self.faultParameterSpecs, self.stochastic);
             self.realizationStale = false;
         end
 
@@ -294,12 +295,12 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         
         function [inputParameterValue] = getInputParameter(self, inputParameterName)
             inputParameterName = self.validateInputParameterName(inputParameterName);
-            inputParameterValue = self.input_parameters.(inputParameterName).value;
+            inputParameterValue = self.faultParameterSpecs.(inputParameterName).value;
         end
 
         function [depthParameterValues] = getDepthDependentInputParameter(self, inputParameterName)
             inputParameterName = self.validateInputParameterName(inputParameterName);
-            p = self.input_parameters.(inputParameterName);
+            p = self.faultParameterSpecs.(inputParameterName);
             if p.uniform_with_depth
                 depthParameterValues = ones(size(self.y)) * p.value;
             else
@@ -558,6 +559,18 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             t = self.realizationTable;
         end
 
+        function specs = get.input_parameters(self)
+            warning('FaultAnalyzer:deprecated', ...
+                'input_parameters is deprecated. Use faultParameterSpecs instead.');
+            specs = self.faultParameterSpecs;
+        end
+
+        function self = set.input_parameters(self, specs)
+            warning('FaultAnalyzer:deprecated', ...
+                'input_parameters is deprecated. Use faultParameterSpecs instead.');
+            self.faultParameterSpecs = specs;
+        end
+
         % --- Backward-compat getter/setter for deprecated ensemble_members ---
         function em = get.ensemble_members(self)
             if isempty(self.faultRealization)
@@ -711,13 +724,13 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
 
         function parameterName = validateInputParameterName(self, parameterName)
             % validateInputParameterName Ensures parameter name is text and
-            % exists on input_parameters.
+            % exists on faultParameterSpecs.
             if ~(ischar(parameterName) || (isstring(parameterName) && isscalar(parameterName)))
                 error('parameterName must be a string');
             end
             parameterName = char(parameterName);
 
-            valid_input_parameter_names = properties(self.input_parameters);
+            valid_input_parameter_names = properties(self.faultParameterSpecs);
             if ~ismember(parameterName, valid_input_parameter_names)
                 validNames = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
                 error(['input parameter name ', parameterName, ' not valid, should be one of ', validNames{:}]);

@@ -258,7 +258,7 @@ classdef MultiFaultAnalyzer < handle
             end
             
             % Get the list of properties of the fault input parameters 
-            fault_input_props = properties(self.faults(1).input_parameters);
+            fault_input_props = properties(self.faults(1).faultParameterSpecs);
                         
             % Get the list of column names from the input table
             tableColumns = inputTable.Properties.VariableNames;
@@ -277,7 +277,7 @@ classdef MultiFaultAnalyzer < handle
         function self = updateInputParameterFromMetadata(self)
             % updateInputParameterFromMetadata Updates input parameters from fault metadata.
             % Input values are applied per fault using the metadata columns.
-            fault_input_props = properties(self.faults(1).input_parameters);
+            fault_input_props = properties(self.faults(1).faultParameterSpecs);
             tableColumns = self.faultMetadata.Properties.VariableNames;
             valid_props = intersect(tableColumns, fault_input_props, 'stable');
             nFaults = self.nFaults;
@@ -364,7 +364,7 @@ classdef MultiFaultAnalyzer < handle
                 return;
             end
 
-            valid_input_parameter_names = properties(self.faults(1).input_parameters);
+            valid_input_parameter_names = properties(self.faults(1).faultParameterSpecs);
             if ~ismember(parameterName, valid_input_parameter_names)
                 valid_names = [append(valid_input_parameter_names, repmat({', '}, length(valid_input_parameter_names), 1))];
                 error(['input parameter name ', parameterName, ' not valid, should be one of ', valid_names{:}]);
@@ -613,13 +613,13 @@ classdef MultiFaultAnalyzer < handle
             absolute_depths = self.getDepth();
             if valid_input
                 for i = 1 : self.nFaults
-                    parameter = self.faults(i).input_parameters.(parameterName);
+                    parameter = self.faults(i).faultParameterSpecs.(parameterName);
                     if isnan(parameter.value_with_depth) | parameter.uniform_with_depth
                         depthMidValues(i) = parameter.value;
                     else
                         value_with_depth = parameter.value_with_depth;
                         depth = absolute_depths;
-                        depth_mid = self.faults(i).input_parameters.depth_mid.value;
+                        depth_mid = self.faults(i).faultParameterSpecs.depth_mid.value;
                         depthMidValues(i) = interp1(depth, value_with_depth, depth_mid);    % should be the same as taking the middle element
                     end
                 end
@@ -731,7 +731,7 @@ classdef MultiFaultAnalyzer < handle
             if nargin < 3
                 warningOn = true;
             end
-            valid_field_names = fields(self.faults(1).input_parameters);
+            valid_field_names = fields(self.faults(1).faultParameterSpecs);
             if ismember(submittedName, valid_field_names)
                 validName = true;
             else
@@ -785,7 +785,7 @@ classdef MultiFaultAnalyzer < handle
             %   submitted_name - Name of the setting to validate
             % check if run setting name is valid
             valid_setting_names = fields(self.faults(1));
-            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'input_parameters','load_table','y','realizationTable'})
+            if ismember(submittedName, valid_setting_names) & ~ismember(submittedName,{'faultParameterSpecs','input_parameters','load_table','y','realizationTable'})
                 validName = true;
                 if ismember(submittedName,{'P_res_mode','P_fault_mode','P0_fault_mode',...
                         'load_case','nucleation_criterion'})
