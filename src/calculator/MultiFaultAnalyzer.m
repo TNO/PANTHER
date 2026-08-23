@@ -1,7 +1,7 @@
-classdef MultiFaultAnalysis < handle
-    % MultiFaultAnalysis handles multiple 2D fault cross-sections.
+classdef MultiFaultAnalyzer < handle
+    % MultiFaultAnalyzer handles multiple 2D fault cross-sections.
     %
-    % The class stores one PantherAnalysis object per fault and provides
+    % The class stores one FaultAnalyzer object per fault and provides
     % convenience methods to:
     % - assign uniform or depth-dependent input parameters,
     % - set run settings across all faults,
@@ -9,7 +9,7 @@ classdef MultiFaultAnalysis < handle
     % - summarize and post-process outputs.
     %
     % Properties:
-    %   faults - Array of PantherAnalysis objects (one per fault)
+    %   faults - Array of FaultAnalyzer objects (one per fault)
     %   faultMetadata - Table with metadata per fault (ID, coordinates, etc.)
     %   faultSummary - Table summarizing run results per fault
     %   runDone - Logical flag indicating whether run() has completed
@@ -32,7 +32,7 @@ classdef MultiFaultAnalysis < handle
     %
 
     properties
-        faults PantherAnalysis      % array of PantherAnalysis objects
+        faults FaultAnalyzer      % array of FaultAnalyzer objects
         faultMetadata table         % table with custom meta data per fault (e.g. name, coordinates). ID is always included
         faultSummary table          % summary of fault results, e.g. reactivation & nucleation timestep, cff rate, slip length, etc. 
         runDone logical
@@ -46,7 +46,7 @@ classdef MultiFaultAnalysis < handle
     end
 
     methods
-        function self = MultiFaultAnalysis()
+        function self = MultiFaultAnalyzer()
             % MultiFaultCalculator Constructor to initialize the class with n_faults.
         end
         
@@ -56,7 +56,7 @@ classdef MultiFaultAnalysis < handle
             % Optional:
             %   metadataTable   - table with additional metadata columns
             % construct the class with nFaults, assign ID in the
-            % metadata table, and initialize the default PantherAnalysis for each fault
+            % metadata table, and initialize the default FaultAnalyzer for each fault
             if nargin < 3 || isempty(metadataTable)
                 metadataTable = table();
             end
@@ -64,7 +64,7 @@ classdef MultiFaultAnalysis < handle
                 error('metadata_table must be a table');
             end
 
-            self.faults = PantherAnalysis.empty(0, 1);
+            self.faults = FaultAnalyzer.empty(0, 1);
             self.faultMetadata = table((1:nFaults)', 'VariableNames', {'ID'});
             if ~isempty(metadataTable)
                 if height(metadataTable) ~= nFaults
@@ -74,7 +74,7 @@ classdef MultiFaultAnalysis < handle
                 self = self.addFaultMetadataAsTable(metadataTable);
             end
             for i = 1 : nFaults
-                self.faults(i, 1) = PantherAnalysis();
+                self.faults(i, 1) = FaultAnalyzer();
             end
             self.runDone = zeros(nFaults, 1);
         end
@@ -93,7 +93,7 @@ classdef MultiFaultAnalysis < handle
             %
             % Results are then applied back serially via applyResults().
             % Using cell arrays for parfor input/output ensures MATLAB slices
-            % exactly one PantherAnalysis object per worker rather than
+            % exactly one FaultAnalyzer object per worker rather than
             % broadcasting the full typed array.
             all_faults  = self.faults;
             n           = self.nFaults;
@@ -110,7 +110,7 @@ classdef MultiFaultAnalysis < handle
             if self.parallel
                 parfor i = 1 : n
                     inputs          = fault_cell{i}.extractInputs();
-                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
+                    result_cell{i}  = FaultAnalyzer.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
@@ -118,7 +118,7 @@ classdef MultiFaultAnalysis < handle
             else
                 for i = 1 : n
                     inputs          = fault_cell{i}.extractInputs();
-                    result_cell{i}  = PantherAnalysis.computeStressAndNucleation(inputs);
+                    result_cell{i}  = FaultAnalyzer.computeStressAndNucleation(inputs);
                     if printStatus && (i == 1 || mod(i, printEveryN) == 0 || i == n)
                         fprintf('fault %d of %d\n', i, n);
                     end
@@ -829,3 +829,4 @@ classdef MultiFaultAnalysis < handle
 
     end
 end
+

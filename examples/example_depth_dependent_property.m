@@ -2,7 +2,7 @@
 % parameter
 
 % initialize input Scenario 1: variable friction
-sc1_variable_friction = PantherAnalysis;
+sc1_variable_friction = FaultAnalyzer;
 % change some input properties
 sc1_variable_friction.setInputParameter('width_HW', 500);
 sc1_variable_friction.setInputParameter('throw', 50);
@@ -77,7 +77,7 @@ legend(hs, {'Initial', 'Final'});
 %%
 
 % initialize input Scenario 2: variable dip
-sc2_variable_dip = PantherAnalysis;
+sc2_variable_dip = FaultAnalyzer;
 
 % set depth varying dip
 % sc2_variable_dip.input_parameters.dip.uniform_with_depth = 0;       % make dip depth-variable
@@ -136,3 +136,4 @@ ylabel('Depth (m)');
 ylim([sc2_variable_dip.getInputParameter('depth_mid') - 300, sc2_variable_dip.getInputParameter('depth_mid') + 300]);
 set(gca,'Box',1);
 legend(hs, {'Initial', 'Final'});
+

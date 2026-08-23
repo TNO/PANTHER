@@ -4,7 +4,7 @@
 % In this example a figure is generated with FW HW and fault pressure
 
 
-analysis = PantherAnalysis();                          % intialize model run
+analysis = FaultAnalyzer();                          % intialize model run
 analysis.setInputParameter('throw', 50);
 analysis.setInputParameter('P_grad_res', 0.2);      % assign gas pressure gradient in the reservoir
 analysis.setInputParameter('P_over', 2);            % overpressure of 2 MPa at the top of the reservoir
@@ -92,3 +92,4 @@ function [h2] = plot_pressures(analysis, t_step)
     set(ax(2:end),'YTickLabel','');
  
 end
+

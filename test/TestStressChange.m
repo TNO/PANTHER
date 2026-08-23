@@ -9,7 +9,7 @@ classdef TestStressChange < matlab.unittest.TestCase
     methods (Test)
         function test_poroelastic_stress(testCase)
             % initialize run and simplify pressure steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;
@@ -34,7 +34,7 @@ classdef TestStressChange < matlab.unittest.TestCase
 
          function test_thermoelastic_stress(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.T_steps(2) = -1;
@@ -59,7 +59,7 @@ classdef TestStressChange < matlab.unittest.TestCase
 
           function test_poro_thermoelastic_stress(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.T_steps(2) = -1;
@@ -87,7 +87,7 @@ classdef TestStressChange < matlab.unittest.TestCase
 
          function test_thermoelastic_stress_diffusion(testCase)
             % initialize run and simplify temperature steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             % set 0 throw, 90 degree dip
             run_instance.setInputParameter('throw', 0);
             run_instance.setInputParameter('dip', 90);
@@ -109,4 +109,5 @@ classdef TestStressChange < matlab.unittest.TestCase
 
     end
 end
+
 

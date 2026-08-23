@@ -20,7 +20,7 @@ classdef Temperature
 
     methods
         function self = Temperature(analysis, T_fault_mode)
-            % Initialize temperature loads from a PantherAnalysis instance.
+            % Initialize temperature loads from a FaultAnalyzer instance.
             if isempty(analysis.ensemble_members) || analysis.ensemble_dirty
                 analysis = analysis.generate_ensemble();
             end

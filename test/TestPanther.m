@@ -6,7 +6,7 @@ classdef TestPanther < matlab.unittest.TestCase
     
     methods (Test)
         function test_default_single_run_P (testCase)
-            result = PantherAnalysis();
+            result = FaultAnalyzer();
             result = result.run();
             i_mid = ceil(length(result.y)/2);
             actual = result.faultResults.sne(i_mid, end);
@@ -19,7 +19,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_default_single_run_T (testCase)
             % test with default input, with dT and T diffusion    
-            run_instance = PantherAnalysis;
+            run_instance = FaultAnalyzer;
             run_instance.load_case = 'T';
             run_instance.diffusion_T = 0;
             run_instance.generate_ensemble();
@@ -36,7 +36,7 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_single_with_depth_dependent_shsv(testCase)
              % test depth-variable initial stress ratio shsv
-            run_instance = PantherAnalysis;
+            run_instance = FaultAnalyzer;
             % set shsv varying with depth
             shsv_default = run_instance.getInputParameter('shsv');
             shsv_with_depth = ones(size(run_instance.y))*shsv_default;
@@ -55,14 +55,14 @@ classdef TestPanther < matlab.unittest.TestCase
 
          function test_single_with_depth_varying_friction(testCase)
              % test depth-variable friction
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.run();
             i_mid = ceil(length(run_instance.y)/2);
             nuc_step = run_instance.faultSummary.nucleation_load_step;
             nuc_dp_uniform = run_instance.get_output_at_load_step('dP', nuc_step);
             nuc_dp_uniform = nuc_dp_uniform(i_mid);
             % make an array of f_s of size (y)
-            run_instance2 = PantherAnalysis();
+            run_instance2 = FaultAnalyzer();
             run_instance2.generate_ensemble();
             f_s_with_depth = ones(size(run_instance2.y))*0.6;
             i_reservoir_top = run_instance2.ensemble_members{1}.i_HW_top(run_instance2.y);
@@ -110,7 +110,7 @@ classdef TestPanther < matlab.unittest.TestCase
         function test_sH_dir(testCase)
             % test to check whether sH_dir is handled correctly
             % initialize run and simplify pressure steps
-            run_instance = PantherAnalysis();
+            run_instance = FaultAnalyzer();
             run_instance.load_table(3:end, :) = [];
             run_instance.load_table.time_steps(2) = 1;
             run_instance.load_table.P_steps(2) = -1;
