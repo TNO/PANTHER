@@ -78,6 +78,22 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
             testCase.verifyEqual(height(mfa.faultSummary), mfa.nFaults);
         end
 
+        function test_get_result_for_multiple_faults(testCase)
+            mfa = MultiFaultAnalyzer();
+            mfa = mfa.initialize(2);
+            mfa.parallel = 0;
+            mfa.printStatusOutput = false;
+            mfa = mfa.run();
+
+            results = mfa.getResult('sne');
+            testCase.verifyClass(results, 'cell');
+            testCase.verifySize(results, [2, 1]);
+            testCase.verifyEqual(results{1}, mfa.faults(1).faultResults.sne);
+            testCase.verifyEqual(mfa.getResult('tau', 2), mfa.faults(2).faultResults.tau);
+            testCase.verifyEqual(mfa.getResultAtLoadStep('sne', 1, 2), mfa.faults(2).faultResults.sne(:, 1));
+            testCase.verifyEqual(mfa.getResultAtY('sne', mfa.faults(1).y(1), 1), mfa.faults(1).faultResults.sne(1, :));
+        end
+
         function test_print_status_every_n(testCase)
             % printStatusEveryNFaults should not cause errors.
             mfa = MultiFaultAnalyzer();

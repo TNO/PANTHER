@@ -17,6 +17,18 @@ classdef TestPanther < matlab.unittest.TestCase
             testCase.verifyEqual(analysis.faultParameterSpecs, replacementSpecs);
         end
 
+        function test_get_result(testCase)
+            analysis = FaultAnalyzer();
+            analysis = analysis.run();
+
+            testCase.verifyEqual(analysis.getResult('sne'), analysis.faultResults.sne);
+            testCase.verifyEqual(analysis.getResult('tau'), analysis.faultResults.tau);
+            testCase.verifyEqual(analysis.getResultAtLoadStep('sne', 1), analysis.faultResults.sne(:, 1));
+            testCase.verifyEqual(analysis.getResultAtY('sne', analysis.y(1)), analysis.faultResults.sne(1, :));
+            depth = analysis.getDepth();
+            testCase.verifyEqual(analysis.getResultAtDepth('sne', depth(1)), analysis.faultResults.sne(1, :));
+        end
+
         function test_default_single_run_P (testCase)
             result = FaultAnalyzer();
             result = result.run();
@@ -71,7 +83,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance.run();
             i_mid = ceil(length(run_instance.y)/2);
             nuc_step = run_instance.faultSummary.nucleation_load_step;
-            nuc_dp_uniform = run_instance.get_output_at_load_step('dP', nuc_step);
+            nuc_dp_uniform = run_instance.getResultAtLoadStep('dP', nuc_step);
             nuc_dp_uniform = nuc_dp_uniform(i_mid);
             % make an array of f_s of size (y)
             run_instance2 = FaultAnalyzer();
@@ -85,7 +97,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance2.generateRealization();
             run_instance2.run();
             nuc_step = run_instance2.faultSummary.nucleation_load_step;
-            nuc_dp_2 = run_instance2.get_output_at_load_step('dP', nuc_step);
+            nuc_dp_2 = run_instance2.getResultAtLoadStep('dP', nuc_step);
             actual = nuc_dp_2(i_mid);
             % actual = run_instance.faultResults.dP(i_mid, nuc_step);
             expected = -17.61;
@@ -94,7 +106,7 @@ classdef TestPanther < matlab.unittest.TestCase
             run_instance2.setDepthDependentInputParameter('f_s', ones(size(run_instance.y))*0.6);
             run_instance2.run();
             nuc_step = run_instance2.faultSummary.nucleation_load_step;
-            nuc_dp_uniform_after_reset = run_instance2.get_output_at_load_step('dP', nuc_step);
+            nuc_dp_uniform_after_reset = run_instance2.getResultAtLoadStep('dP', nuc_step);
             actual = nuc_dp_uniform_after_reset(i_mid);
             expected = nuc_dp_uniform;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
@@ -113,7 +125,7 @@ classdef TestPanther < matlab.unittest.TestCase
             % run the model
             run_instance.run();
             nuc_step = run_instance.faultSummary.nucleation_load_step;
-            nuc_dp = run_instance.get_output_at_load_step('dP', nuc_step);
+            nuc_dp = run_instance.getResultAtLoadStep('dP', nuc_step);
             actual = nuc_dp(i_mid);
             expected = -21.04;
             testCase.verifyEqual(actual, expected , "RelTol", 0.01);
