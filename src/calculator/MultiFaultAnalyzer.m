@@ -375,6 +375,47 @@ classdef MultiFaultAnalyzer < handle
             end
         end
 
+        function results = getResult(self, resultName, faultIndices)
+            % getResult Return a result from one or more faults.
+            %
+            % For one fault, results is the value returned by FaultAnalyzer.
+            % For multiple faults, results is a cell array in fault order.
+            if nargin < 3 || isempty(faultIndices)
+                faultIndices = 1:self.nFaults;
+            end
+
+            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
+                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
+                error('faultIndices must contain valid integer indices between 1 and nFaults');
+            end
+            faultIndices = faultIndices(:);
+
+            if isscalar(faultIndices)
+                results = self.faults(faultIndices).getResult(resultName);
+                return;
+            end
+
+            results = cell(numel(faultIndices), 1);
+            for i = 1:numel(faultIndices)
+                results{i} = self.faults(faultIndices(i)).getResult(resultName);
+            end
+        end
+
+        function results = getResultAtLoadStep(self, resultName, loadStep, faultIndices)
+            % getResultAtLoadStep Return a result at a load step for faults.
+            results = self.collectFaultResults(@(fault) fault.getResultAtLoadStep(resultName, loadStep), faultIndices);
+        end
+
+        function results = getResultAtY(self, resultName, yValue, faultIndices)
+            % getResultAtY Return a result at a y value for faults.
+            results = self.collectFaultResults(@(fault) fault.getResultAtY(resultName, yValue), faultIndices);
+        end
+
+        function results = getResultAtDepth(self, resultName, depthValue, faultIndices)
+            % getResultAtDepth Return a result at absolute depth for faults.
+            results = self.collectFaultResults(@(fault) fault.getResultAtDepth(resultName, depthValue), faultIndices);
+        end
+
         function self = setRunSetting(self, settingName, settingValue)
             % setRunSetting Specifies run settings per fault.
             % Input:
@@ -752,6 +793,25 @@ classdef MultiFaultAnalyzer < handle
                         '''. Valid input parameter names are: ',...
                          [fields_cellstring{:}]]);
                 end
+            end
+        end
+
+        function results = collectFaultResults(self, resultFunction, faultIndices)
+            if nargin < 3 || isempty(faultIndices)
+                faultIndices = 1:self.nFaults;
+            end
+            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
+                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
+                error('faultIndices must contain valid integer indices between 1 and nFaults');
+            end
+            faultIndices = faultIndices(:);
+            if isscalar(faultIndices)
+                results = resultFunction(self.faults(faultIndices));
+                return;
+            end
+            results = cell(numel(faultIndices), 1);
+            for i = 1:numel(faultIndices)
+                results{i} = resultFunction(self.faults(faultIndices(i)));
             end
         end
 

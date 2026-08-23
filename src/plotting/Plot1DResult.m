@@ -100,13 +100,7 @@ classdef Plot1DResult < LoadFigure
         end
 
         function [array_to_plot] = retrieve_result_plot_data(~, analysis, parameter, i_step)
-            
-            if contains(parameter, 'scu' )
-                scu = analysis.getSCU();
-                array_to_plot = scu(:, i_step);
-            else
-                array_to_plot = analysis.faultResults.(parameter)(:,i_step);
-            end
+            array_to_plot = analysis.getResultAtLoadStep(parameter, i_step);
         end
 
         function x_labels = retrieve_labels(self)

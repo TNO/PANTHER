@@ -54,7 +54,7 @@ function [h2] = plot_pressures(analysis, t_step)
     ax_num = 1; 
     
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(analysis.pressure{1}.P(:,1), analysis.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.getResultAtLoadStep('P', 1), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
     plot(P_HW(:,1), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
     plot(P_FW(:,1), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);
@@ -67,7 +67,7 @@ function [h2] = plot_pressures(analysis, t_step)
     ax_num = ax_num + 1;
     
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(analysis.pressure{1}.P(:,t_step), analysis.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.getResultAtLoadStep('P', t_step), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
     plot(P_HW(:,t_step), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
     plot(P_FW(:,t_step), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);
@@ -80,7 +80,7 @@ function [h2] = plot_pressures(analysis, t_step)
     % Pressure changes
     ax_num = ax_num + 1;
     ax(ax_num) = axes('Units','centimeters','Position',[ax0 + (ax_num-1)*(aw+dax),ay0, aw, ah]);
-    plot(analysis.pressure{1}.dP(:,t_step), analysis.y ,'Color','k','LineWidth', 1.5);
+    plot(analysis.getResultAtLoadStep('dP', t_step), analysis.y ,'Color','k','LineWidth', 1.5);
     hold on
     plot(dP_HW(:,t_step), analysis.y , 'LineStyle','-.' ,'LineWidth', 1.5);
     plot(dP_FW(:,t_step), analysis.y, 'LineStyle','--' ,'LineWidth', 1.5);

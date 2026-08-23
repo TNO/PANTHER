@@ -346,111 +346,89 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             end
         end
 
-        function [output] = get_member_output(self, result_name, run_nr)
-            % getter function to conveniently retrieve output
-            if nargin < 3
-                run_nr = 1;
-            end
-            allowable_result_names = {'P0','P','dP' 'sne', 'tau', 'sne_reac',...
+        function output = getResult(self, resultName)
+            % getResult Return a calculated result or derived output.
+            allowable_result_names = {'P0','P','dP', 'sne', 'tau', 'sne_reac',...
                 'tau_reac','sne_nuc','tau_nuc','T0', 'T','dT','slip','scu', ...
                 'dcfs','cfs','dcfs_dt','tau_s','tau_d'}';
-            if ~ismember(result_name, allowable_result_names)
+            if ~ismember(resultName, allowable_result_names)
                 resultnames_cellstring = [append(allowable_result_names, repmat({', '},length(allowable_result_names),1))];
-                error(['result name ', result_name, ' not valid, should be one of ', ...
+                    error(['result name ', resultName, ' not valid, should be one of ', ...
                      resultnames_cellstring{:}]);
             end
-            if run_nr ~= 1
-                error('FaultAnalyzer stores a single run. Use run_nr = 1.');
-            end
-            if isstruct(self.faultResults) && isfield(self.faultResults, result_name)
-                output = self.faultResults.(result_name);
-            elseif strcmp(result_name, 'scu')
-                output = self.getSCU(run_nr);
-            elseif strcmp(result_name, 'tau_s')
-                output = self.getStaticFaultStrength(run_nr);
-            elseif strcmp(result_name, 'tau_d')
-                output = self.getDynamicFaultStrength(run_nr);
-            elseif strcmp(result_name, 'cfs')
-                output = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
-            elseif strcmp(result_name, 'dcfs')
-                cff = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
+            if isstruct(self.faultResults) && isfield(self.faultResults, resultName)
+                output = self.faultResults.(resultName);
+            elseif strcmp(resultName, 'scu')
+                output = self.getSCU();
+            elseif strcmp(resultName, 'tau_s')
+                output = self.getStaticFaultStrength();
+            elseif strcmp(resultName, 'tau_d')
+                output = self.getDynamicFaultStrength();
+            elseif strcmp(resultName, 'cfs')
+                output = self.getCFF(self.getInputParameter('f_s'), 0);
+            elseif strcmp(resultName, 'dcfs')
+                cff = self.getCFF(self.getInputParameter('f_s'), 0);
                 output = cff - cff(:,1);
-            elseif strcmp(result_name, 'dcfs_dt')
-                cff = self.getCFF(run_nr, self.getInputParameter('f_s'), 0);
+            elseif strcmp(resultName, 'dcfs_dt')
+                cff = self.getCFF(self.getInputParameter('f_s'), 0);
                 time = self.load_table.time_steps;
                 % compute the time derivative (MPa/yr)
                 output = gradient(cff, time, 2); 
             else
-                error('Output %s is not available in faultResults', result_name);
+                error('Output %s is not available in faultResults', resultName);
             end
         end
 
-        function output_at_load_step = get_output_at_load_step(self, output_name, load_step)
-            % get_output_at_load_step Return any faultResults field at an
-            % arbitrary load step index between 1 and nTimes.
+        function outputAtLoadStep = getResultAtLoadStep(self, resultName, loadStep)
+            % getResultAtLoadStep Return a result at an arbitrary load step.
             %
             % Inputs
-            %   output_name - field name in self.faultResults
-            %   load_step   - scalar load-step index (can be fractional)
-            if ~(ischar(output_name) || (isstring(output_name) && isscalar(output_name)))
-                error('output_name must be a string');
+            %   resultName - result name accepted by getResult
+            %   loadStep - scalar load-step index (can be fractional)
+            if ~(ischar(resultName) || (isstring(resultName) && isscalar(resultName)))
+                error('resultName must be a string');
             end
-            output_name = char(output_name);
-
-            if isempty(self.faultResults) || ~isstruct(self.faultResults)
-                error('faultResults is empty. Run FaultAnalyzer.run() first.');
+            if ~(isnumeric(loadStep) && isscalar(loadStep) && isfinite(loadStep))
+                error('loadStep must be a finite numeric scalar');
             end
-            if ~isfield(self.faultResults, output_name)
-                valid_fields = fieldnames(self.faultResults);
-                valid_fields = [append(valid_fields, repmat({', '}, length(valid_fields), 1))];
-                error(['Requested output ''', output_name, ''' not found in faultResults. Valid fields: ', valid_fields{:}]);
+            if loadStep < 1 || loadStep > self.nTimes
+                error('loadStep must be between 1 and nTimes (%d)', self.nTimes);
             end
 
-            if ~(isnumeric(load_step) && isscalar(load_step) && isfinite(load_step))
-                error('load_step must be a finite numeric scalar');
-            end
-            if load_step < 1 || load_step > self.nTimes
-                error('load_step must be between 1 and nTimes (%d)', self.nTimes);
-            end
-
-            output = self.faultResults.(output_name);
-            if ~isnumeric(output)
-                error('faultResults.%s must be numeric', output_name);
-            end
-
-            % Time-dependent outputs are sampled along dimension 2.
-            if isvector(output)
-                if numel(output) == self.nTimes
-                    x_ind = 1:self.nTimes;
-                    output_at_load_step = interp1(x_ind, output(:), load_step);
-                else
-                    output_at_load_step = output;
-                end
-                return;
-            end
-
-            n_cols = size(output, 2);
-            if n_cols == self.nTimes
-                x_ind = 1:self.nTimes;
-                output_at_load_step = interp1(x_ind, output', load_step)';
-            elseif n_cols == 1
-                output_at_load_step = output;
-            else
-                error(['faultResults.', output_name, ' has size (*,%d) which does not match nTimes (%d)'], n_cols, self.nTimes);
-            end
+            output = self.getResult(char(resultName));
+            outputAtLoadStep = self.sampleResultAlongDimension(output, 2, loadStep, 1:self.nTimes, 'load step');
         end
 
-        function scu = getSCU(self, run_nr, f_s, cohesion)
-            if nargin < 2 || isempty(run_nr)
-                run_nr = 1;
+        function outputAtY = getResultAtY(self, resultName, yValue)
+            % getResultAtY Return a result interpolated at a model y value.
+            if ~(isnumeric(yValue) && isscalar(yValue) && isfinite(yValue))
+                error('yValue must be a finite numeric scalar');
             end
-            if run_nr ~= 1
-                error('FaultAnalyzer stores a single run. Use run_nr = 1.');
+            output = self.getResult(char(resultName));
+            outputAtY = self.sampleResultAlongDimension(output, 1, yValue, self.y, 'y value');
+        end
+
+        function outputAtDepth = getResultAtDepth(self, resultName, depthValue)
+            % getResultAtDepth Return a result interpolated at absolute depth.
+            if ~(isnumeric(depthValue) && isscalar(depthValue) && isfinite(depthValue))
+                error('depthValue must be a finite numeric scalar');
             end
-            if nargin < 3 || isempty(f_s)
+            output = self.getResult(char(resultName));
+            outputAtDepth = self.sampleResultAlongDimension(output, 1, depthValue, self.getDepth(), 'depth value');
+        end
+
+        function outputAtLoadStep = get_output_at_load_step(self, resultName, loadStep)
+            % get_output_at_load_step Deprecated alias for getResultAtLoadStep.
+            warning('FaultAnalyzer:deprecated', ...
+                'get_output_at_load_step is deprecated. Use getResultAtLoadStep instead.');
+            outputAtLoadStep = self.getResultAtLoadStep(resultName, loadStep);
+        end
+
+        function scu = getSCU(self, f_s, cohesion)
+            if nargin < 2 || isempty(f_s)
                 f_s = self.getDepthDependentInputParameter('f_s');
             end
-            if nargin < 4 || isempty(cohesion)
+            if nargin < 3 || isempty(cohesion)
                 cohesion = self.getDepthDependentInputParameter('cohesion');
             end
             self.requireRunResults();
@@ -459,18 +437,12 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             scu = tau ./ (sne .* f_s + cohesion);
         end
 
-        function scu = get_scu(self, run_nr, f_s, cohesion)
+        function scu = get_scu(self, f_s, cohesion)
             % Backward-compatible alias for getSCU.
-            scu = self.getSCU(run_nr, f_s, cohesion);
+            scu = self.getSCU(f_s, cohesion);
         end
 
-        function tau_s = getStaticFaultStrength(self, run_nr)
-            if nargin < 2 || isempty(run_nr)
-                run_nr = 1;
-            end
-            if run_nr ~= 1
-                error('FaultAnalyzer stores a single run. Use run_nr = 1.');
-            end
+        function tau_s = getStaticFaultStrength(self)
             self.requireRunResults();
             sne = self.faultResults.sne;
             f_s = self.getDepthDependentInputParameter('f_s');
@@ -478,13 +450,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             tau_s = sne .* f_s + cohesion;
         end
 
-        function tau_d = getDynamicFaultStrength(self, run_nr)
-            if nargin < 2 || isempty(run_nr)
-                run_nr = 1;
-            end
-            if run_nr ~= 1
-                error('FaultAnalyzer stores a single run. Use run_nr = 1.');
-            end
+        function tau_d = getDynamicFaultStrength(self)
             self.requireRunResults();
             sne = self.faultResults.sne;
             f_d = self.getDepthDependentInputParameter('f_d');
@@ -492,17 +458,11 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             tau_d = sne .* f_d + cohesion;
         end
 
-        function cff = getCFF(self, run_nr, mu, cohesion)
-            if nargin < 2 || isempty(run_nr)
-                run_nr = 1;
-            end
-            if run_nr ~= 1
-                error('FaultAnalyzer stores a single run. Use run_nr = 1.');
-            end
-            if nargin < 3 || isempty(mu)
+        function cff = getCFF(self, mu, cohesion)
+            if nargin < 2 || isempty(mu)
                 mu = self.getDepthDependentInputParameter('f_s');
             end
-            if nargin < 4 || isempty(cohesion)
+            if nargin < 3 || isempty(cohesion)
                 cohesion = self.getDepthDependentInputParameter('cohesion');
             end
             self.requireRunResults();
@@ -511,25 +471,22 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             cff = tau - (sne .* mu + cohesion);
         end
 
-        function cff = get_cff(self, run_nr, mu, cohesion)
+        function cff = get_cff(self, mu, cohesion)
             % Backward-compatible alias for getCFF.
-            cff = self.getCFF(run_nr, mu, cohesion);
+            cff = self.getCFF(mu, cohesion);
         end
 
-        function [cff_max, cff_ymid] = get_cff_rates(self, time_range, run_nr, mu, cohesion)
+        function [cff_max, cff_ymid] = get_cff_rates(self, time_range, mu, cohesion)
             if nargin < 2 || isempty(time_range)
                 time_range = [1, self.nTimes];
             end
-            if nargin < 3 || isempty(run_nr)
-                run_nr = 1;
-            end
-            if nargin < 4 || isempty(mu)
+            if nargin < 3 || isempty(mu)
                 mu = self.getInputParameter('f_s');
             end
-            if nargin < 5 || isempty(cohesion)
+            if nargin < 4 || isempty(cohesion)
                 cohesion = self.getInputParameter('cohesion');
             end
-            cff = self.getCFF(run_nr, mu, cohesion);
+            cff = self.getCFF(mu, cohesion);
             min_index = time_range(1);
             max_index = time_range(2);
             cff = cff(:, min_index:max_index);
@@ -716,6 +673,39 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
     end
 
     methods (Access = private)
+        function sampledResult = sampleResultAlongDimension(~, result, dimension, query, coordinates, coordinateName)
+            if ~isnumeric(result)
+                error('Result must be numeric to sample at a %s.', coordinateName);
+            end
+            coordinates = coordinates(:);
+            if isvector(result)
+                if dimension == 2
+                    result = result(:)';
+                else
+                    result = result(:);
+                end
+            end
+            if size(result, dimension) ~= numel(coordinates)
+                error('Result size along %s dimension (%d) does not match coordinate length (%d).', ...
+                    coordinateName, size(result, dimension), numel(coordinates));
+            end
+            coordinateStep = diff(coordinates);
+            if all(coordinateStep < 0)
+                coordinates = flipud(coordinates);
+                result = flip(result, dimension);
+            elseif any(coordinateStep <= 0)
+                error('%s coordinates must be strictly monotonic.', coordinateName);
+            end
+            if query < coordinates(1) || query > coordinates(end)
+                error('%s must be between %.6g and %.6g.', coordinateName, coordinates(1), coordinates(end));
+            end
+            if dimension == 1
+                sampledResult = interp1(coordinates, result, query);
+            else
+                sampledResult = interp1(coordinates, result', query)';
+            end
+        end
+
         function requireRunResults(self)
             if isempty(self.faultResults) || ~isstruct(self.faultResults) || isempty(fieldnames(self.faultResults))
                 error('Run results are not available. Execute FaultAnalyzer.run() first.');
