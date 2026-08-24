@@ -3,26 +3,28 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
     % contains the results
 
     properties
-        faultParameterSpecs                         % FaultParameterList containing fault parameter specifications
+        faultParameterSpecs                         % {FaultParameterList object} containing fault parameter specifications
+        faultRealization = []                       % {FaultRealization object} for this fault; empty until generateRealization() is called
+        faultResults struct                         % [struct] lightweight plain-array results (sne, tau, P, slip, etc.); always populated after run
+        faultSummary table                          % [table] per-run scalar summary (reactivation, nucleation step, lengths, etc.)
         load_case {mustBeMember(load_case, {'P','T','PT'})} = 'P';               % load case 'P': pressure changes, 'T': temperature changes
-        load_table table                            % table containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
+        load_table table                            % [table] containing time steps, P and T steps (len(y), len(timesteps) for both FW and HW
         stochastic logical = 0;                     % activate stochastic analysis for the single cached member
         diffusion_P logical = 0;                    % activate pressure diffusion
-        P_res_mode {mustBeMember(P_res_mode, {'same','different'})} = 'same';       % base of the reservoir pressure gradient. same = at max(depth_HW, depth_FW)
+        P_res_mode {mustBeMember(P_res_mode, {'same','different'})} = 'same';                   % base of the reservoir pressure gradient. same = same P at max(depth_HW, depth_FW)
         P0_fault_mode {mustBeMember(P0_fault_mode,{'max','min','mean','FW','HW'})} = 'max';     % [-] assumed initial pressure in fault based on FW and HW pressure. max=max(p_HW, p_FW), etc. 
         P_fault_mode {mustBeMember(P_fault_mode,{'max','min','mean','FW','HW'})} = 'min';       % [-] assumed pressure in fault based on FW and HW pressure during load steps. max=max(p_HW, p_FW), etc. 
         diffusion_T logical = 0;                    % activate pressure diffusion
         aseismic_slip logical = 1                   % compute aseismic slip during nucleation phase
         nucleation_criterion {mustBeMember(nucleation_criterion,{'fixed','UR2D','Day3D','Ruan3D'})} = 'UR2D';   
-        nucleation_length_fixed double = 10;  
-        faultRealization = []                       % {FaultRealization object} for this fault; empty until generateRealization() is called
-        realizationStale logical = true             % true when faultRealization must be regenerated. Note that it will always be regenerated when executing run.  
+        nucleation_length_fixed double = 10;           
         save_stress cell = {'all'};                 % indicate which stress to save. 'all', 'none', 'first','last',[step_numbers]
+        realizationStale logical = true             % true when faultRealization must be regenerated. Note that it will always be regenerated when executing run.  
+        resultsStale logical = true                 % true when stored results no longer match the current configuration
         keepModelObjects logical = false            % true: retain full Pressure/Temperature/FaultStress/FaultSlip objects in *_store
                                                     % after run (for object-method access). Note: raw arrays are always in faultResults
                                                     % regardless; this flag trades extra memory for access to object methods.
-        faultResults struct                         % lightweight plain-array results (sne, tau, P, slip, etc.); always populated after run
-        faultSummary table                          % per-run scalar summary (reactivation, nucleation step, lengths, etc.)
+
     end 
 
     properties (Constant)
@@ -43,10 +45,12 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         temperature_store cell = {}                 % {Temperature} when keepModelObjects=true; empty otherwise
         stress_store cell = {}                      % {FaultStress} when keepModelObjects=true; empty otherwise
         slip_store cell = {}                        % always populated after run: {FaultSlip} (keepModelObjects=true) or {slip_meta struct} (lightweight)
+        resultsConfiguration = struct()             % configuration snapshot used to produce faultResults
     end
 
     properties (Dependent, Hidden)
-        % Backward-compatibility accessors. Prefer faultResults fields directly.
+        % Backward-compatibility accessors. Accesss results through
+        % getters, and objects to the *_stores
         input_parameters                            % Deprecated. Use faultParameterSpecs instead.
         pressure cell                               % Deprecated. Use faultResults.P. Returns {Pressure obj} if keepModelObjects=true, else struct view.
         temperature cell                            % Deprecated. Use faultResults.T. Returns {Temperature obj} if keepModelObjects=true, else struct view.
@@ -158,11 +162,23 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 self.temperature_store = {};
                 self.stress_store      = {};
             end
-            self = self.make_result_summary();
+            self = self.makeResultSummary();
+            self.resultsConfiguration = self.captureResultsConfiguration();
+            self.resultsStale = false;
         end
 
-        function self = mark_realizationStale(self)
+        function self = markRealizationStale(self)
+            % markRealizationStale [logical] Mark the current faultRealization stale
+            % when input parameters have been updated after generating it.
+            % faultRealization can be regenerated using generateRealization
+            % faultRealization is always regenerated before running
             self.realizationStale = true;
+            self.resultsStale = true;
+        end
+
+        function self = markResultsStale(self)
+            % markResultsStale [logical]] Mark stored results as outdated without deleting them.
+            self.resultsStale = true;
         end
        
 
@@ -181,6 +197,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             p.(parameterType) = parameterValues;
             self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
+            self.resultsStale = true;
         end
 
         function self = setDepthDependentInputParameter(self, parameterName, parameterValues)
@@ -193,17 +210,21 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             p.value_with_depth = parameterValues;
             self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
+            self.resultsStale = true;
         end
 
         function self = deactivateDepthDependentInputParameter(self, parameterName)
             % deactivateDepthDependentInputParameter Switches an input
             % parameter back to uniform-with-depth mode.
+            % Input:
+            % parameterName: one of the allowable depth dependent input
+            % parameters, e.g. dip
             parameterName = self.validateInputParameterName(parameterName);
-
             p = self.faultParameterSpecs.(parameterName);
             p.uniform_with_depth = 1;
             self.faultParameterSpecs.(parameterName) = p;
             self.realizationStale = true;
+            self.resultsStale = true;
         end
 
         function self = generateRealization(self)
@@ -211,6 +232,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % Call this (or run()) before accessing faultRealization.
             self.faultRealization = FaultRealization(self.faultParameterSpecs, self.stochastic);
             self.realizationStale = false;
+            self.resultsStale = true;
         end
 
         function self = generate_ensemble(self) %#ok<MANU>
@@ -228,7 +250,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             realizationTable = self.faultRealization.to_table();
         end
 
-        function self = make_result_summary(self)
+        function self = makeResultSummary(self)
             %warning('off');
             % reactivation: [boolean] 1 if reactivation detected during any time step, 0 if not
             % reactivation_load_step: [index] index in time array at which
@@ -261,6 +283,13 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 self.faultSummary.max_slip_length(i) = self.slip{i}.max_slip_length;
             end
             warning('on'); 
+        end
+
+        function self = make_result_summary(self)
+            % make_result_summary Deprecated alias for makeResultSummary.
+            warning('FaultAnalyzer:deprecated', ...
+                'make_result_summary is deprecated. Use makeResultSummary instead.');
+            self = self.makeResultSummary();
         end
         
         function [geom_table] = getRealizationGeometries(self)
@@ -346,8 +375,9 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             end
         end
 
-        function output = getResult(self, resultName)
+        function output = getResult(self, resultName, varargin)
             % getResult Return a calculated result or derived output.
+            allowStale = self.parseAllowStale(varargin{:});
             allowable_result_names = {'P0','P','dP', 'sne', 'tau', 'sne_reac',...
                 'tau_reac','sne_nuc','tau_nuc','T0', 'T','dT','slip','scu', ...
                 'dcfs','cfs','dcfs_dt','tau_s','tau_d'}';
@@ -356,6 +386,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     error(['result name ', resultName, ' not valid, should be one of ', ...
                      resultnames_cellstring{:}]);
             end
+            self.requireRunResults(allowStale);
             if isstruct(self.faultResults) && isfield(self.faultResults, resultName)
                 output = self.faultResults.(resultName);
             elseif strcmp(resultName, 'scu')
@@ -379,7 +410,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             end
         end
 
-        function outputAtLoadStep = getResultAtLoadStep(self, resultName, loadStep)
+        function outputAtLoadStep = getResultAtLoadStep(self, resultName, loadStep, varargin)
             % getResultAtLoadStep Return a result at an arbitrary load step.
             %
             % Inputs
@@ -395,33 +426,33 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 error('loadStep must be between 1 and nTimes (%d)', self.nTimes);
             end
 
-            output = self.getResult(char(resultName));
+            output = self.getResult(char(resultName), varargin{:});
             outputAtLoadStep = self.sampleResultAlongDimension(output, 2, loadStep, 1:self.nTimes, 'load step');
         end
 
-        function outputAtY = getResultAtY(self, resultName, yValue)
+        function outputAtY = getResultAtY(self, resultName, yValue, varargin)
             % getResultAtY Return a result interpolated at a model y value.
             if ~(isnumeric(yValue) && isscalar(yValue) && isfinite(yValue))
                 error('yValue must be a finite numeric scalar');
             end
-            output = self.getResult(char(resultName));
+            output = self.getResult(char(resultName), varargin{:});
             outputAtY = self.sampleResultAlongDimension(output, 1, yValue, self.y, 'y value');
         end
 
-        function outputAtDepth = getResultAtDepth(self, resultName, depthValue)
+        function outputAtDepth = getResultAtDepth(self, resultName, depthValue, varargin)
             % getResultAtDepth Return a result interpolated at absolute depth.
             if ~(isnumeric(depthValue) && isscalar(depthValue) && isfinite(depthValue))
                 error('depthValue must be a finite numeric scalar');
             end
-            output = self.getResult(char(resultName));
+            output = self.getResult(char(resultName), varargin{:});
             outputAtDepth = self.sampleResultAlongDimension(output, 1, depthValue, self.getDepth(), 'depth value');
         end
 
-        function outputAtLoadStep = get_output_at_load_step(self, resultName, loadStep)
+        function outputAtLoadStep = get_output_at_load_step(self, resultName, loadStep, varargin)
             % get_output_at_load_step Deprecated alias for getResultAtLoadStep.
             warning('FaultAnalyzer:deprecated', ...
                 'get_output_at_load_step is deprecated. Use getResultAtLoadStep instead.');
-            outputAtLoadStep = self.getResultAtLoadStep(resultName, loadStep);
+            outputAtLoadStep = self.getResultAtLoadStep(resultName, loadStep, varargin{:});
         end
 
         function scu = getSCU(self, f_s, cohesion)
@@ -474,27 +505,6 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
         function cff = get_cff(self, mu, cohesion)
             % Backward-compatible alias for getCFF.
             cff = self.getCFF(mu, cohesion);
-        end
-
-        function [cff_max, cff_ymid] = get_cff_rates(self, time_range, mu, cohesion)
-            if nargin < 2 || isempty(time_range)
-                time_range = [1, self.nTimes];
-            end
-            if nargin < 3 || isempty(mu)
-                mu = self.getInputParameter('f_s');
-            end
-            if nargin < 4 || isempty(cohesion)
-                cohesion = self.getInputParameter('cohesion');
-            end
-            cff = self.getCFF(mu, cohesion);
-            min_index = time_range(1);
-            max_index = time_range(2);
-            cff = cff(:, min_index:max_index);
-            time_yrs = self.load_table.time_steps(min_index:max_index);
-            cff_rate = diff(cff, [], 2) ./ diff(time_yrs)';
-            cff_max = max(max(cff_rate));
-            i_ymid = ceil(size(self.faultResults.sne, 1)/2);
-            cff_ymid = mean(cff_rate(i_ymid,:));
         end
 
         function realizationTable = get.realizationTable(self)
@@ -706,9 +716,65 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             end
         end
 
-        function requireRunResults(self)
+        function requireRunResults(self, allowStale)
+            if nargin < 2
+                allowStale = false;
+            end
             if isempty(self.faultResults) || ~isstruct(self.faultResults) || isempty(fieldnames(self.faultResults))
                 error('Run results are not available. Execute FaultAnalyzer.run() first.');
+            end
+            if self.resultsStale || isempty(fieldnames(self.resultsConfiguration)) || ...
+                    ~isequaln(self.resultsConfiguration, self.captureResultsConfiguration())
+                self.resultsStale = true;
+                if allowStale
+                    warning('FaultAnalyzer:StaleResultsAllowed', ...
+                        'Returning stale results because AllowStale=true. Run FaultAnalyzer.run() for current results.');
+                else
+                    error('FaultAnalyzer:StaleResults', ...
+                        'Results are stale because model settings changed. Run FaultAnalyzer.run() again.');
+                end
+            end
+        end
+
+        function allowStale = parseAllowStale(~, varargin)
+            allowStale = false;
+            if mod(numel(varargin), 2) ~= 0
+                error('Options must be specified as name-value pairs.');
+            end
+            for i = 1:2:numel(varargin)
+                if ~(ischar(varargin{i}) || (isstring(varargin{i}) && isscalar(varargin{i}))) || ...
+                        ~strcmpi(char(varargin{i}), 'AllowStale')
+                    error('Unknown option ''%s''. Supported option: AllowStale.', string(varargin{i}));
+                end
+                value = varargin{i + 1};
+                if ~(islogical(value) && isscalar(value))
+                    error('AllowStale must be a logical scalar.');
+                end
+                allowStale = value;
+            end
+        end
+
+        function configuration = captureResultsConfiguration(self)
+            configuration = struct();
+            configuration.dy = self.dy;
+            configuration.y_extent = self.y_extent;
+            configuration.load_case = self.load_case;
+            configuration.load_table = self.load_table;
+            configuration.stochastic = self.stochastic;
+            configuration.diffusion_P = self.diffusion_P;
+            configuration.P_res_mode = self.P_res_mode;
+            configuration.P0_fault_mode = self.P0_fault_mode;
+            configuration.P_fault_mode = self.P_fault_mode;
+            configuration.diffusion_T = self.diffusion_T;
+            configuration.aseismic_slip = self.aseismic_slip;
+            configuration.nucleation_criterion = self.nucleation_criterion;
+            configuration.nucleation_length_fixed = self.nucleation_length_fixed;
+            configuration.save_stress = self.save_stress;
+            configuration.keepModelObjects = self.keepModelObjects;
+            parameterNames = properties(self.faultParameterSpecs);
+            for i = 1:numel(parameterNames)
+                configuration.faultParameterSpecs.(parameterNames{i}) = ...
+                    self.faultParameterSpecs.(parameterNames{i});
             end
         end
 

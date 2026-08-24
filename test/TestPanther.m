@@ -5,16 +5,13 @@ classdef TestPanther < matlab.unittest.TestCase
     end
     
     methods (Test)
-        function test_fault_parameter_specs_backward_compatibility(testCase)
+        function test_fault_parameter_specs(testCase)
             analysis = FaultAnalyzer();
-
             testCase.verifyClass(analysis.faultParameterSpecs, 'FaultParameterList');
-            legacySpecs = analysis.input_parameters;
-            testCase.verifyEqual(legacySpecs, analysis.faultParameterSpecs);
 
-            replacementSpecs = PantherParameterList();
-            analysis.input_parameters = replacementSpecs;
-            testCase.verifyEqual(analysis.faultParameterSpecs, replacementSpecs);
+            original = analysis.faultParameterSpecs.young.value;
+            analysis.setInputParameter('young', original + 1);
+            testCase.verifyEqual(analysis.getInputParameter('young'), original + 1);
         end
 
         function test_get_result(testCase)
@@ -27,6 +24,33 @@ classdef TestPanther < matlab.unittest.TestCase
             testCase.verifyEqual(analysis.getResultAtY('sne', analysis.y(1)), analysis.faultResults.sne(1, :));
             depth = analysis.getDepth();
             testCase.verifyEqual(analysis.getResultAtDepth('sne', depth(1)), analysis.faultResults.sne(1, :));
+        end
+
+        function test_results_become_stale_without_losing_data(testCase)
+            analysis = FaultAnalyzer();
+            analysis = analysis.run();
+            oldResults = analysis.faultResults;
+
+            analysis.diffusion_P = ~analysis.diffusion_P;
+            testCase.verifyEqual(analysis.faultResults.sne, oldResults.sne);
+            testCase.verifyError(@() analysis.getResult('sne'), 'FaultAnalyzer:StaleResults');
+            testCase.verifyTrue(analysis.resultsStale);
+        end
+
+        function test_allow_stale_returns_preserved_results(testCase)
+            analysis = FaultAnalyzer();
+            analysis = analysis.run();
+            oldResults = analysis.faultResults;
+            analysis.diffusion_P = ~analysis.diffusion_P;
+
+            testCase.verifyWarning( ...
+                @() analysis.getResult('sne', 'AllowStale', true), ...
+                'FaultAnalyzer:StaleResultsAllowed');
+
+            warning('off', 'FaultAnalyzer:StaleResultsAllowed');
+            cleanup = onCleanup(@() warning('on', 'FaultAnalyzer:StaleResultsAllowed')); %#ok<NASGU>
+            testCase.verifyEqual(analysis.getResult('sne', 'AllowStale', true), oldResults.sne);
+            testCase.verifyEqual(analysis.getResultAtLoadStep('sne', 1, 'AllowStale', true), oldResults.sne(:, 1));
         end
 
         function test_default_single_run_P (testCase)
