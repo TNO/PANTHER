@@ -375,45 +375,40 @@ classdef MultiFaultAnalyzer < handle
             end
         end
 
-        function results = getResult(self, resultName, faultIndices)
+        function results = getResult(self, resultName, varargin)
             % getResult Return a result from one or more faults.
             %
             % For one fault, results is the value returned by FaultAnalyzer.
             % For multiple faults, results is a cell array in fault order.
-            if nargin < 3 || isempty(faultIndices)
-                faultIndices = 1:self.nFaults;
-            end
-
-            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
-                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
-                error('faultIndices must contain valid integer indices between 1 and nFaults');
-            end
-            faultIndices = faultIndices(:);
+            [faultIndices, allowStale] = self.parseResultQueryArguments(varargin{:});
 
             if isscalar(faultIndices)
-                results = self.faults(faultIndices).getResult(resultName);
+                results = self.faults(faultIndices).getResult(resultName, 'AllowStale', allowStale);
                 return;
             end
 
             results = cell(numel(faultIndices), 1);
             for i = 1:numel(faultIndices)
-                results{i} = self.faults(faultIndices(i)).getResult(resultName);
+                results{i} = self.faults(faultIndices(i)).getResult(resultName, 'AllowStale', allowStale);
             end
         end
 
-        function results = getResultAtLoadStep(self, resultName, loadStep, faultIndices)
+        function results = getResultAtLoadStep(self, resultName, loadStep, varargin)
             % getResultAtLoadStep Return a result at a load step for faults.
-            results = self.collectFaultResults(@(fault) fault.getResultAtLoadStep(resultName, loadStep), faultIndices);
+            [faultIndices, allowStale] = self.parseResultQueryArguments(varargin{:});
+            results = self.collectFaultResults(@(fault) fault.getResultAtLoadStep(resultName, loadStep, 'AllowStale', allowStale), faultIndices);
         end
 
-        function results = getResultAtY(self, resultName, yValue, faultIndices)
+        function results = getResultAtY(self, resultName, yValue, varargin)
             % getResultAtY Return a result at a y value for faults.
-            results = self.collectFaultResults(@(fault) fault.getResultAtY(resultName, yValue), faultIndices);
+            [faultIndices, allowStale] = self.parseResultQueryArguments(varargin{:});
+            results = self.collectFaultResults(@(fault) fault.getResultAtY(resultName, yValue, 'AllowStale', allowStale), faultIndices);
         end
 
-        function results = getResultAtDepth(self, resultName, depthValue, faultIndices)
+        function results = getResultAtDepth(self, resultName, depthValue, varargin)
             % getResultAtDepth Return a result at absolute depth for faults.
-            results = self.collectFaultResults(@(fault) fault.getResultAtDepth(resultName, depthValue), faultIndices);
+            [faultIndices, allowStale] = self.parseResultQueryArguments(varargin{:});
+            results = self.collectFaultResults(@(fault) fault.getResultAtDepth(resultName, depthValue, 'AllowStale', allowStale), faultIndices);
         end
 
         function self = setRunSetting(self, settingName, settingValue)
@@ -461,6 +456,7 @@ classdef MultiFaultAnalyzer < handle
             % Minimal assignment loop: no type checks inside the loop
             for i = 1 : n
                 self.faults(i).(settingName) = assign_cells{i};
+                self.faults(i).markResultsStale();
             end
             
         end
@@ -479,6 +475,7 @@ classdef MultiFaultAnalyzer < handle
            else
                for i = 1 : self.nFaults
                    self.faults(i).load_table = loadTableArray{i};
+                   self.faults(i).markResultsStale();
                end
            end
            
@@ -797,14 +794,6 @@ classdef MultiFaultAnalyzer < handle
         end
 
         function results = collectFaultResults(self, resultFunction, faultIndices)
-            if nargin < 3 || isempty(faultIndices)
-                faultIndices = 1:self.nFaults;
-            end
-            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
-                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
-                error('faultIndices must contain valid integer indices between 1 and nFaults');
-            end
-            faultIndices = faultIndices(:);
             if isscalar(faultIndices)
                 results = resultFunction(self.faults(faultIndices));
                 return;
@@ -812,6 +801,35 @@ classdef MultiFaultAnalyzer < handle
             results = cell(numel(faultIndices), 1);
             for i = 1:numel(faultIndices)
                 results{i} = resultFunction(self.faults(faultIndices(i)));
+            end
+        end
+
+        function [faultIndices, allowStale] = parseResultQueryArguments(self, varargin)
+            faultIndices = 1:self.nFaults;
+            allowStale = false;
+            optionArguments = varargin;
+            if ~isempty(varargin) && isnumeric(varargin{1})
+                faultIndices = varargin{1};
+                optionArguments = varargin(2:end);
+            end
+            if ~isnumeric(faultIndices) || any(mod(faultIndices, 1) ~= 0) || ...
+                    any(faultIndices < 1) || any(faultIndices > self.nFaults)
+                error('faultIndices must contain valid integer indices between 1 and nFaults');
+            end
+            faultIndices = faultIndices(:);
+            allowStale = false;
+            if mod(numel(optionArguments), 2) ~= 0
+                error('Options must be specified as name-value pairs.');
+            end
+            for i = 1:2:numel(optionArguments)
+                if ~(ischar(optionArguments{i}) || (isstring(optionArguments{i}) && isscalar(optionArguments{i}))) || ...
+                        ~strcmpi(char(optionArguments{i}), 'AllowStale')
+                    error('Unknown option. Supported option: AllowStale.');
+                end
+                if ~(islogical(optionArguments{i + 1}) && isscalar(optionArguments{i + 1}))
+                    error('AllowStale must be a logical scalar.');
+                end
+                allowStale = optionArguments{i + 1};
             end
         end
 

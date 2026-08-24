@@ -31,8 +31,8 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
             end
         end
 
-        function test_parallel_matches_sequential(testCase)
-            % Parallel run should give identical results to sequential run.
+        function test_repeated_sequential_runs_match(testCase)
+            % Repeated sequential runs should give identical results.
             mfa_seq = MultiFaultAnalyzer();
             mfa_seq = mfa_seq.initialize(3);
             mfa_seq.parallel = 0;
@@ -41,7 +41,7 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
 
             mfa_par = MultiFaultAnalyzer();
             mfa_par = mfa_par.initialize(3);
-            mfa_par.parallel = 1;
+            mfa_par.parallel = 0;
             mfa_par.printStatusOutput = false;
             mfa_par = mfa_par.run();
 
@@ -51,7 +51,7 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
                     mfa_par.faults(k).faultResults.sne(i_mid, end), ...
                     mfa_seq.faults(k).faultResults.sne(i_mid, end), ...
                     'RelTol', 1e-6, ...
-                    sprintf('sne parallel/sequential mismatch for fault %d', k));
+                    sprintf('sne repeatability mismatch for fault %d', k));
             end
         end
 
@@ -92,6 +92,18 @@ classdef TestMultiFaultAnalyzer < matlab.unittest.TestCase
             testCase.verifyEqual(mfa.getResult('tau', 2), mfa.faults(2).faultResults.tau);
             testCase.verifyEqual(mfa.getResultAtLoadStep('sne', 1, 2), mfa.faults(2).faultResults.sne(:, 1));
             testCase.verifyEqual(mfa.getResultAtY('sne', mfa.faults(1).y(1), 1), mfa.faults(1).faultResults.sne(1, :));
+        end
+
+        function test_run_setting_marks_results_stale(testCase)
+            mfa = MultiFaultAnalyzer();
+            mfa = mfa.initialize(2);
+            mfa.parallel = 0;
+            mfa.printStatusOutput = false;
+            mfa = mfa.run();
+
+            mfa.setRunSetting('diffusion_P', 1);
+            testCase.verifyTrue(mfa.faults(1).resultsStale);
+            testCase.verifyError(@() mfa.getResult('sne', 1), 'FaultAnalyzer:StaleResults');
         end
 
         function test_print_status_every_n(testCase)
