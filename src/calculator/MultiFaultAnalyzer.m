@@ -474,11 +474,7 @@ classdef MultiFaultAnalyzer < handle
                disp('ERROR: Input cell array of load tables must be n_faults x 1, or 1 x 1. Value not assigned');
            else
                for i = 1 : self.nFaults
-                   loadTable = loadTableArray{min(i, size(loadTableArray, 1))};
-                   if ~ismember('step_num', loadTable.Properties.VariableNames)
-                       loadTable.step_num = (1:height(loadTable))';
-                       loadTable = movevars(loadTable, 'step_num', 'Before', 1);
-                   end
+                   loadTable = ensure_load_table_step_num(loadTableArray{min(i, size(loadTableArray, 1))});
                    self.faults(i).load_table = loadTable;
                    self.faults(i).markResultsStale();
                end

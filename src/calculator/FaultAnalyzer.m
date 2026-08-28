@@ -67,7 +67,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             self.faultParameterSpecs = FaultParameterList(); 
             % delay heavy load_table initialization when performing bulk creation
             % if create_ensemble
-            self.load_table = initialize_load_table();
+            self.load_table = ensure_load_table_step_num(initialize_load_table());
             % self.generateRealization();
         end
 
@@ -96,6 +96,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
 
             pressure_obj    = Pressure(self);
             temperature_obj = Temperature(self, 'min');
+            loadTable       = ensure_load_table_step_num(self.load_table);
 
             inputs = struct();
             inputs.faultRealization     = self.faultRealization;
@@ -104,8 +105,8 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             inputs.load_case           = self.load_case;
             inputs.nFaultCells         = self.faultLen;
             inputs.nTimeSteps          = self.nTimes;
-            inputs.time_steps         = self.load_table.time_steps;
-            inputs.step_num           = self.load_table.step_num;
+            inputs.time_steps         = loadTable.time_steps;
+            inputs.step_num           = loadTable.step_num;
             % Pre-computed pressure arrays
             inputs.dP_HW = pressure_obj.get_dP_HW();
             inputs.dP_FW = pressure_obj.get_dP_FW();
