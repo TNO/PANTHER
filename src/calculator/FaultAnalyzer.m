@@ -104,6 +104,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             inputs.load_case           = self.load_case;
             inputs.nFaultCells         = self.faultLen;
             inputs.nTimeSteps          = self.nTimes;
+            inputs.time_steps         = self.load_table.time_steps;
             % Pre-computed pressure arrays
             inputs.dP_HW = pressure_obj.get_dP_HW();
             inputs.dP_FW = pressure_obj.get_dP_FW();
@@ -380,6 +381,9 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             allowStale = self.parseAllowStale(varargin{:});
             allowable_result_names = {'P0','P','dP', 'sne', 'tau', 'sne_reac',...
                 'tau_reac','sne_nuc','tau_nuc','T0', 'T','dT','slip','scu', ...
+                'scu_max','scu_depth_mid','scu_res','scu_jux', ...
+                'cff_max','cff_depth_mid','cff_res','cff_jux', ...
+                'cff_rate_max','cff_rate_depth_mid','cff_rate_res','cff_rate_jux', ...
                 'dcfs','cfs','dcfs_dt','tau_s','tau_d'}';
             if ~ismember(resultName, allowable_result_names)
                 resultnames_cellstring = [append(allowable_result_names, repmat({', '},length(allowable_result_names),1))];
@@ -591,8 +595,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     'sne_reac', self.faultResults.sne_reac, ...
                     'tau_reac', self.faultResults.tau_reac, ...
                     'sne_nuc', self.faultResults.sne_nuc, ...
-                    'tau_nuc', self.faultResults.tau_nuc, ...
-                    'tau_nu', self.faultResults.tau_nu)};
+                    'tau_nuc', self.faultResults.tau_nuc)};
             else
                 stress = {};
             end
@@ -840,6 +843,13 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             stress_obj = stress_obj.get_reactivation_stress(slip_obj.reactivation_load_step);
             stress_obj = stress_obj.get_nucleation_stress(slip_obj.nucleation_load_step);
 
+            scu = stress_obj.tau ./ (stress_obj.sne .* inputs.f_s + inputs.cohesion);
+            scuMetrics = FaultAnalyzer.computeSCUMetrics(scu, y, inputs.faultRealization);
+            cff = stress_obj.tau - stress_obj.sne .* inputs.f_s - inputs.cohesion;
+            cffMetrics = FaultAnalyzer.computeSCUMetrics(cff, y, inputs.faultRealization);
+            cffRate = gradient(cff, inputs.time_steps(:)', 2);
+            cffRateMetrics = FaultAnalyzer.computeSCUMetrics(cffRate, y, inputs.faultRealization);
+
             % Pack results
             results = struct();
             results.keepModelObjects = inputs.keepModelObjects;
@@ -849,7 +859,19 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 'sne', stress_obj.sne, 'tau', stress_obj.tau, ...
                 'sne_reac', stress_obj.sne_reac, 'tau_reac', stress_obj.tau_reac, ...
                 'sne_nuc', stress_obj.sne_nuc, 'tau_nuc', stress_obj.tau_nuc, ...
-                'tau_nu', stress_obj.tau_nuc, 'slip', slip_obj.slip);
+                'slip', slip_obj.slip, ...
+                'scu_max', scuMetrics.max, ...
+                'scu_depth_mid', scuMetrics.depth_mid, ...
+                'scu_res', scuMetrics.res, ...
+                'scu_jux', scuMetrics.jux, ...
+                'cff_max', cffMetrics.max, ...
+                'cff_depth_mid', cffMetrics.depth_mid, ...
+                'cff_res', cffMetrics.res, ...
+                'cff_jux', cffMetrics.jux, ...
+                'cff_rate_max', cffRateMetrics.max, ...
+                'cff_rate_depth_mid', cffRateMetrics.depth_mid, ...
+                'cff_rate_res', cffRateMetrics.res, ...
+                'cff_rate_jux', cffRateMetrics.jux);
             results.slip_meta = struct( ...
                 'reactivation', slip_obj.reactivation, ...
                 'reactivation_load_step', slip_obj.reactivation_load_step, ...
@@ -863,6 +885,40 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 results.temperature_obj = inputs.temperature_obj;
                 results.stress_obj      = stress_obj;
                 results.slip_obj        = slip_obj;
+            end
+        end
+
+        function metrics = computeSCUMetrics(scu, y, realization)
+            % computeSCUMetrics Compute compact SCU time series for one fault.
+            metrics.max = max(scu, [], 1, 'omitnan');
+
+            [~, depthMidIndex] = min(abs(y));
+            metrics.depth_mid = scu(depthMidIndex, :);
+
+            reservoirFW = realization.i_FW(y);
+            reservoirHW = realization.i_HW(y);
+            flankFW = FaultAnalyzer.getReservoirFlankIndices(reservoirFW, numel(y));
+            flankHW = FaultAnalyzer.getReservoirFlankIndices(reservoirHW, numel(y));
+            metrics.res = FaultAnalyzer.averageSCUAtIndices(scu, unique([flankFW, flankHW]));
+            metrics.jux = FaultAnalyzer.averageSCUAtIndices(scu, find(reservoirFW | reservoirHW));
+        end
+
+        function indices = getReservoirFlankIndices(mask, nElements)
+            reservoirIndices = find(mask(:));
+            if isempty(reservoirIndices)
+                indices = zeros(0, 1);
+                return;
+            end
+
+            candidates = [reservoirIndices(1) - 1; reservoirIndices(end) + 1];
+            indices = unique(candidates(candidates >= 1 & candidates <= nElements));
+        end
+
+        function average = averageSCUAtIndices(scu, indices)
+            if isempty(indices)
+                average = nan(1, size(scu, 2));
+            else
+                average = mean(scu(indices, :), 1, 'omitnan');
             end
         end
 
