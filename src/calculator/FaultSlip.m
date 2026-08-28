@@ -8,8 +8,10 @@ classdef FaultSlip
         slip_zone_ymid double       % center depth of the slip zones
         reactivation logical        % indicator whether fault has been reactivated
         reactivation_load_step double   % load index at which fault has been reactivated
+        reactivation_time double    % interpolated time at reactivation
         nucleation logical          % indicator whether nucleation has occurred on the fault
         nucleation_load_step double % load index at which nucleation occurs
+        nucleation_time double     % interpolated time at nucleation
         nucleation_length double    % nucleation length at the nucleation point
         nucleation_zone_ymid double      % center y of the nucleation zone
         max_slip_length double
@@ -24,8 +26,10 @@ classdef FaultSlip
             self.slip = zeros(n_rows, n_cols);
             self.reactivation = 0;
             self.reactivation_load_step = nan(1,1);
+            self.reactivation_time = nan(1,1);
             self.nucleation = 0;
             self.nucleation_load_step = nan(1,1);
+            self.nucleation_time = nan(1,1);
             self.nucleation_length = nan(1,1);
             self.nucleation_zone_ymid = nan(1,1);
             self.max_slip_length = nan(1,1);
@@ -94,7 +98,7 @@ classdef FaultSlip
             end
         end
 
-        function [self] = detect_nucleation(self, y, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed)
+        function [self] = detect_nucleation(self, y, L, sne, tau, f_s, f_d, d_c, cohesion, mu_II, nuc_crit, nuc_len_fixed, step_num, time_steps)
             % identify whether nucleation occurs by comparing slip length
             % to theoretical nucleation length by Uenishi & Rice 2003
             % INPUT
@@ -107,6 +111,20 @@ classdef FaultSlip
             % cohesion  cohesion
             % mu_II shear modulus mode II
             tau_f = sne.* f_s + cohesion;
+            if nargin < 13 || isempty(step_num)
+                step_num = (1:size(tau, 2))';
+            end
+            step_num = step_num(:);
+            if numel(step_num) ~= size(tau, 2)
+                error('step_num must have one value per timestep.');
+            end
+            if nargin < 14 || isempty(time_steps)
+                time_steps = (1:size(tau, 2))';
+            end
+            time_steps = time_steps(:);
+            if numel(time_steps) ~= size(tau, 2)
+                error('time_steps must have one value per timestep.');
+            end
             %y2L = cell_length;                  % replace with dip
             y2L = L;
             slipping = (tau >= tau_f);
@@ -203,10 +221,16 @@ classdef FaultSlip
                 
             end
             self.slip_length = slip_zone_length;
-            % find the earliest reactivation and nucleation for the
-            % different slip zones
-            self.reactivation_load_step = min(reactivation_per_slip_zone);
+            % Reactivation is the first maximum-SCU crossing of one.
+            scu = tau ./ tau_f;
+            max_scu = max(scu, [], 1, 'omitnan');
+            self.reactivation_load_step = self.interpolateFirstCrossing(max_scu, step_num, 1);
+            self.reactivation = ~isnan(self.reactivation_load_step);
+            self.reactivation_time = self.interpolateCoordinate(step_num, time_steps, self.reactivation_load_step);
+
+            % Find the earliest nucleation for the different slip zones.
             [self.nucleation_load_step, nucleation_zone_number] = min(nucleation_index_per_slip_zone);
+            self.nucleation_time = self.interpolateCoordinate((1:size(tau, 2))', time_steps, self.nucleation_load_step);
             if ~isnan(self.nucleation_load_step)
                 self.nucleation = 1;
                 indices = linspace(1, length(nucleation_length_per_slip_zone),length(nucleation_length_per_slip_zone));
@@ -224,6 +248,39 @@ classdef FaultSlip
                     self.max_slip_length = nan;
                 end
             end
+        end
+
+        function crossing = interpolateFirstCrossing(~, values, coordinates, threshold)
+            values = values(:);
+            coordinates = coordinates(:);
+            crossing = NaN;
+            firstAbove = find(isfinite(values) & values >= threshold, 1, 'first');
+            if isempty(firstAbove)
+                return;
+            end
+            if firstAbove == 1 || ~isfinite(values(firstAbove - 1))
+                crossing = coordinates(firstAbove);
+                return;
+            end
+            previousValue = values(firstAbove - 1);
+            currentValue = values(firstAbove);
+            previousCoordinate = coordinates(firstAbove - 1);
+            currentCoordinate = coordinates(firstAbove);
+            if currentValue == previousValue
+                crossing = currentCoordinate;
+            else
+                crossing = previousCoordinate + ...
+                    (threshold - previousValue) / (currentValue - previousValue) * ...
+                    (currentCoordinate - previousCoordinate);
+            end
+        end
+
+        function value = interpolateCoordinate(~, coordinates, values, query)
+            value = NaN;
+            if isnan(query)
+                return;
+            end
+            value = interp1(coordinates(:), values(:), query, 'linear', 'extrap');
         end
 
         function slip_zone_indices = get_slip_zone_indices(~, slipping)
