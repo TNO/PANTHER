@@ -104,6 +104,8 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             inputs.load_case           = self.load_case;
             inputs.nFaultCells         = self.faultLen;
             inputs.nTimeSteps          = self.nTimes;
+            inputs.time_steps         = self.load_table.time_steps;
+            inputs.step_num           = self.load_table.step_num;
             % Pre-computed pressure arrays
             inputs.dP_HW = pressure_obj.get_dP_HW();
             inputs.dP_FW = pressure_obj.get_dP_FW();
@@ -235,13 +237,6 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             self.resultsStale = true;
         end
 
-        function self = generate_ensemble(self) %#ok<MANU>
-            % generate_ensemble  Deprecated. Use generateRealization() instead.
-            warning('FaultAnalyzer:deprecated', ...
-                'generate_ensemble() is deprecated. Use generateRealization() instead.');
-            self = self.generateRealization();
-        end
-
         function realizationTable = toRealizationTable(self)
             % toRealizationTable  Return faultRealization parameters as a flat table.
             if isempty(self.faultRealization) || self.realizationStale
@@ -266,12 +261,12 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             % nucleation occurred
             % nucleation_dT: [deg] corresponding temperature change at
             % which nucleation occurred
-            column_names = {'reactivation', 'reactivation_load_step', 'nucleation', ...
-                'nucleation_load_step', 'nucleation_length', 'nucleation_zone_ymid', ...
-                'max_slip_length'};
+            column_names = {'reactivation', 'reactivation_load_step', 'reactivation_time', ...
+                'nucleation', 'nucleation_load_step', 'nucleation_time', ...
+                'nucleation_length', 'nucleation_zone_ymid', 'max_slip_length'};
             num_rows = 1;
             self.faultSummary = table(nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
-                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
+                nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),nan(num_rows,1),...
                 'VariableNames', column_names);
             for i = 1 : length(self.stress)
                 self.faultSummary.reactivation(i) = self.slip{i}.reactivation;
@@ -281,17 +276,25 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 self.faultSummary.nucleation_length(i) = self.slip{i}.nucleation_length;
                 self.faultSummary.nucleation_zone_ymid(i) = self.slip{i}.nucleation_zone_ymid;
                 self.faultSummary.max_slip_length(i) = self.slip{i}.max_slip_length;
+                self.faultSummary.reactivation_time(i) = self.slip{i}.reactivation_time;
+                self.faultSummary.nucleation_time(i) = self.slip{i}.nucleation_time;
+            end
+
+            summaryMetricNames = {'scu_max','scu_depth_mid','scu_res','scu_jux', ...
+                'cfs_max','cfs_depth_mid','cfs_res','cfs_jux', ...
+                'dcfs_dt_max','dcfs_dt_depth_mid','dcfs_dt_res','dcfs_dt_jux'};
+            for i = 1 : numel(summaryMetricNames)
+                metricName = summaryMetricNames{i};
+                if isfield(self.faultResults, metricName)
+                    metricValues = self.faultResults.(metricName);
+                    if isnumeric(metricValues) && isvector(metricValues)
+                        self.faultSummary.(metricName) = max(metricValues(:), [], 'omitnan');
+                    end
+                end
             end
             warning('on'); 
         end
 
-        function self = make_result_summary(self)
-            % make_result_summary Deprecated alias for makeResultSummary.
-            warning('FaultAnalyzer:deprecated', ...
-                'make_result_summary is deprecated. Use makeResultSummary instead.');
-            self = self.makeResultSummary();
-        end
-        
         function [geom_table] = getRealizationGeometries(self)
             % getRealizationGeometries  Returns geometric indicators for the
             % fault realization as a table.
@@ -337,11 +340,6 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             end
         end
 
-        function [depthParameterValues] = getDepthDependentInput(self, inputParameterName)
-            % Convenience alias for getDepthDependentInputParameter
-            depthParameterValues = self.getDepthDependentInputParameter(inputParameterName);
-        end
-
         function absoluteDepth = getDepth(self)
             % getDepth Returns absolute depth values using y and depth_mid.
             % Output:
@@ -380,6 +378,9 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             allowStale = self.parseAllowStale(varargin{:});
             allowable_result_names = {'P0','P','dP', 'sne', 'tau', 'sne_reac',...
                 'tau_reac','sne_nuc','tau_nuc','T0', 'T','dT','slip','scu', ...
+                'scu_max','scu_depth_mid','scu_res','scu_jux', ...
+                'cfs_max','cfs_depth_mid','cfs_res','cfs_jux', ...
+                'dcfs_dt_max','dcfs_dt_depth_mid','dcfs_dt_res','dcfs_dt_jux', ...
                 'dcfs','cfs','dcfs_dt','tau_s','tau_d'}';
             if ~ismember(resultName, allowable_result_names)
                 resultnames_cellstring = [append(allowable_result_names, repmat({', '},length(allowable_result_names),1))];
@@ -396,15 +397,14 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             elseif strcmp(resultName, 'tau_d')
                 output = self.getDynamicFaultStrength();
             elseif strcmp(resultName, 'cfs')
-                output = self.getCFF(self.getInputParameter('f_s'), 0);
+                output = self.getCFS(self.getInputParameter('f_s'), 0);
             elseif strcmp(resultName, 'dcfs')
-                cff = self.getCFF(self.getInputParameter('f_s'), 0);
-                output = cff - cff(:,1);
+                cfs = self.getCFS(self.getInputParameter('f_s'), 0);
+                output = cfs - cfs(:,1);
             elseif strcmp(resultName, 'dcfs_dt')
-                cff = self.getCFF(self.getInputParameter('f_s'), 0);
+                cfs = self.getCFS(self.getInputParameter('f_s'), 0);
                 time = self.load_table.time_steps;
-                % compute the time derivative (MPa/yr)
-                output = gradient(cff, time, 2); 
+                output = gradient(cfs, time, 2);
             else
                 error('Output %s is not available in faultResults', resultName);
             end
@@ -448,13 +448,6 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             outputAtDepth = self.sampleResultAlongDimension(output, 1, depthValue, self.getDepth(), 'depth value');
         end
 
-        function outputAtLoadStep = get_output_at_load_step(self, resultName, loadStep, varargin)
-            % get_output_at_load_step Deprecated alias for getResultAtLoadStep.
-            warning('FaultAnalyzer:deprecated', ...
-                'get_output_at_load_step is deprecated. Use getResultAtLoadStep instead.');
-            outputAtLoadStep = self.getResultAtLoadStep(resultName, loadStep, varargin{:});
-        end
-
         function scu = getSCU(self, f_s, cohesion)
             if nargin < 2 || isempty(f_s)
                 f_s = self.getDepthDependentInputParameter('f_s');
@@ -466,11 +459,6 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             sne = self.faultResults.sne;
             tau = self.faultResults.tau;
             scu = tau ./ (sne .* f_s + cohesion);
-        end
-
-        function scu = get_scu(self, f_s, cohesion)
-            % Backward-compatible alias for getSCU.
-            scu = self.getSCU(f_s, cohesion);
         end
 
         function tau_s = getStaticFaultStrength(self)
@@ -489,7 +477,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             tau_d = sne .* f_d + cohesion;
         end
 
-        function cff = getCFF(self, mu, cohesion)
+        function cfs = getCFS(self, mu, cohesion)
             if nargin < 2 || isempty(mu)
                 mu = self.getDepthDependentInputParameter('f_s');
             end
@@ -499,12 +487,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             self.requireRunResults();
             sne = self.faultResults.sne;
             tau = self.faultResults.tau;
-            cff = tau - (sne .* mu + cohesion);
-        end
-
-        function cff = get_cff(self, mu, cohesion)
-            % Backward-compatible alias for getCFF.
-            cff = self.getCFF(mu, cohesion);
+            cfs = tau - (sne .* mu + cohesion);
         end
 
         function realizationTable = get.realizationTable(self)
@@ -591,8 +574,7 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     'sne_reac', self.faultResults.sne_reac, ...
                     'tau_reac', self.faultResults.tau_reac, ...
                     'sne_nuc', self.faultResults.sne_nuc, ...
-                    'tau_nuc', self.faultResults.tau_nuc, ...
-                    'tau_nu', self.faultResults.tau_nu)};
+                    'tau_nuc', self.faultResults.tau_nuc)};
             else
                 stress = {};
             end
@@ -607,24 +589,26 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 % In lightweight mode, slip_store keeps scalar metadata.
                 meta = self.slip_store{1};
             else
-                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'nucleation', nan, ...
-                    'nucleation_load_step', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
+                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'reactivation_time', nan, 'nucleation', nan, ...
+                    'nucleation_load_step', nan, 'nucleation_time', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
             end
 
             if ~isempty(self.slip_store) && self.keepModelObjects
                 slip = self.slip_store;
                 return;
             elseif ~self.keepModelObjects && isstruct(self.faultResults) && ~isempty(fieldnames(self.faultResults))
-                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'nucleation', nan, ...
-                    'nucleation_load_step', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
+                meta = struct('reactivation', nan, 'reactivation_load_step', nan, 'reactivation_time', nan, 'nucleation', nan, ...
+                    'nucleation_load_step', nan, 'nucleation_time', nan, 'nucleation_length', nan, 'nucleation_zone_ymid', nan, 'max_slip_length', nan);
                 if ~isempty(self.slip_store)
                     meta = self.slip_store{1};
                 elseif ~isempty(self.faultSummary)
                     meta = struct( ...
                         'reactivation', self.faultSummary.reactivation(1), ...
                         'reactivation_load_step', self.faultSummary.reactivation_load_step(1), ...
+                        'reactivation_time', self.faultSummary.reactivation_time(1), ...
                         'nucleation', self.faultSummary.nucleation(1), ...
                         'nucleation_load_step', self.faultSummary.nucleation_load_step(1), ...
+                        'nucleation_time', self.faultSummary.nucleation_time(1), ...
                         'nucleation_length', self.faultSummary.nucleation_length(1), ...
                         'nucleation_zone_ymid', self.faultSummary.nucleation_zone_ymid(1), ...
                         'max_slip_length', self.faultSummary.max_slip_length(1));
@@ -633,8 +617,10 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     'slip', self.faultResults.slip, ...
                     'reactivation', meta.reactivation, ...
                     'reactivation_load_step', meta.reactivation_load_step, ...
+                    'reactivation_time', meta.reactivation_time, ...
                     'nucleation', meta.nucleation, ...
                     'nucleation_load_step', meta.nucleation_load_step, ...
+                    'nucleation_time', meta.nucleation_time, ...
                     'nucleation_length', meta.nucleation_length, ...
                     'nucleation_zone_ymid', meta.nucleation_zone_ymid, ...
                     'max_slip_length', meta.max_slip_length)};
@@ -678,6 +664,45 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                     'Assign FaultAnalyzer.faultSummary instead.']);
             end
             self.faultSummary = summary;
+        end
+
+    end
+
+    methods (Hidden)
+        function self = generate_ensemble(self) %#ok<MANU>
+            % generate_ensemble Deprecated. Use generateRealization instead.
+            warning('FaultAnalyzer:deprecated', ...
+                'generate_ensemble() is deprecated. Use generateRealization() instead.');
+            self = self.generateRealization();
+        end
+
+        function self = make_result_summary(self)
+            % make_result_summary Deprecated alias for makeResultSummary.
+            warning('FaultAnalyzer:deprecated', ...
+                'make_result_summary is deprecated. Use makeResultSummary instead.');
+            self = self.makeResultSummary();
+        end
+
+        function depthParameterValues = getDepthDependentInput(self, inputParameterName)
+            % getDepthDependentInput Convenience alias for getDepthDependentInputParameter.
+            depthParameterValues = self.getDepthDependentInputParameter(inputParameterName);
+        end
+
+        function outputAtLoadStep = get_output_at_load_step(self, resultName, loadStep, varargin)
+            % get_output_at_load_step Deprecated alias for getResultAtLoadStep.
+            warning('FaultAnalyzer:deprecated', ...
+                'get_output_at_load_step is deprecated. Use getResultAtLoadStep instead.');
+            outputAtLoadStep = self.getResultAtLoadStep(resultName, loadStep, varargin{:});
+        end
+
+        function scu = get_scu(self, f_s, cohesion)
+            % get_scu Backward-compatible alias for getSCU.
+            scu = self.getSCU(f_s, cohesion);
+        end
+
+        function cfs = get_cfs(self, mu, cohesion)
+            % get_cfs Backward-compatible alias for getCFS.
+            cfs = self.getCFS(mu, cohesion);
         end
 
     end
@@ -834,11 +859,21 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
             slip_obj = slip_obj.detect_nucleation(y, L, stress_obj.sne, stress_obj.tau, ...
                 inputs.f_s, inputs.f_d, inputs.d_c, inputs.cohesion, ...
                 inputs.faultRealization.get_mu_II, ...
-                inputs.nucleation_criterion, inputs.nucleation_length_fixed);
+                inputs.nucleation_criterion, inputs.nucleation_length_fixed, inputs.step_num, inputs.time_steps);
+            if ~inputs.aseismic_slip
+                slip_obj.max_slip_length = NaN;
+            end
 
             % Reactivation and nucleation stresses
             stress_obj = stress_obj.get_reactivation_stress(slip_obj.reactivation_load_step);
             stress_obj = stress_obj.get_nucleation_stress(slip_obj.nucleation_load_step);
+
+            scu = stress_obj.tau ./ (stress_obj.sne .* inputs.f_s + inputs.cohesion);
+            scuMetrics = FaultAnalyzer.computeSCUMetrics(scu, y, inputs.faultRealization);
+            cfs = stress_obj.tau - stress_obj.sne .* inputs.f_s - inputs.cohesion;
+            cfsMetrics = FaultAnalyzer.computeSCUMetrics(cfs, y, inputs.faultRealization);
+            dcfsDt = gradient(cfs, inputs.time_steps(:)', 2);
+            dcfsDtMetrics = FaultAnalyzer.computeSCUMetrics(dcfsDt, y, inputs.faultRealization);
 
             % Pack results
             results = struct();
@@ -849,12 +884,26 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 'sne', stress_obj.sne, 'tau', stress_obj.tau, ...
                 'sne_reac', stress_obj.sne_reac, 'tau_reac', stress_obj.tau_reac, ...
                 'sne_nuc', stress_obj.sne_nuc, 'tau_nuc', stress_obj.tau_nuc, ...
-                'tau_nu', stress_obj.tau_nuc, 'slip', slip_obj.slip);
+                'slip', slip_obj.slip, ...
+                'scu_max', scuMetrics.max, ...
+                'scu_depth_mid', scuMetrics.depth_mid, ...
+                'scu_res', scuMetrics.res, ...
+                'scu_jux', scuMetrics.jux, ...
+                'cfs_max', cfsMetrics.max, ...
+                'cfs_depth_mid', cfsMetrics.depth_mid, ...
+                'cfs_res', cfsMetrics.res, ...
+                'cfs_jux', cfsMetrics.jux, ...
+                'dcfs_dt_max', dcfsDtMetrics.max, ...
+                'dcfs_dt_depth_mid', dcfsDtMetrics.depth_mid, ...
+                'dcfs_dt_res', dcfsDtMetrics.res, ...
+                'dcfs_dt_jux', dcfsDtMetrics.jux);
             results.slip_meta = struct( ...
                 'reactivation', slip_obj.reactivation, ...
                 'reactivation_load_step', slip_obj.reactivation_load_step, ...
+                'reactivation_time', slip_obj.reactivation_time, ...
                 'nucleation', slip_obj.nucleation, ...
                 'nucleation_load_step', slip_obj.nucleation_load_step, ...
+                'nucleation_time', slip_obj.nucleation_time, ...
                 'nucleation_length', slip_obj.nucleation_length, ...
                 'nucleation_zone_ymid', slip_obj.nucleation_zone_ymid, ...
                 'max_slip_length', slip_obj.max_slip_length);
@@ -863,6 +912,40 @@ classdef (HandleCompatible) FaultAnalyzer < FaultMesh
                 results.temperature_obj = inputs.temperature_obj;
                 results.stress_obj      = stress_obj;
                 results.slip_obj        = slip_obj;
+            end
+        end
+
+        function metrics = computeSCUMetrics(scu, y, realization)
+            % computeSCUMetrics Compute compact SCU time series for one fault.
+            metrics.max = max(scu, [], 1, 'omitnan');
+
+            [~, depthMidIndex] = min(abs(y));
+            metrics.depth_mid = scu(depthMidIndex, :);
+
+            reservoirFW = realization.i_FW(y);
+            reservoirHW = realization.i_HW(y);
+            flankFW = FaultAnalyzer.getReservoirFlankIndices(reservoirFW, numel(y));
+            flankHW = FaultAnalyzer.getReservoirFlankIndices(reservoirHW, numel(y));
+            metrics.res = FaultAnalyzer.averageSCUAtIndices(scu, unique([flankFW, flankHW]));
+            metrics.jux = FaultAnalyzer.averageSCUAtIndices(scu, find(reservoirFW & reservoirHW));
+        end
+
+        function indices = getReservoirFlankIndices(mask, nElements)
+            reservoirIndices = find(mask(:));
+            if isempty(reservoirIndices)
+                indices = zeros(0, 1);
+                return;
+            end
+
+            candidates = [reservoirIndices(1) - 1; reservoirIndices(end) + 1];
+            indices = unique(candidates(candidates >= 1 & candidates <= nElements));
+        end
+
+        function average = averageSCUAtIndices(scu, indices)
+            if isempty(indices)
+                average = nan(1, size(scu, 2));
+            else
+                average = mean(scu(indices, :), 1, 'omitnan');
             end
         end
 
