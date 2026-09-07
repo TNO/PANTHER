@@ -125,8 +125,6 @@ classdef FaultSlip
             if numel(time_steps) ~= size(tau, 2)
                 error('time_steps must have one value per timestep.');
             end
-            %y2L = cell_length;                  % replace with dip
-            y2L = L;
             slipping = (tau >= tau_f);
             % slip_zone_indices and ..length will have size(number of slip zone x
             % length(time). 
@@ -321,7 +319,7 @@ classdef FaultSlip
             % nx        number of fault elements
             % mu_II     mode II shear stiffness
             nx = length(L);
-            Kline = -nx/(2*pi*(L(1)-L(end))) ./ ( [0:nx-1]'.^2-0.25 );
+            Kline = -nx/(2*pi*(L(1)-L(end))) ./ ( (0:nx-1)'.^2-0.25 );
             Ko = toeplitz(Kline);
             % K = Ko*mu_II;     % if stiffness not depth dependent
             K = Ko .* mu_II';   % take depth dependent stiffness into account
@@ -332,6 +330,18 @@ classdef FaultSlip
         function nuc_length = calculate_nucleation_length(~, delta_tau, tau_0_d, d_c, mu_II, nucleation_criterion, nucleation_length)
         % simplified comparison to theoretical nucleation lengths, based on
         % average values of sn, delta_tau within the slip zone
+            if delta_tau <= 0
+                % delta_tau (zone-averaged static-to-dynamic strength drop)
+                % is only physically meaningful when positive (f_s > f_d).
+                % A non-positive value (e.g. f_d locally >= f_s) would blow
+                % up to +-Inf or flip the sign of nuc_length, so mark this
+                % zone/timestep as undefined instead of returning a
+                % non-finite or spuriously negative length. Applies to
+                % 'fixed' too: a non-weakening zone is not a valid
+                % nucleation candidate regardless of the chosen criterion.
+                nuc_length = NaN;
+                return
+            end
             if strcmp(nucleation_criterion, 'UR2D')
                 nuc_length = 1.158 * mu_II * d_c./(delta_tau);  % delta_tau
             elseif strcmp(nucleation_criterion, 'Day3D')
